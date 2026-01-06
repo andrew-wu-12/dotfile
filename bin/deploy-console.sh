@@ -32,7 +32,7 @@ function get_final_env() {
 
 function create_branch() {
     local TARGET_BRANCH=$1
-    cd $MOP_CONFIGURATION_PATH
+    cd $MOP_CONSOLE_PATH
     git co master
     if git show-ref --verify --quiet refs/heads/$TARGET_BRANCH; then
         git checkout "$TARGET_BRANCH"

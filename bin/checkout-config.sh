@@ -1,4 +1,4 @@
-#!/bin/bash
+#!/bin/zsh
 
 function get_from_json() {
     echo $1 | jq $2 | tr -d '"'
@@ -24,7 +24,7 @@ function get_ticket_summary() {
 TICKET_NUMBER=$1
 TICKET_SUMMARY=$(get_ticket_summary $TICKET_NUMBER)
 echo "$TICKET_SUMMARY"
-
+source ~/.zshrc
 ENV_LIST=("dev" "uat" "prod")
 cd $MOP_CONFIGURATION_PATH
 git add .;git stash -m 'config stash'

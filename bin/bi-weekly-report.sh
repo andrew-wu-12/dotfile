@@ -1,4 +1,4 @@
-#!/bin/bash -l
+#!/bin/zsh
 
 dataset_date=$(date '+%Y-%m-%d')
 p_dataset_date=$(date -v-14d +%Y-%m-%d)

@@ -24,6 +24,7 @@ ZSH_THEME="robbyrussell"
 # HYPHEN_INSENSITIVE="true"
 
 # Uncomment one of the following lines to change the auto-update behavior
+zstyle ':omz:lib:*' aliases no
 # zstyle ':omz:update' mode disabled  # disable automatic updates
 # zstyle ':omz:update' mode auto      # update automatically without asking
 # zstyle ':omz:update' mode reminder  # just remind me to update when it's time
@@ -72,7 +73,7 @@ ZSH_THEME="robbyrussell"
 # Add wisely, as too many plugins slow down shell startup.
 
 plugins=(
-    git
+    # git
     # zsh-completions
     # zsh-autosuggestions
     zsh-syntax-highlighting
@@ -110,11 +111,11 @@ source $ZSH/oh-my-zsh.sh
 #
 # Example aliases
 # custom scripts
-alias crt='~/bin/checkout-ticket.sh'
-alias crc='~/bin/checkout-config.sh'
-alias dpc='~/bin/deploy-console.sh $(git rev-parse --abbrev-ref HEAD)'
-alias dpo='~/bin/deploy-one.sh $(git rev-parse --abbrev-ref HEAD)'
-alias bws='~/bin/bi-weekly-report.sh'
+alias crt='zsh ~/bin/checkout-ticket.sh'
+alias crc='zsh ~/bin/checkout-config.sh'
+alias dpc='zsh ~/bin/deploy-console.sh $(git rev-parse --abbrev-ref HEAD)'
+alias dpo='zsh ~/bin/deploy-one.sh $(git rev-parse --abbrev-ref HEAD)'
+alias bws='zsh ~/bin/bi-weekly-report.sh'
 
 # Git
 alias gp='git push origin $(git rev-parse --abbrev-ref HEAD)'
@@ -130,6 +131,7 @@ alias gbc='echo "$(git rev-parse --abbrev-ref HEAD)" | pbcopy; echo "Copy Branch
 alias ys='yarn serve'
 alias yt='yarn test'
 alias yb='yarn build-local'
+alias yd='yarn download-options'
 alias yg='yarn gen:modal "$(git rev-parse --show-prefix)"'
 
 alias tpr='tmux select-pane -T'
@@ -139,6 +141,7 @@ alias ths='tmux split-window -h'
 # alias ohmyzsh="mate ~/.oh-my-zsh"
 eval "$(zoxide init zsh)"
 export NVM_DIR="$HOME/.nvm"
+export NODE_OPTIONS="--max-old-space-size=8192"
 [ -s "$NVM_DIR/nvm.sh" ] && \. "$NVM_DIR/nvm.sh"  # This loads nvm
 [ -s "$NVM_DIR/bash_completion" ] && \. "$NVM_DIR/bash_completion"  # This loads nvm bash_completion
 

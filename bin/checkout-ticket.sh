@@ -13,7 +13,7 @@
 emulate -L zsh
 
 function get_from_json() {
-    echo $1 | jq $2 | tr -d '"'
+    printf '%s\n' "$1" | jq -r $2
 }
 
 function pr_get_params() {
@@ -40,7 +40,7 @@ function pr_get_params() {
         ENV_NAME="uat"
     fi
     
-    echo "$TICKET_DATA" | jq -r '{ "branch_name": "'$BRANCH_NAME'", "base_name": "'$BASE_BRANCH_NAME'", "env_name": "'$ENV_NAME'", "ticket_id": "'$TICKET_ID'", ticket_number: .ticket_number, prefix: "'$PREFIX'", "summary": .summary}'
+    printf '%s\n' "$TICKET_DATA" | jq --arg branch "$BRANCH_NAME" --arg base "$BASE_BRANCH_NAME" --arg env "$ENV_NAME" --arg tid "$TICKET_ID" --arg prefix "$PREFIX" '{ "branch_name": $branch, "base_name": $base, "env_name": $env, "ticket_id": $tid, "ticket_number": .ticket_number, "prefix": $prefix, "summary": .summary}'
 }
 
 function pr_get_content() {
@@ -101,11 +101,11 @@ function get_ticket_content() {
         -H "Content-Type: application/json" \
     "https://morrisonexpress.atlassian.net/rest/api/3/issue/${TICKET_NUMBER}/?fields=parent%2Cpriority%2Ccomponents%2Cissuetype%2Ccustomfield_10006%2Csummary&fieldsByKeys=false")
     
-    local PARENT=$(get_from_json "$RESPONSE" ".fields.parent.key")
+    local PARENT=$(printf '%s\n' "$RESPONSE" | jq -r '.fields.parent.key // "null"')
     if [[ "$PARENT" == "MOP-24745" ]]; then
         PARENT="null"
     fi
-    echo "$RESPONSE" | jq -r '{"ticket_number": "'"$TICKET_NUMBER"'", "parent": "'"$PARENT"'", "issue_type": .fields.issuetype.name, "priority": .fields.priority.name, "summary": .fields.summary}'
+    printf '%s\n' "$RESPONSE" | jq --arg ticket "$TICKET_NUMBER" --arg parent "$PARENT" '{"ticket_number": $ticket, "parent": $parent, "issue_type": .fields.issuetype.name, "priority": .fields.priority.name, "summary": .fields.summary}'
 }
 function get_ticket_parent() {
     local CURRENT_DATA=$1
@@ -139,6 +139,7 @@ TICKET_ISSUE_TYPE: $TICKET_ISSUE_TYPE
 PARENT_TICKET_NUMBER: $PARENT_TICKET_NUMBER
 PARENT_DATA: $PARENT_DATA"
 cd $MOP_MONOREPO_PATH
+git add .;git stash -m 'STASH CURRENT CHANGES'
 if [[ "$TICKET_ISSUE_TYPE" == "Production Support" ]]; then
     pr_push_branch "$TICKET_DATA" main hotfix
 else

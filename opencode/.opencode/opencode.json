@@ -1,0 +1,11 @@
+{
+  "$schema": "https://opencode.ai/config.json",
+  "model": "github/copilot-gpt-4o",
+  "mcp": {
+    "dotfiles": {
+      "type": "local",
+      "command": ["node", "/Users/g02115/dotfile-mcp-server/dist/index.js"],
+      "enabled": true
+    }
+  }
+}

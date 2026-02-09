@@ -158,3 +158,6 @@ export MOP_CONFIGURATION_PATH="$HOME/project/mop_configuration_files"
 export MOP_CONSOLE_PATH="$HOME/project/mop_console"
 export MOP_MONOREPO_PATH="$HOME/project/mop-console-monorepo"
 export MOP_EPOD_PATH="$HOME/project/mop_epod"
+
+# opencode
+export PATH=/Users/g02115/.opencode/bin:$PATH

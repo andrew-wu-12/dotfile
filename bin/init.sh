@@ -330,6 +330,7 @@ function stow_config() {
         echo "Created $HOME/bin directory"
     fi
     stow --target=$HOME/bin bin
+    stow opencode
     
     # Return to original directory
     cd "$CURRENT_DIR"

@@ -59,7 +59,7 @@ Feature Link: https://mop-${TICKET_ID}.$ENV_NAME.morrison.express/
 - [ ] Preview URL 可正確呈現本次功能之內容，並可正常操作；若無法提供 URL，則需附上相關截圖
 - [ ] 完整自我審視所有改動內容，能清楚說明每項邏輯與修改原因
 - [ ] 程式碼遵循 .github/coding-rules/ 內所定義之團隊規範；若有例外，得於 PR 中註明原因
-    - [ ] 程式碼遵循 TS Coding rules"
+- [ ] 程式碼遵循 TS Coding rules"
 }
 
 function pr_get_title() {

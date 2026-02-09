@@ -4,7 +4,7 @@
   "mcp": {
     "dotfiles": {
       "type": "local",
-      "command": ["node", "/Users/g02115/dotfile-mcp-server/dist/index.js"],
+      "command": ["node", "{env:MCP_PATH}/dist/index.js"],
       "enabled": true
     }
   }

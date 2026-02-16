@@ -1,7 +1,7 @@
 #!/bin/bash
 
 #check if following package is installed: jq, gh, curl, git, stow, if not run install script
-packages=("jq" "gh" "curl" "git" "stow" "nvm" "zoxide")
+packages=("jq" "gh" "curl" "git" "stow" "nvm" "zoxide" "nvim" "tmux")
 
 credentials='{
     "credentials": [
@@ -330,7 +330,11 @@ function stow_config() {
         echo "Created $HOME/bin directory"
     fi
     stow --target=$HOME/bin bin
+    stow nvim-stow
     stow opencode
+    stow tmux
+    stow starship
+    stow wezterm
     
     # Return to original directory
     cd "$CURRENT_DIR"

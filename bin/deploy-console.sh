@@ -1,7 +1,7 @@
 #!/bin/zsh
 # Required parameters
 # @raycast.schemaVersion 1
-# @raycast.title Deploy Console
+# @raycast.title Jenkins: Deploy Console
 # @raycast.packageName Deploy Console
 # @raycast.mode fullOutput
 #
@@ -9,6 +9,9 @@
 # @raycast.icon 🚀
 # @raycast.argument1 {"type": "text", "placeholder": "Branch Name" }
 # @raycast.argument2 {"type": "dropdown", "optional": true, "placeholder": "Override Env", "data": [{ "title": "FEATURE", "value": "feature" }, { "title": "UAT", "value": "uat" } ] }
+
+# Source zshrc to get environment variables
+source ~/.zshrc
 
 # Start with clean zsh environment
 emulate -L zsh
@@ -36,7 +39,7 @@ function get_final_env() {
 function create_branch() {
     local TARGET_BRANCH=$1
     cd $MOP_CONSOLE_PATH
-    git co master
+    git checkout master
     if git show-ref --verify --quiet refs/heads/$TARGET_BRANCH; then
         git checkout "$TARGET_BRANCH"
     else
@@ -45,8 +48,6 @@ function create_branch() {
     git push origin "$TARGET_BRANCH"
 }
 
-# Source zshrc to get environment variables
-source ~/.zshrc
 
 # Check VPN connection
 if ! scutil --nc list | command grep -q "Connected"; then

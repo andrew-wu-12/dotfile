@@ -1,9 +1,9 @@
 #!/bin/zsh
 # Required parameters
 # @raycast.schemaVersion 1
-# @raycast.title Deploy I18n
-# @raycast.mode compact
-# @raycast.packageName Deploy I18n V1
+# @raycast.title JENKINS: Deploy I18n
+# @raycast.mode fullOutput
+# @raycast.packageName Deploy I18n
 
 # Optional parameters
 # @raycast.icon 🚀
@@ -27,6 +27,6 @@ JOB_NAME="mop_console_i18n_with_version"
 
 curl "https://jenkins.morrison.express/job/$JOB_NAME/buildWithParameters" \
 --user $JENKINS_TOKEN \
---data I18n_ENV="$1"
+--data I18N_ENV="$1"
 
 echo "Deploy Success!"

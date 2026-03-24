@@ -33,6 +33,7 @@ dotfile/
 | `dpc` | `~/bin/deploy-console.sh $(git rev-parse --abbrev-ref HEAD)` | 部署當前分支到 Console  |
 | `dpo` | `~/bin/deploy-one.sh $(git rev-parse --abbrev-ref HEAD)`     | 部署當前分支到 Monorepo |
 | `bws` | `~/bin/bi-weekly-report.sh`                                  | 生成雙週工作報告        |
+| `tbs` | `~/bin/trace-build.sh $(git rev-parse --abbrev-ref HEAD)`    | 追蹤當前分支的 Jenkins 建置狀態 |
 
 **參數說明：**
 
@@ -402,6 +403,48 @@ bws
 
 ---
 
+### 7. trace-build.sh - Jenkins 建置追蹤
+
+**參數：**
+
+- `$1` - 分支名稱（自動傳入當前分支）
+
+**使用的環境變數：**
+
+- `JENKINS_TOKEN` - Jenkins 認證令牌
+
+**執行動作：**
+
+1. 根據分支名稱搜尋最近的 Jenkins 建置紀錄
+2. 支援多個 Job 同時搜尋：
+   - `mop_console_bulild_by_feature`
+   - `mop_console_bulild_by_epic_or_hotfix`
+   - `mop_console_monorepo_feature`
+3. 顯示即時建置狀態：
+   - 建置中：顯示進度條、經過時間、預估剩餘時間 (ETA)
+   - 已完成：顯示最終結果與總耗時
+4. **特色功能**：
+   - 支援點擊建置編號（如 `#123`）直接開啟 Jenkins 頁面
+   - 自動隱藏無關的舊建置
+   - 建置完成後發送桌面通知
+
+**使用案例：**
+
+```bash
+# 使用別名（追蹤當前分支）
+tbs
+
+# 或指定分支
+~/bin/trace-build.sh feature/MOP-1234
+
+# 輸出示例：
+# 🔍 Searching for recent builds for branch: feature/MOP-1234...
+# ⏳ Tracing 1 builds...
+# mop_console_bulild_by_feature #123 [#####...............]  25% (ETA: 3m 12s)
+```
+
+---
+
 ## 安裝與使用
 
 ### 快速開始
@@ -485,6 +528,13 @@ export PATH="$HOME/bin:$PATH"
 ---
 
 ## 更新日誌
+
+### 2026-03-24
+
+- **trace-build.sh 更新**：
+  - 新增 Jenkins 建置編號超連結功能，可直接點擊跳轉至 Jenkins 頁面。
+  - 優化終端機顯示刷新機制，解決畫面閃爍問題。
+  - 修正超連結顯示錯誤，僅針對建置編號進行連結。
 
 ### 2026-01-06
 

@@ -161,14 +161,27 @@ while true; do
         START_TIME=${JOB_TIMESTAMPS[$JOB]}
         EST_DURATION=${JOB_ESTIMATED[$JOB]}
         
-        DISPLAY_NAME="$JOB #${JOB_NUMS[$JOB]}"
-        # Truncate display name if too long
-        if [[ ${#DISPLAY_NAME} -gt 35 ]]; then
-            DISPLAY_NAME="${DISPLAY_NAME:0:32}..."
+        JOB_NAME_STR="$JOB"
+        BUILD_NUM_STR="#${JOB_NUMS[$JOB]}"
+        
+        # Calculate available space for job name (35 total - 1 space - build num length)
+        MAX_NAME_LEN=$((35 - 1 - ${#BUILD_NUM_STR}))
+        
+        if [[ ${#JOB_NAME_STR} -gt $MAX_NAME_LEN ]]; then
+            JOB_NAME_STR="${JOB_NAME_STR:0:$((MAX_NAME_LEN-3))}..."
         fi
         
-        # Clear line
-        printf "\033[K"
+        # Calculate padding needed to reach 35 chars
+        CURRENT_LEN=$(( ${#JOB_NAME_STR} + 1 + ${#BUILD_NUM_STR} ))
+        PAD_LEN=$(( 35 - CURRENT_LEN ))
+        if [[ $PAD_LEN -lt 0 ]]; then PAD_LEN=0; fi
+        PADDING=$(printf "%${PAD_LEN}s" "")
+
+        JOB_URL=${JOB_URLS[$JOB]}
+        # Link only the build number
+        LINKED_NUM=$'\e]8;;'${JOB_URL}$'\e\\'${BUILD_NUM_STR}$'\e]8;;\e\\'
+        
+        DISPLAY_NAME="${JOB_NAME_STR} ${LINKED_NUM}${PADDING}"
         
         if [[ "$STATUS" == "BUILDING" ]]; then
             ALL_DONE=false
@@ -193,7 +206,8 @@ while true; do
                 DURATION=$((CURRENT_TIME - START_TIME))
                 JOB_DURATIONS[$JOB]=$DURATION
                 STATUS=$RESULT
-                printf "%-35s %s (Duration: %s)\n" "$DISPLAY_NAME" "$STATUS" "$(format_duration $DURATION)"
+                printf "\033[K"
+                printf "%s %s (Duration: %s)\n" "$DISPLAY_NAME" "$STATUS" "$(format_duration $DURATION)"
             else
                 # Calculate Progress
                 ELAPSED=$((CURRENT_TIME - START_TIME))
@@ -211,12 +225,14 @@ while true; do
                 BAR=$(draw_bar $PERCENT)
                 ETA_STR=$(format_duration $ETA)
                 
-                printf "%-35s %s %3d%% (ETA: %s)\n" "$DISPLAY_NAME" "$BAR" "$PERCENT" "$ETA_STR"
+                printf "\033[K"
+                printf "%s %s %3d%% (ETA: %s)\n" "$DISPLAY_NAME" "$BAR" "$PERCENT" "$ETA_STR"
             fi
         else
             # Already finished
             DURATION=${JOB_DURATIONS[$JOB]}
-            printf "%-35s %s (Duration: %s)\n" "$DISPLAY_NAME" "$STATUS" "$(format_duration $DURATION)"
+            printf "\033[K"
+            printf "%s %s (Duration: %s)\n" "$DISPLAY_NAME" "$STATUS" "$(format_duration $DURATION)"
         fi
     done
     

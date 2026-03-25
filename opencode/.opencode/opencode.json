@@ -1,6 +1,11 @@
 {
   "$schema": "https://opencode.ai/config.json",
-  "model": "github/copilot-gpt-4o",
+  "model": "github-copilot/gpt-4o",
+  "agent": {
+    "Spec": {
+      "description": "Clarify user's business logic, transfer into web dev specs."
+    }
+  },
   "mcp": {
     "dotfiles": {
       "type": "local",

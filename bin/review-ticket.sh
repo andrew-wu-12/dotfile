@@ -79,29 +79,48 @@ if ! jq -e . "$TEMP_JSON" >/dev/null 2>&1; then
     echo "Error fetching detailed ticket data. Continuing with basic data..."
     DESCRIPTION="Description fetch failed."
     COMMENTS="Comments fetch failed."
+    ATTACHMENTS_JSON="[]"
 else
     DESCRIPTION=$(jq -r '.renderedFields.description // .fields.description // "No description provided."' "$TEMP_JSON")
     COMMENTS=$(jq -r '.renderedFields.comment.comments[]?.body // empty' "$TEMP_JSON")
+    # Fetch Attachments
+    ATTACHMENTS_JSON=$(jq -c '.fields.attachment // []' "$TEMP_JSON")
 fi
 
 rm -f "$TEMP_JSON"
 
+# Create a temporary directory for attachments
+ATTACH_DIR=$(mktemp -d)
+trap 'rm -rf "$ATTACH_DIR"' EXIT
+
+# Download Image Attachments
+echo "Checking for image attachments..."
+FILE_ARGS=()
+
+if [[ "$ATTACHMENTS_JSON" != "[]" && "$ATTACHMENTS_JSON" != "null" ]]; then
+    # Parse JSON array and iterate
+    # We select only images to avoid downloading large binaries or irrelevant files
+    echo "$ATTACHMENTS_JSON" | jq -r '.[] | select(.mimeType | startswith("image/")) | "\(.content) \(.filename)"' | while read -r url filename; do
+        # Sanitize filename
+        SAFE_FILENAME=$(echo "$filename" | sed 's/[^a-zA-Z0-9._-]/_/g')
+        filepath="$ATTACH_DIR/$SAFE_FILENAME"
+        
+        echo "Downloading image: $filename..."
+        curl -s -u "$JIRA_TOKEN" -L -o "$filepath" "$url"
+        
+        if [[ -f "$filepath" ]]; then
+             FILE_ARGS+=("--file" "$filepath")
+        fi
+    done
+else
+    echo "No image attachments found."
+fi
+
 echo "Ticket Found: $SUMMARY ($PRIORITY)"
 echo "Generating feature description..."
 
-# 3. Construct Prompt
-PROMPT="You are a Lead Technical Analyst specializing in Web Development. Review the following Jira ticket and generate a detailed feature specification.
-
-CRITICAL INSTRUCTION: Do not summarize away technical details. You must include all specific field names, API parameters, validation rules, error codes, and logic flows exactly as they appear in the description or comments.
-
-Format:
-- **Title:** [Issue Key] - [Summary]
-- **Overview:** Summary of the web feature.
-- **User Stories (Step-by-step):** List the user journey steps or stories in a logical sequence (e.g., 1. User navigates to..., 2. User clicks..., 3. System displays...). Use 'As a [User], I want [Goal], so that [Benefit]' format where appropriate but ensure the flow is clear.
-- **Acceptance Criteria:** Bulleted list of conditions for success (UI/UX, functional, non-functional). Include all negative test cases, edge cases, and validation errors mentioned in the source text.
-- **Technical Considerations:** Frontend components, API endpoints, database schema changes, security notes.
-
-Ticket Details:
+# 3. Construct Input Data for Agent
+INPUT_DATA="Ticket Details:
 Key: $TICKET_ID
 Type: $ISSUE_TYPE
 Summary: $SUMMARY
@@ -112,12 +131,17 @@ Description:
 $DESCRIPTION
 
 Comments:
-$COMMENTS
-"
+$COMMENTS"
 
-# 4. Call opencode & Copy to Clipboard
-# Use standard output for display and pipe to pbcopy
-opencode run "$PROMPT" --model github-copilot/gpt-4o | tee >(pbcopy)
+echo "Calling opencode agent (tech-spec)..."
+
+# 4. Call opencode with the agent & Copy to Clipboard
+(
+    # Move to the opencode directory to ensure the agent config is found
+    cd "$HOME/dotfile/opencode" || { echo "Error: opencode directory not found"; exit 1; }
+    # Pass the FILE_ARGS array correctly
+    opencode run "$INPUT_DATA" --agent tech-spec "${FILE_ARGS[@]}" | tee >(pbcopy)
+)
 
 echo ""
 echo "✅ Output copied to clipboard."

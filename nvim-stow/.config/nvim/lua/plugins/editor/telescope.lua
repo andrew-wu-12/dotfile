@@ -48,8 +48,95 @@ local get_kind_filter = function(buf)
   ---@diagnostic disable-next-line: return-type-mismatch
   return type(kind_filter) == 'table'
       and type(kind_filter.default) == 'table'
-      and kind_filter.default
+    and kind_filter.default
     or nil
+end
+
+local telescope_pickers = require 'telescope.pickers'
+local telescope_finders = require 'telescope.finders'
+local telescope_actions = require 'telescope.actions'
+local telescope_action_state = require 'telescope.actions.state'
+local telescope_conf = require('telescope.config').values
+
+local open_deduped_references = function()
+  local params = vim.lsp.util.make_position_params()
+  params.context = { includeDeclaration = false }
+
+  vim.lsp.buf_request_all(0, 'textDocument/references', params, function(responses)
+    local locations = {}
+    local seen = {}
+
+    for _, response in pairs(responses) do
+      local result = response.result
+      if result then
+        for _, location in ipairs(result) do
+          local uri = location.uri or location.targetUri
+          local range = location.range or location.targetSelectionRange or location.targetRange
+          if uri and range then
+            local key = string.format(
+              '%s:%d:%d:%d:%d',
+              uri,
+              range.start.line,
+              range.start.character,
+              range['end'].line,
+              range['end'].character
+            )
+            if not seen[key] then
+              seen[key] = true
+              table.insert(locations, location)
+            end
+          end
+        end
+      end
+    end
+
+    if vim.tbl_isempty(locations) then
+      vim.notify('No references found', vim.log.levels.INFO)
+      return
+    end
+
+    local entries = vim.lsp.util.locations_to_items(locations)
+
+    telescope_pickers.new({}, {
+      prompt_title = 'References (deduped)',
+      finder = telescope_finders.new_table {
+        results = entries,
+        entry_maker = function(item)
+          local filename = vim.fn.fnamemodify(item.filename, ':.')
+          local display = string.format('%s:%d:%d', filename, item.lnum, item.col)
+          local text = item.text and (' ' .. item.text) or ''
+
+          return {
+            value = item,
+            display = display .. text,
+            ordinal = display .. text,
+            filename = item.filename,
+            lnum = item.lnum,
+            col = item.col,
+          }
+        end,
+      },
+      sorter = telescope_conf.generic_sorter({}),
+      previewer = telescope_conf.grep_previewer({}),
+      attach_mappings = function(prompt_bufnr)
+        telescope_actions.select_default:replace(function()
+          local selection = telescope_action_state.get_selected_entry()
+          telescope_actions.close(prompt_bufnr)
+
+          if not selection or not selection.value then
+            return
+          end
+
+          local item = selection.value
+
+          vim.cmd.edit(vim.fn.fnameescape(item.filename))
+          vim.api.nvim_win_set_cursor(0, { item.lnum, item.col - 1 })
+        end)
+
+        return true
+      end,
+    }):find()
+  end)
 end
 
 return {
@@ -206,11 +293,7 @@ return {
         }
       end, { desc = 'Goto Definition' })
 
-      vim.keymap.set('n', 'gr', function()
-        require('telescope.builtin').lsp_references {
-          include_current_line = false,
-        }
-      end, { desc = 'References', nowait = true })
+      vim.keymap.set('n', 'gr', open_deduped_references, { desc = 'References', nowait = true })
 
       vim.keymap.set('n', 'gI', function()
         require('telescope.builtin').lsp_implementations {

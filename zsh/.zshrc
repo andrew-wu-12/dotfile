@@ -162,5 +162,6 @@ export MOP_MONOREPO_PATH="$HOME/project/mop-console-monorepo"
 export MOP_EPOD_PATH="$HOME/project/mop_epod"
 
 # opencode
+export SKILL_PATH="$HOME/.opencode/skills"
 export PATH="$HOME/.opencode/bin:$PATH"
 export MCP_PATH="$HOME/dotfile-mcp-server"

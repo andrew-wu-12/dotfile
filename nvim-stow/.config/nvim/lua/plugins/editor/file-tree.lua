@@ -81,6 +81,8 @@ return {
         api.config.mappings.default_on_attach(bufnr)
 
         -- custom mappings
+        vim.keymap.set('n', 'h', api.node.navigate.parent_close, ops 'Close Directory')
+        vim.keymap.set('n', 'l', api.node.open.edit, ops 'Open')
         vim.keymap.set('n', 'P', api.node.open.preview, ops 'Preview')
         vim.keymap.set(
           'n',

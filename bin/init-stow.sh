@@ -18,7 +18,7 @@ function stow_config() {
     cd .. || { echo "Failed to change directory."; exit 1; }
     
     # Stow configurations
-    stow zsh || { echo "Failed to stow zsh"; exit 1; }
+    stow --adopt zsh || { echo "Failed to stow zsh"; exit 1; }
     
     # Ensure $HOME/bin exists
     if [ ! -d "$HOME/bin" ]; then

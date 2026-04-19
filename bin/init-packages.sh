@@ -1,5 +1,13 @@
 #!/bin/bash
 
+# Check Bash version
+if ((BASH_VERSINFO[0] < 4)); then
+    echo "Error: Bash version 4+ is required. Detected version: $BASH_VERSION"
+    echo "Hint: Use Homebrew to install a compatible Bash version:"
+    echo "      brew install bash"
+    exit 1
+fi
+
 # Configuration
 packages=("jq" "gh" "curl" "git" "stow" "nvm" "zoxide" "nvim" "tmux")
 

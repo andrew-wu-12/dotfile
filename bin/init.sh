@@ -11,6 +11,13 @@ function run_step() {
     local script_name="$1"
     echo "Running $script_name..."
     "$SCRIPT_DIR/$script_name"
+    local result=$?
+    if [ $result -ne 0 ]; then
+        echo "⚠️  Warning: $script_name failed with exit code $result."
+    else
+        echo "✓ $script_name completed successfully."
+    fi
+    "$SCRIPT_DIR/$script_name"
     if [ $? -ne 0 ]; then
         echo "⚠️  Warning: $script_name completed with errors or was skipped."
     fi

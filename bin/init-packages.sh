@@ -46,7 +46,7 @@ function install_package() {
             # Regular package check
             if ! command -v $pkg &> /dev/null; then
                 echo "Cannot find package: $pkg, prepare to install..."
-                brew install $pkg -y
+                brew install $pkg
             else
                 echo "✓ $pkg is already installed"
             fi

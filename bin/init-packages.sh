@@ -3,6 +3,22 @@
 # Configuration
 packages=("jq" "gh" "curl" "git" "stow" "nvm" "zoxide" "nvim" "tmux")
 
+# Ensure brew is available
+if ! command -v brew &>/dev/null; then
+    echo "Homebrew is not installed. Please install Homebrew first: https://brew.sh"
+    exit 1
+fi
+
+# Update Homebrew
+echo "Updating Homebrew..."
+brew update || { echo "Failed to update Homebrew. Please check your network or setup."; exit 1; }
+
+# Check if Homebrew Cask functionality works
+if ! brew list --cask &>/dev/null; then
+    echo "Homebrew Cask functionality is not available. Ensure your Homebrew installation is up-to-date."
+    exit 1
+fi
+
 function install_package() {
     echo ""
     echo "=== Package Install Script ==="

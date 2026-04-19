@@ -1,5 +1,29 @@
 #!/bin/bash
 
+# Check if Bash version meets requirements
+if ((BASH_VERSINFO[0] < 4)); then
+    echo "Your Bash version ($BASH_VERSION) is outdated. Upgrading to Bash 4+..."
+
+    # Check for Homebrew
+    if ! command -v brew &>/dev/null; then
+        echo "Homebrew is not installed. Please install Homebrew first: https://brew.sh"
+        exit 1
+    fi
+
+    # Install or upgrade Bash
+    brew install bash || { echo "Failed to install Bash. Check your Homebrew setup."; exit 1; }
+
+    # Locate the new Bash binary
+    NEW_BASH_PATH=$(brew --prefix)/bin/bash
+    if [ ! -x "$NEW_BASH_PATH" ]; then
+        echo "Error: Newly installed Bash binary not found at $NEW_BASH_PATH."
+        exit 1
+    fi
+
+    # Restart the script using the upgraded Bash
+    exec "$NEW_BASH_PATH" "$0"
+fi
+
 # Check Bash version
 if ((BASH_VERSINFO[0] < 4)); then
     echo "Error: Bash version 4+ is required. Detected version: $BASH_VERSION"

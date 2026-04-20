@@ -88,7 +88,6 @@ function pr_push_branch() {
         git commit --allow-empty -m "Initial draft for branch $CURRENT_BRANCH_NAME"
         git push origin $CURRENT_BRANCH_NAME
         gh pr create -a @me -B $BASE_BRANCH_NAME -t "$PR_TITLE" -b "$PR_CONTENT" -d
-        ~/bin/deploy-console.sh $CURRENT_BRANCH_NAME
     fi
 }
 

@@ -16,6 +16,11 @@ credentials='{
             "service_name": "getdata.morrison.express",
             "variable_name": "GETDATATOKEN",
             "description": "GetData API Token，你可以從以下網站取得： \\e]8;;https://morrisonexpress.atlassian.net/wiki/spaces/MOP/pages/2976415908/Project+Introduction\\e\\\\https://morrisonexpress.atlassian.net/wiki/spaces/MOP/pages/2976415908/Project+Introduction\\e]8;;\\e\\\\"
+        },
+        {
+            "service_name": "openai.com",
+            "variable_name": "OPENAI_API_KEY",
+            "description": "OpenAI API Key，你可以從以下網站取得： \\e]8;;https://platform.openai.com/api-keys\\e\\\\https://platform.openai.com/api-keys\\e]8;;\\e\\\\"
         }
     ]
 }'

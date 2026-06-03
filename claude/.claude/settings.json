@@ -1,0 +1,24 @@
+{
+  "enabledPlugins": {
+    "typescript-lsp@claude-plugins-official": true,
+    "context7@claude-plugins-official": true
+  },
+  "mcpServers": {
+    "codex": {
+      "command": "/bin/zsh",
+      "args": [
+        "-c",
+        "source ~/.nvm/nvm.sh && nvm use 20.19 >/dev/null && codex mcp-server"
+      ]
+    },
+    "chrome-devtools": {
+      "command": "/bin/zsh",
+      "args": [
+        "-c",
+        "source ~/.nvm/nvm.sh && nvm use 20.19 >/dev/null && npx -y chrome-devtools-mcp@latest"
+      ]
+    }
+  },
+  "model": "opus[1m]",
+  "effortLevel": "high"
+}

@@ -79,6 +79,10 @@ if ask_yes_no "要安裝 WezTerm 嗎？（終端機設定）[y/N]："; then
     run_step "init-wezterm.sh"
 fi
 
+if ask_yes_no "要安裝 Claude Code 嗎？（CLI + 設定檔）[y/N]："; then
+    run_step "init-claude.sh"
+fi
+
 # 4. Check and Fix Paths (Edits .zshrc)
 run_step "init-check-paths.sh"
 

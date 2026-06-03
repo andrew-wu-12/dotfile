@@ -155,6 +155,7 @@ eval "$(starship init zsh)"
 export JENKINS_TOKEN=$(security find-generic-password -a "$USER" -s "jenkins.morrison.express" -w 2>/dev/null)
 export JIRA_TOKEN=$(security find-generic-password -a "$USER" -s "morrisonexpress.atlassian.net" -w 2>/dev/null)
 export GETDATATOKEN=$(security find-generic-password -a "$USER" -s "getdata.morrison.express" -w 2>/dev/null)
+export OPENAI_API_KEY=$(security find-generic-password -a "$USER" -s "openai.com" -w 2>/dev/null)
 
 export MOP_CONFIGURATION_PATH="$HOME/project/mop_configuration_files"
 export MOP_CONSOLE_PATH="$HOME/project/mop_console"
@@ -165,3 +166,4 @@ export MOP_EPOD_PATH="$HOME/project/mop_epod"
 export SKILL_PATH="$HOME/.opencode/skills"
 export PATH="$HOME/.opencode/bin:$PATH"
 export MCP_PATH="$HOME/dotfile-mcp-server"
+export PATH="$HOME/.local/bin:$PATH"

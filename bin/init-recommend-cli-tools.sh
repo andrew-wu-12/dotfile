@@ -5,6 +5,7 @@ function install_recommended_cli_tools() {
         "zoxide:zoxide"
         "ripgrep:rg"
         "eza:eza"
+        "lazygit:lazygit"
     )
 
     echo ""

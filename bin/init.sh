@@ -2,13 +2,29 @@
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 
+function check_sudo() {
+    echo ""
+    echo "=== 檢查 sudo 權限 ==="
+    if ! sudo -v; then
+        echo "❌ 錯誤：需要 sudo 權限才能繼續執行初始化。"
+        exit 1
+    fi
+    echo "✓ sudo 權限確認成功。"
+}
+
 function run_step() {
     local script_name="$1"
+    local script_path="$SCRIPT_DIR/$script_name"
 
     echo ""
     echo "正在執行 $script_name..."
 
-    "$SCRIPT_DIR/$script_name"
+    if [ ! -x "$script_path" ]; then
+        echo "→ $script_name 尚未設定為可執行，正在執行 chmod +x..."
+        chmod +x "$script_path"
+    fi
+
+    "$script_path"
     local result=$?
 
     if [ $result -ne 0 ]; then
@@ -41,6 +57,8 @@ function print_preflight_summary() {
 }
 
 print_preflight_summary
+
+check_sudo
 
 # 1. Install Dependencies
 run_step "init-required.sh"

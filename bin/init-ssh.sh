@@ -86,8 +86,11 @@ EOF
         echo "2. 點選「New SSH key」"
         echo "3. 貼上金鑰（已經在你的剪貼簿中）"
         echo "4. 輸入標題後儲存"
+        echo "5. 在金鑰列表中點選「Configure SSO」，並針對所屬組織"
+        echo "   （例如 morrison-express）點「Authorize」以啟用 SAML SSO"
+        echo "   存取，否則無法 clone/push 組織底下的私有 repo"
         echo ""
-        read -p "將金鑰加到 GitHub 後，按 Enter 繼續..." </dev/tty
+        read -p "將金鑰加到 GitHub 並完成 SSO 授權後，按 Enter 繼續..." </dev/tty
     fi
     
     # Test SSH connection to GitHub

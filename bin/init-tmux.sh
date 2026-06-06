@@ -32,6 +32,10 @@ function install_tmux() {
         echo "stow tmux 設定失敗"
         exit 1
     }
+    if command -v tmux &>/dev/null; then
+        echo "正在安裝 tmux 套件..."
+        tmux source ~/.tmux.conf
+    fi
 
     echo "✓ Tmux 設定完成"
 }

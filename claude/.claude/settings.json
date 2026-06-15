@@ -1,8 +1,11 @@
 {
+  "model": "opus[1m]",
   "enabledPlugins": {
     "typescript-lsp@claude-plugins-official": true,
     "context7@claude-plugins-official": true
   },
+  "effortLevel": "high",
+  "theme": "auto",
   "mcpServers": {
     "codex": {
       "command": "/bin/zsh",
@@ -18,7 +21,5 @@
         "source ~/.nvm/nvm.sh && nvm use 20.19 >/dev/null && npx -y chrome-devtools-mcp@latest"
       ]
     }
-  },
-  "model": "opus[1m]",
-  "effortLevel": "high"
+  }
 }

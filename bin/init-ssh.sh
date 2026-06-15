@@ -60,7 +60,7 @@ Host github.com
   UseKeychain yes
   IdentityFile ~/.ssh/id_ed25519
 
-Host *
+Host * !github-*
   AddKeysToAgent yes
   UseKeychain yes
   IdentityFile ~/.ssh/id_ed25519

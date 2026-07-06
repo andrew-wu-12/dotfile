@@ -6,4 +6,5 @@ vim.g.have_nerd_font = true
 require 'globals'
 require 'options'
 require 'keymaps'
+require 'keymaps-vscode'
 require 'lazy-init'

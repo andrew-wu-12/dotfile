@@ -58,18 +58,26 @@ local telescope_actions = require 'telescope.actions'
 local telescope_action_state = require 'telescope.actions.state'
 local telescope_conf = require('telescope.config').values
 
-local open_deduped_references = function()
-  local params = vim.lsp.util.make_position_params()
-  params.context = { includeDeclaration = false }
+local open_deduped_locations = function(opts)
+  local method = opts.method
+  local title = opts.title
+  local clients = vim.lsp.get_clients { bufnr = 0, method = method }
+  local encoding = clients[1] and clients[1].offset_encoding or 'utf-16'
+  local params = vim.lsp.util.make_position_params(0, encoding)
+  if opts.context then
+    params.context = opts.context
+  end
 
-  vim.lsp.buf_request_all(0, 'textDocument/references', params, function(responses)
+  vim.lsp.buf_request_all(0, method, params, function(responses)
     local locations = {}
     local seen = {}
 
     for _, response in pairs(responses) do
       local result = response.result
       if result then
-        for _, location in ipairs(result) do
+        -- definition can return a single Location; references return a list
+        local items = vim.islist(result) and result or { result }
+        for _, location in ipairs(items) do
           local uri = location.uri or location.targetUri
           local range = location.range or location.targetSelectionRange or location.targetRange
           if uri and range then
@@ -91,14 +99,22 @@ local open_deduped_references = function()
     end
 
     if vim.tbl_isempty(locations) then
-      vim.notify('No references found', vim.log.levels.INFO)
+      vim.notify('No ' .. title:lower() .. ' found', vim.log.levels.INFO)
       return
     end
 
-    local entries = vim.lsp.util.locations_to_items(locations)
+    local entries = vim.lsp.util.locations_to_items(locations, encoding)
+
+    -- jump straight to the target when there is only one real location
+    if opts.jump_single and #entries == 1 then
+      local item = entries[1]
+      vim.cmd.edit(vim.fn.fnameescape(item.filename))
+      vim.api.nvim_win_set_cursor(0, { item.lnum, item.col - 1 })
+      return
+    end
 
     telescope_pickers.new({}, {
-      prompt_title = 'References (deduped)',
+      prompt_title = title .. ' (deduped)',
       finder = telescope_finders.new_table {
         results = entries,
         entry_maker = function(item)
@@ -241,6 +257,22 @@ return {
         desc = 'Workspace Diagnostics',
       },
       { '<leader>sg', '<cmd>Telescope live_grep<cr>', desc = 'Grep' },
+      {
+        '<leader>sF',
+        function()
+          local dir
+          if vim.bo.filetype == 'NvimTree' then
+            local node = require('nvim-tree.api').tree.get_node_under_cursor()
+            if node then
+              dir = node.type == 'directory' and node.absolute_path
+                or vim.fn.fnamemodify(node.absolute_path, ':h')
+            end
+          end
+          dir = dir or vim.fn.expand '%:p:h'
+          require('telescope.builtin').live_grep { search_dirs = { dir } }
+        end,
+        desc = 'Grep (folder)',
+      },
       { '<leader>sh', '<cmd>Telescope help_tags<cr>', desc = 'Help Pages' },
       {
         '<leader>sH',
@@ -288,12 +320,20 @@ return {
     'neovim/nvim-lspconfig',
     opts = function()
       vim.keymap.set('n', 'gd', function()
-        require('telescope.builtin').lsp_definitions {
-          reuse_win = true,
+        open_deduped_locations {
+          method = 'textDocument/definition',
+          title = 'Definitions',
+          jump_single = true,
         }
       end, { desc = 'Goto Definition' })
 
-      vim.keymap.set('n', 'gr', open_deduped_references, { desc = 'References', nowait = true })
+      vim.keymap.set('n', 'gr', function()
+        open_deduped_locations {
+          method = 'textDocument/references',
+          title = 'References',
+          context = { includeDeclaration = false },
+        }
+      end, { desc = 'References', nowait = true })
 
       vim.keymap.set('n', 'gI', function()
         require('telescope.builtin').lsp_implementations {

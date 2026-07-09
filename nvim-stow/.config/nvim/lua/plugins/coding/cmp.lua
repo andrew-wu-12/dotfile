@@ -41,6 +41,11 @@ return {
       local luasnip = require 'luasnip'
       luasnip.config.setup {}
 
+      -- Load personal VSCode-style snippets from ~/.config/nvim/snippets
+      require('luasnip.loaders.from_vscode').lazy_load {
+        paths = { vim.fn.stdpath 'config' .. '/snippets' },
+      }
+
       cmp.setup {
         snippet = {
           expand = function(args)

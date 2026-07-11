@@ -1,6 +1,8 @@
 #!/bin/bash
 
-# Utility to check if an i18n key or value exists in commons.json.
+# Utility to check if an i18n key or value exists.
+# Checks commons by default; pass an optional [module] to also search that
+# module's namespace (module matches take precedence over commons).
 # Auto-syncs a local i18n cache (timestamp-gated) before looking up.
 
 BASE_URL="https://one-static.morrison.express/i18n/prod"
@@ -60,9 +62,10 @@ sync_i18n() {
 }
 
 INPUT="$1"
+MODULE="$2"
 
 if [ -z "$INPUT" ]; then
-  echo "Usage: $0 <key_or_value>" >&2
+  echo "Usage: $0 <key_or_value> [module]" >&2
   exit 1
 fi
 
@@ -73,33 +76,59 @@ if [ ! -f "$COMMONS_FILE" ]; then
   exit 1
 fi
 
-# Normalize input key (strip 'commons.' prefix if present)
+# Normalize input key (strip a leading 'commons.' or '<module>.' namespace prefix)
 CLEAN_KEY="${INPUT#commons.}"
+[ -n "$MODULE" ] && CLEAN_KEY="${CLEAN_KEY#"$MODULE".}"
 
-echo "Checking i18n key/value: '$INPUT' (Key check: '$CLEAN_KEY') in commons.json..." >&2
+# Emit one JSON array of {path,key,value} entries for a namespace inside a file.
+build_entries() {
+  # $1 = json file, $2 = namespace key under .enLang (also used as path prefix)
+  jq -c --arg p "$2" '(.enLang[$p] // {}) | to_entries
+    | map({path: ($p + "." + .key), key: .key, value: .value})' "$1"
+}
 
-# We use a single jq script to check both key and value
-jq -r --arg input "$INPUT" --arg key "$CLEAN_KEY" '
-  .enLang.commons as $dict |
-
-  # 1. Check if input is an exact KEY (e.g. "submit" or "commons.submit" -> "submit")
-  if ($dict[$key] != null) then
-    "EXACT_KEY_MATCH: commons." + $key + " -> \"" + $dict[$key] + "\""
+# Module entries come first so they win exact-match ties over commons.
+MODULE_SCOPE="commons only"
+if [ -n "$MODULE" ] && [ "$MODULE" != "commons" ]; then
+  if [ -f "$CACHE_DIR/$MODULE.json" ]; then
+    MODULE_SCOPE="$MODULE + commons"
   else
-    # 2. Check if input is an exact VALUE (e.g. "Submit")
-    ($dict | to_entries | map(select(.value == $input))) as $exact_matches |
+    echo "Warning: module '$MODULE' not found in cache; searching commons only." >&2
+    MODULE=""
+  fi
+fi
 
+echo "Checking i18n key/value: '$INPUT' (Key check: '$CLEAN_KEY') in $MODULE_SCOPE..." >&2
+
+ENTRIES=$(
+  {
+    if [ -n "$MODULE" ] && [ "$MODULE" != "commons" ]; then
+      build_entries "$CACHE_DIR/$MODULE.json" "$MODULE"
+    fi
+    build_entries "$COMMONS_FILE" "commons"
+  } | jq -sc 'add'
+)
+
+printf '%s' "$ENTRIES" | jq -r --arg input "$INPUT" --arg key "$CLEAN_KEY" '
+  . as $entries |
+
+  # 1. Exact KEY match (e.g. "submit", "commons.submit", "billing.submit" -> "submit")
+  ($entries | map(select(.key == $key))) as $key_matches |
+  if ($key_matches | length) > 0 then
+    "EXACT_KEY_MATCH: " + $key_matches[0].path + " -> \"" + $key_matches[0].value + "\""
+  else
+    # 2. Exact VALUE match (e.g. "Submit")
+    ($entries | map(select(.value == $input))) as $exact_matches |
     if ($exact_matches | length) > 0 then
-      "EXACT_VALUE_MATCH: commons." + $exact_matches[0].key + " -> \"" + $exact_matches[0].value + "\""
+      "EXACT_VALUE_MATCH: " + $exact_matches[0].path + " -> \"" + $exact_matches[0].value + "\""
     else
-      # 3. Check for SIMILAR VALUES (Case-insensitive fuzzy match)
-      ($dict | to_entries | map(select(.value | ascii_downcase | contains($input | ascii_downcase)))) as $similar_matches |
-
+      # 3. SIMILAR values (case-insensitive substring match)
+      ($entries | map(select(.value | ascii_downcase | contains($input | ascii_downcase)))) as $similar_matches |
       if ($similar_matches | length) > 0 then
-        "SIMILAR_MATCHES:\n" + ($similar_matches | map("- commons." + .key + ": \"" + .value + "\"") | join("\n"))
+        "SIMILAR_MATCHES:\n" + ($similar_matches | map("- " + .path + ": \"" + .value + "\"") | join("\n"))
       else
         "NO_MATCH"
       end
     end
   end
-' "$COMMONS_FILE"
+'

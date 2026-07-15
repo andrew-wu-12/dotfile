@@ -45,9 +45,11 @@ git rev-parse --verify -q "$RANGE_HEAD" >/dev/null || RANGE_HEAD="$BRANCH"
 git rev-parse --verify -q "$RANGE_BASE" >/dev/null || RANGE_BASE="main"
 
 # Tickets = MOP-id right after feature/ or hotfix/ in merge-commit branch names.
+# `|| true`: grep exits 1 on no match, which under `set -o pipefail` would abort
+# the whole script inside this assignment before the empty-guard below can report.
 TICKETS=$(git log --merges --pretty='%s %b' "$RANGE_BASE..$RANGE_HEAD" 2>/dev/null \
   | grep -oiE '(feature|hotfix)/MOP-[0-9]+' \
-  | grep -oiE 'MOP-[0-9]+' | tr 'a-z' 'A-Z' | sort -u)
+  | grep -oiE 'MOP-[0-9]+' | tr 'a-z' 'A-Z' | sort -u || true)
 
 if [ -z "$TICKETS" ]; then
   echo "No merged feature/hotfix tickets found in $RANGE_BASE..$RANGE_HEAD."

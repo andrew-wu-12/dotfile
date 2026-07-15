@@ -65,9 +65,17 @@ turn ambiguity into round-1 questions instead of five rounds of discovery.
    keys — say so rather than asserting a key is new.
 4. **Violates existing functionality?** Search for existing behavior the new spec
    would change or break; call it out explicitly.
-5. **New privilege needed?** Search `$MOP_CONFIGURATION_PATH/privileges.json` for
-   related dotted-id nodes. If the feature needs a menu/api/action node that does
-   not exist, note it (the v2 `/privilege-node` skill will generate it).
+5. **New privilege needed?** The config repo is **branch-per-environment**
+   (`dev`/`uat`/`master`), so a single working-tree grep is misleading — a node
+   often exists in `dev` but not yet `uat`/`master`. Check all three:
+   ```bash
+   git -C "$MOP_CONFIGURATION_PATH" fetch -q origin
+   for b in dev uat master; do
+     echo -n "$b: "; git -C "$MOP_CONFIGURATION_PATH" show origin/$b:privileges.json | grep -c '<privilege-id>'
+   done
+   ```
+   Report the **promotion state** (e.g. "in dev, missing in uat/master → promote")
+   rather than a flat "missing". The v2 `/privilege-node` skill resolves it.
 
 ### 3. Generate the consolidated spec
 

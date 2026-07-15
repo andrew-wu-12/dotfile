@@ -89,7 +89,7 @@ Automates the workflow for checking out a JIRA ticket, creating branches, and se
 
 ### 3. `checkout-config.sh`
 
-Creates configuration PRs across multiple environments (dev, uat, prod).
+Opens the `[DEV]` config PR (`feature/MOP-XXXXX → dev`) for `mop_configuration_files`.
 
 **Usage:**
 
@@ -100,59 +100,15 @@ Creates configuration PRs across multiple environments (dev, uat, prod).
 **What it does:**
 
 1. Stashes current configuration changes
-2. Creates branches for each environment:
-   - `feature/MOP-XXXXX-dev`
-   - `feature/MOP-XXXXX-uat`
-   - `feature/MOP-XXXXX-prod`
-3. Creates draft PRs targeting appropriate base branches:
-   - dev → `dev`
-   - uat → `uat`
-   - prod → `master`
-4. Applies stashed configuration to each branch
+2. Bases a `feature/MOP-XXXXX` branch on the latest `dev`
+3. Applies the stash, commits, and pushes
+4. Opens a `[DEV]` draft PR targeting `dev`
 
-**Note:** Currently has syntax errors in the loop condition that need fixing.
+**Note:** Promotion to `uat`/`master` is done by hand (dev → uat → master); the timing is a judgment call.
 
 ---
 
-### 4. `deploy-console.sh`
-
-Deploys the MOP Console to Jenkins-based environments.
-
-**Usage:**
-
-```bash
-# Basic deployment
-./deploy-console.sh feature/MOP-12345
-
-# Override environment
-./deploy-console.sh feature/MOP-12345 uat
-```
-
-**Parameters:**
-
-- `$1`: Branch name (required)
-- `$2`: Override environment - `feature` or `uat` (optional)
-
-**What it does:**
-
-1. Determines target environment from branch name
-2. Creates corresponding branch in `mop_console` repository
-3. Triggers Jenkins job based on environment:
-   - **feature** → `mop_console_bulild_by_feature`
-   - **uat/hotfix** → `mop_console_bulild_by_epic_or_hotfix`
-4. Passes branch and ticket information to Jenkins
-
-**Jenkins Parameters:**
-
-- `CORE_BRANCH`: Target branch name
-- `SUBMODULE`: Always set to "core"
-- `EPIC_TYPE`: Environment type (feature/uat)
-- `JIRA_TICKET_TYPE`: Always "MOP"
-- `JIRA_TICKET_NUMBER`: Extracted ticket number
-
----
-
-### 5. `deploy-one.sh`
+### 4. `deploy-one.sh`
 
 Deploys the MOP Console Monorepo to both dev and UAT environments simultaneously.
 
@@ -173,7 +129,7 @@ Deploys the MOP Console Monorepo to both dev and UAT environments simultaneously
 
 ---
 
-### 6. `deploy-i18n.sh`
+### 5. `deploy-i18n.sh`
 
 Deploys internationalization (i18n) updates to a specific environment.
 
@@ -219,10 +175,10 @@ Deploys internationalization (i18n) updates to a specific environment.
 # 1. Make your configuration changes locally
 vim config/app.config.js
 
-# 2. Create PRs for all environments
+# 2. Open the [DEV] config PR
 ./checkout-config.sh MOP-12345
 
-# This creates 3 PRs (dev, uat, prod) with your config changes
+# Promote dev → uat → master by hand when each env is ready
 ```
 
 ### Production Hotfix
@@ -284,7 +240,6 @@ vim config/app.config.js
 Several scripts include Raycast metadata for quick execution:
 
 - `checkout-ticket.sh` - Quick ticket checkout
-- `deploy-console.sh` - Deploy with dropdown options
 - `deploy-i18n.sh` - Environment selection dropdown
 - `deploy-one.sh` - Quick monorepo deployment
 
@@ -347,7 +302,3 @@ When updating these scripts:
 
 ---
 
-## Known Issues
-
-- `checkout-config.sh` has syntax errors in the conditional logic (line 26-28)
-- `deploy-console.sh` has a typo in the conditional check (line 27)

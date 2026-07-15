@@ -12,7 +12,6 @@ dotfile/
 │   ├── init.sh
 │   ├── checkout-ticket.sh
 │   ├── checkout-config.sh
-│   ├── deploy-console.sh
 │   ├── deploy-one.sh
 │   └── bi-weekly-report.sh
 └── README.md
@@ -30,7 +29,6 @@ dotfile/
 | ----- | ------------------------------------------------------------ | ----------------------- |
 | `crt` | `~/bin/checkout-ticket.sh`                                   | 快速切換到工作票券分支  |
 | `crc` | `~/bin/checkout-config.sh`                                   | 快速切換配置檔分支      |
-| `dpc` | `~/bin/deploy-console.sh $(git rev-parse --abbrev-ref HEAD)` | 部署當前分支到 Console  |
 | `dpo` | `~/bin/deploy-one.sh $(git rev-parse --abbrev-ref HEAD)`     | 部署當前分支到 Monorepo |
 | `bws` | `~/bin/bi-weekly-report.sh`                                  | 生成雙週工作報告        |
 | `tbs` | `~/bin/trace-build.sh $(git rev-parse --abbrev-ref HEAD)`    | 追蹤當前分支的 Jenkins 建置狀態 |
@@ -286,49 +284,7 @@ crc MOP-1234
 
 ---
 
-### 4. deploy-console.sh - Console 專案部署
-
-**參數：**
-
-- `$1` - 分支名稱（自動傳入當前分支）
-- `$2` - 覆蓋環境（選填，可選值：`feature` 或 `uat`）
-
-**使用的環境變數：**
-
-- `MOP_CONSOLE_PATH` - Console 專案路徑
-- `JENKINS_TOKEN` - Jenkins 認證令牌
-
-**執行動作：**
-
-1. 解析分支名稱取得環境資訊
-2. 根據環境選擇對應的 Jenkins Job：
-   - Feature 環境：`mop_console_bulild_by_feature`
-   - UAT/Hotfix 環境：`mop_console_bulild_by_epic_or_hotfix`
-3. 呼叫 Jenkins API 觸發建置
-4. 傳遞分支和票券資訊給 Jenkins
-
-**使用案例：**
-
-```bash
-# 使用別名（自動使用當前分支）
-dpc
-
-# 或指定分支
-~/bin/deploy-console.sh feature/MOP-1234
-
-# 覆蓋環境部署
-~/bin/deploy-console.sh feature/MOP-1234 uat
-
-# 輸出示例：
-# Deploying branch: feature/MOP-1234
-# Environment: feature
-# Triggering Jenkins job...
-# Deploy Success!
-```
-
----
-
-### 5. deploy-one.sh - Monorepo 專案部署
+### 4. deploy-one.sh - Monorepo 專案部署
 
 **參數：**
 
@@ -363,7 +319,7 @@ dpo
 
 ---
 
-### 6. bi-weekly-report.sh - 雙週工作報告生成
+### 5. bi-weekly-report.sh - 雙週工作報告生成
 
 **參數：**
 無（自動計算日期範圍）
@@ -418,7 +374,7 @@ bws
 
 ---
 
-### 7. trace-build.sh - Jenkins 建置追蹤
+### 6. trace-build.sh - Jenkins 建置追蹤
 
 **參數：**
 

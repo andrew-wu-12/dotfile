@@ -5,40 +5,46 @@ description: "fetch Jira ticket metadata and content by ticket ID. Use this when
 
 # Jira Ticket Retrieval Skill
 
-## Purpose:
+## Purpose
 
-Fetches original Jira ticket information metadata and content using the `~/bin/get-ticket.sh` shell script.
+Fetch a Jira ticket's metadata and content by ID using `~/bin/fetch-ticket.sh`,
+which returns a structured JSON manifest (and downloads any image attachments).
 
-## Features:
+## Prerequisites
 
-1. Accepts a `ticket_id` as input parameter.
-2. Executes the script `~/bin/get-ticket.sh <ticket_id>` to retrieve ticket details (title, description, labels, etc.).
-3. Processes the output and validates its structure and fields, ensuring metadata consistency.
-4. Handles failure scenarios:
-   - Invalid ticket ID.
-   - Script execution errors.
+- `JIRA_TOKEN` in the environment (`source ~/.zshrc`) and VPN. Do not hard-gate on
+  `scutil` (it false-negatives); let the fetch surface real connectivity errors.
 
-## Workflow:
+## Workflow
 
-1. Takes `ticket_id` as input.
-2. Runs `~/bin/get-ticket.sh <ticket_id>`.
-3. Validates the retrieved output:
-   - **Success:**
-     - Return processed JSON containing ticket metadata (e.g., `title`, `description`, `labels`).
-   - **Failure:**
-     - Capture error message and return actionable feedback for the agent (e.g., "Invalid ticket ID.").
-4. Outputs structured fields for use by other agent tasks:
+1. Take `ticket_id` as input (e.g. `MOP-27443`).
+2. Run the fetch into a temp dir and read the manifest:
+   ```bash
+   OUT=$(mktemp -d)
+   ~/bin/fetch-ticket.sh <ticket_id> "$OUT" > "$OUT/manifest.json"
+   ```
+3. Read `$OUT/manifest.json`. On success it contains:
    ```json
    {
-     "ticket_id": "PROJ-123",
-     "title": "Implement user login",
-     "description": "The user login system should integrate with OAuth.",
-     "labels": ["frontend", "api", "auth"]
+     "ticket": "MOP-27443",
+     "type": "Sub-task",
+     "summary": "…",
+     "priority": "…",
+     "status": "…",
+     "labels": ["…"],
+     "parent": "MOP-25481",
+     "description": "…(HTML-stripped plain text)…",
+     "comments": [ { "author": "…", "created": "…", "body": "…" } ],
+     "attachments": [ { "filename": "…", "mime": "image/png", "path": "…" } ]
    }
    ```
+   Downloaded prototype/screenshot images are at each `attachments[].path` — Read
+   them when the task needs the visual spec.
+4. On failure the script exits non-zero with a clear message (bad ticket id / VPN /
+   token) — surface that as actionable feedback rather than guessing.
 
-## Example Command:
+## Example
 
 ```bash
-~/bin/get-ticket.sh PROJ-123
+OUT=$(mktemp -d); ~/bin/fetch-ticket.sh MOP-27443 "$OUT" > "$OUT/manifest.json"
 ```

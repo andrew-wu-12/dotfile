@@ -49,8 +49,7 @@ Service names: `jenkins.morrison.express`, `morrisonexpress.atlassian.net`, `get
 All scripts are symlinked to `~/bin/` and have aliases in `.zshrc`:
 
 - **`checkout-ticket.sh` (`crt <MOP-XXXX>`)** — Queries JIRA for ticket metadata, creates `uat/<parent>` and `feature/<ticket>` branches in `$MOP_MONOREPO_PATH`, opens draft PRs via `gh`. Requires VPN.
-- **`checkout-config.sh` (`crc <MOP-XXXX>`)** — Same flow for the `mop_configuration_files` repo; creates dev/uat/prod branches.
-- **`deploy-console.sh` (`dpc`)** — Triggers a Jenkins build for `$MOP_CONSOLE_PATH` based on branch prefix (`feature` vs `uat`/`hotfix`).
+- **`checkout-config.sh` (`crc <MOP-XXXX>`)** — Opens the `[DEV]` `feature/MOP-XXXX → dev` draft PR for the `mop_configuration_files` repo; uat/master promotion PRs are made by hand.
 - **`deploy-one.sh` (`dpo`)** — Triggers both `monorepo_feature` and `monorepo_uat` Jenkins jobs simultaneously.
 - **`trace-build.sh` (`tbs`)** — Polls Jenkins for the current branch's build status; renders a live progress bar and sends a macOS notification on completion.
 - **`bi-weekly-report.sh` (`bws`)** — Pulls PRs assigned to the current user from the monorepo via `gh`, formats them as JSON, and copies to clipboard.

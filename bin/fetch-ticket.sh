@@ -79,6 +79,7 @@ jq -n \
     summary:  ($raw[0].fields.summary // null),
     priority: ($raw[0].fields.priority.name // null),
     status:   ($raw[0].fields.status.name // null),
+    labels:   ($raw[0].fields.labels // []),
     parent:   (if $parent == "null" then null else $parent end),
     description: (($raw[0].renderedFields.description // "") | strip),
     comments: [ $raw[0].renderedFields.comment.comments[]? as $c

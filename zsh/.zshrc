@@ -113,7 +113,6 @@ source $ZSH/oh-my-zsh.sh
 # custom scripts
 alias crt='zsh ~/bin/checkout-ticket.sh'
 alias crc='zsh ~/bin/checkout-config.sh'
-alias dpc='zsh ~/bin/deploy-console.sh $(git rev-parse --abbrev-ref HEAD)'
 alias dpo='zsh ~/bin/deploy-one.sh $(git rev-parse --abbrev-ref HEAD)'
 alias bws='zsh ~/bin/bi-weekly-report.sh'
 alias tbs='zsh ~/bin/trace-build.sh $(git rev-parse --abbrev-ref HEAD)'

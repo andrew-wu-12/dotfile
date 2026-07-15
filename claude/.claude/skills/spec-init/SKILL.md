@@ -58,11 +58,11 @@ turn ambiguity into round-1 questions instead of five rounds of discovery.
    states, field-level behavior the ticket leaves unstated.
 3. **i18n keys already exist?** Extract the candidate UI strings, then per string:
    ```bash
-   ~/bin/check-i18n.sh "Submit"
+   ~/bin/check-i18n.sh "Submit"          # searches ALL modules by default
+   ~/bin/check-i18n.sh "Consol No." tms  # optional: scope to a module + commons
    ```
-   Reuse exact/similar matches. **Caveat:** `check-i18n.sh` currently searches only
-   the `commons` module, so a "no match" is not conclusive for module-specific
-   keys — say so rather than asserting a key is new.
+   Reuse exact/similar matches (output: `EXACT_KEY_MATCH` / `EXACT_VALUE_MATCH` /
+   `SIMILAR_MATCHES` / `NO_MATCH`, each with the full `<module>.<key>` path).
 4. **Violates existing functionality?** Search for existing behavior the new spec
    would change or break; call it out explicitly.
 5. **New privilege needed?** The config repo is **branch-per-environment**

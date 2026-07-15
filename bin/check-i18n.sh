@@ -1,8 +1,9 @@
 #!/bin/bash
 
 # Utility to check if an i18n key or value exists.
-# Checks commons by default; pass an optional [module] to also search that
-# module's namespace (module matches take precedence over commons).
+# Searches ALL cached modules by default (so a reuse check doesn't need to know
+# the namespace). Pass an optional [module] to scope to that module + commons
+# (module matches take precedence); pass 'commons' to scope to commons only.
 # Auto-syncs a local i18n cache (timestamp-gated) before looking up.
 
 BASE_URL="https://one-static.morrison.express/i18n/prod"
@@ -76,44 +77,54 @@ if [ ! -f "$COMMONS_FILE" ]; then
   exit 1
 fi
 
-# Normalize input key (strip a leading 'commons.' or '<module>.' namespace prefix)
+# Normalize a key input: strip a leading '<namespace>.' so a full key like
+# "tms.consol_no" also matches by its bare key "consol_no".
 CLEAN_KEY="${INPUT#commons.}"
 [ -n "$MODULE" ] && CLEAN_KEY="${CLEAN_KEY#"$MODULE".}"
 
-# Emit one JSON array of {path,key,value} entries for a namespace inside a file.
-build_entries() {
-  # $1 = json file, $2 = namespace key under .enLang (also used as path prefix)
-  jq -c --arg p "$2" '(.enLang[$p] // {}) | to_entries
-    | map({path: ($p + "." + .key), key: .key, value: .value})' "$1"
+# Emit a JSON array of {path,key,value} for every namespace in a file's .enLang.
+file_entries() {
+  jq -c '(.enLang // {}) | to_entries
+    | map(.key as $p | ((.value // {}) | to_entries
+        | map({path: ($p + "." + .key), key: .key, value: .value})))
+    | add // []' "$1"
 }
 
-# Module entries come first so they win exact-match ties over commons.
-MODULE_SCOPE="commons only"
+# Scope: a specific module (+ commons) if given; 'commons' for commons only;
+# otherwise EVERY cached module (the default reuse check).
 if [ -n "$MODULE" ] && [ "$MODULE" != "commons" ]; then
   if [ -f "$CACHE_DIR/$MODULE.json" ]; then
-    MODULE_SCOPE="$MODULE + commons"
+    SCOPE="$MODULE + commons"
+    # Module entries first so they win exact-match ties over commons.
+    ENTRIES=$( { file_entries "$CACHE_DIR/$MODULE.json"; file_entries "$COMMONS_FILE"; } | jq -sc 'add' )
   else
-    echo "Warning: module '$MODULE' not found in cache; searching commons only." >&2
+    echo "Warning: module '$MODULE' not found in cache; searching all modules." >&2
     MODULE=""
   fi
 fi
+if [ -z "${SCOPE:-}" ]; then
+  if [ "$MODULE" = "commons" ]; then
+    SCOPE="commons only"
+    ENTRIES=$( file_entries "$COMMONS_FILE" )
+  else
+    SCOPE="all modules"
+    ENTRIES=$(
+      for f in "$CACHE_DIR"/*.json; do
+        b=$(basename "$f" .json)
+        if [ "$b" = "timestamp" ] || [ "$b" = "index" ]; then continue; fi
+        file_entries "$f"
+      done | jq -sc 'add'
+    )
+  fi
+fi
 
-echo "Checking i18n key/value: '$INPUT' (Key check: '$CLEAN_KEY') in $MODULE_SCOPE..." >&2
-
-ENTRIES=$(
-  {
-    if [ -n "$MODULE" ] && [ "$MODULE" != "commons" ]; then
-      build_entries "$CACHE_DIR/$MODULE.json" "$MODULE"
-    fi
-    build_entries "$COMMONS_FILE" "commons"
-  } | jq -sc 'add'
-)
+echo "Checking i18n key/value: '$INPUT' (Key check: '$CLEAN_KEY') in $SCOPE..." >&2
 
 printf '%s' "$ENTRIES" | jq -r --arg input "$INPUT" --arg key "$CLEAN_KEY" '
   . as $entries |
 
-  # 1. Exact KEY match (e.g. "submit", "commons.submit", "billing.submit" -> "submit")
-  ($entries | map(select(.key == $key))) as $key_matches |
+  # 1. Exact KEY match: bare key ("consol_no") or full path ("tms.consol_no").
+  ($entries | map(select(.key == $key or .path == $input))) as $key_matches |
   if ($key_matches | length) > 0 then
     "EXACT_KEY_MATCH: " + $key_matches[0].path + " -> \"" + $key_matches[0].value + "\""
   else
@@ -122,10 +133,10 @@ printf '%s' "$ENTRIES" | jq -r --arg input "$INPUT" --arg key "$CLEAN_KEY" '
     if ($exact_matches | length) > 0 then
       "EXACT_VALUE_MATCH: " + $exact_matches[0].path + " -> \"" + $exact_matches[0].value + "\""
     else
-      # 3. SIMILAR values (case-insensitive substring match)
-      ($entries | map(select(.value | ascii_downcase | contains($input | ascii_downcase)))) as $similar_matches |
+      # 3. SIMILAR values (case-insensitive substring match; capped)
+      ($entries | map(select(.value | type == "string" and (ascii_downcase | contains($input | ascii_downcase))))) as $similar_matches |
       if ($similar_matches | length) > 0 then
-        "SIMILAR_MATCHES:\n" + ($similar_matches | map("- " + .path + ": \"" + .value + "\"") | join("\n"))
+        "SIMILAR_MATCHES:\n" + ($similar_matches[0:20] | map("- " + .path + ": \"" + .value + "\"") | join("\n"))
       else
         "NO_MATCH"
       end

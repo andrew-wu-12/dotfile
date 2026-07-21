@@ -1,7 +1,9 @@
 #!/bin/bash
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
-REPO_ROOT="$(dirname "$SCRIPT_DIR")"
+# shellcheck source=/dev/null
+source "$SCRIPT_DIR/init-lib.sh"
+REPO_ROOT="$(resolve_repo_root "$SCRIPT_DIR")" || exit 1
 
 function setup_base_config() {
     echo ""
@@ -13,19 +15,8 @@ function setup_base_config() {
         exit 1
     fi
 
-    if [ ! -d "$HOME/bin" ]; then
-        mkdir -p "$HOME/bin" || { echo "建立 $HOME/bin 失敗"; exit 1; }
-        echo "已建立 $HOME/bin 目錄"
-    fi
-
-    (
-        cd "$REPO_ROOT" || exit 1
-        stow --adopt --restow zsh || exit 1
-        stow --restow --target="$HOME/bin" bin || exit 1
-    ) || {
-        echo "stow 基礎設定失敗"
-        exit 1
-    }
+    stow_pkg zsh || exit 1
+    stow_pkg bin "$HOME/bin" || exit 1
 
     echo "✓ 基礎設定安裝完成"
 }

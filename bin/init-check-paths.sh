@@ -1,9 +1,9 @@
 #!/bin/bash
 
-if ((BASH_VERSINFO[0] < 4)); then
-    echo "錯誤：需要 Bash 4 以上版本。目前版本：$BASH_VERSION"
-    exit 1
-fi
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+# shellcheck source=/dev/null
+source "$SCRIPT_DIR/init-lib.sh"
+REPO_ROOT="$(resolve_repo_root "$SCRIPT_DIR")" || exit 1
 
 function check_and_fix_paths() {
     local dotfile_zshrc
@@ -13,8 +13,10 @@ function check_and_fix_paths() {
     echo "=== 路徑設定檢查 ==="
     echo ""
 
-    if [ -f "../zsh/.zshrc" ]; then
-        dotfile_zshrc="../zsh/.zshrc"
+    # Resolved from the script's own location, not the caller's cwd, so this edits
+    # the repo copy no matter where init.sh was invoked from.
+    if [ -f "$REPO_ROOT/zsh/.zshrc" ]; then
+        dotfile_zshrc="$REPO_ROOT/zsh/.zshrc"
         echo "目前以 dotfiles repo 模式執行，目標檔案：$dotfile_zshrc"
     else
         dotfile_zshrc="$HOME/.zshrc"
@@ -26,19 +28,24 @@ function check_and_fix_paths() {
         touch "$dotfile_zshrc"
     fi
 
-    declare -A defaults=(
-        ["MOP_CONFIGURATION_PATH"]="$HOME/project/mop_configuration_files"
-        ["MOP_CONSOLE_PATH"]="$HOME/project/mop_console"
-        ["MOP_MONOREPO_PATH"]="$HOME/project/mop-console-monorepo"
-        ["MOP_EPOD_PATH"]="$HOME/project/mop_epod"
+    # VAR=default pairs rather than an associative array, so this runs under macOS's
+    # stock Bash 3.2. Each pair is a single string, so the two can never drift apart.
+    local defaults=(
+        "MOP_CONFIGURATION_PATH=$HOME/project/mop_configuration_files"
+        "MOP_CONSOLE_PATH=$HOME/project/mop_console"
+        "MOP_MONOREPO_PATH=$HOME/project/mop-console-monorepo"
+        "MOP_EPOD_PATH=$HOME/project/mop_epod"
     )
 
     echo "全新 Mac 小提示：通常使用 ~/project 底下的預設路徑即可。"
 
-    for var in "${!defaults[@]}"; do
+    local entry
+    for entry in "${defaults[@]}"; do
+        local var="${entry%%=*}"
+        local default="${entry#*=}"
         if ! grep -q "^export $var=" "$dotfile_zshrc"; then
             echo "正在寫入預設的 $var..."
-            echo "export $var=\"${defaults[$var]}\"" >> "$dotfile_zshrc"
+            echo "export $var=\"$default\"" >> "$dotfile_zshrc"
         fi
     done
 
@@ -76,7 +83,7 @@ function check_and_fix_paths() {
         fi
 
         if [ ! -d "$expanded_path" ]; then
-            read -r -p "要現在建立這個目錄嗎？（$expanded_path）[y/N]：" answer </dev/tty
+            read -r -p "要現在建立這個目錄嗎？（${expanded_path}）[y/N]：" answer </dev/tty
             if [[ "$answer" =~ ^[Yy]$ ]]; then
                 mkdir -p "$expanded_path" || { echo "建立 $expanded_path 失敗"; exit 1; }
                 echo "✓ 已建立 $expanded_path"

@@ -1,6 +1,9 @@
 # If you come from bash you might have to change your $PATH.
 # export PATH=$HOME/bin:$HOME/.local/bin:/usr/local/bin:$PATH
 
+# Put Homebrew on PATH before anything below needs it (zoxide, starship, nvm).
+[ -x /opt/homebrew/bin/brew ] && eval "$(/opt/homebrew/bin/brew shellenv)"
+
 # Path to your Oh My Zsh installation.
 export ZSH="$HOME/.oh-my-zsh"
 
@@ -72,15 +75,15 @@ zstyle ':omz:lib:*' aliases no
 # Example format: plugins=(rails git textmate ruby lighthouse)
 # Add wisely, as too many plugins slow down shell startup.
 
+# zsh-syntax-highlighting and zsh-autosuggestions are NOT bundled with oh-my-zsh.
+# They come from Homebrew and are sourced at the bottom of this file instead of
+# being listed here — listing them errors with "plugin not found" when absent.
 plugins=(
     # git
     # zsh-completions
-    # zsh-autosuggestions
-    zsh-syntax-highlighting
     web-search
     jsontools
 )
-source ~/.bash_profile
 #source ~/.zsh/catppuccin_mocha-zsh-syntax-highlighting.zsh
 source $ZSH/oh-my-zsh.sh
 
@@ -167,3 +170,11 @@ export SKILL_PATH="$HOME/.opencode/skills"
 export PATH="$HOME/.opencode/bin:$PATH"
 export MCP_PATH="$HOME/dotfile-mcp-server"
 export PATH="$HOME/.local/bin:$PATH"
+
+# Homebrew-installed zsh plugins. Guarded, so a machine that hasn't run
+# init-recommend-cli-tools.sh yet just starts without them instead of erroring.
+# zsh-syntax-highlighting must be sourced last — keep these at the end of the file.
+[ -f /opt/homebrew/share/zsh-autosuggestions/zsh-autosuggestions.zsh ] \
+    && source /opt/homebrew/share/zsh-autosuggestions/zsh-autosuggestions.zsh
+[ -f /opt/homebrew/share/zsh-syntax-highlighting/zsh-syntax-highlighting.zsh ] \
+    && source /opt/homebrew/share/zsh-syntax-highlighting/zsh-syntax-highlighting.zsh

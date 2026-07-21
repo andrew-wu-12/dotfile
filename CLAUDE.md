@@ -21,7 +21,9 @@ Each top-level directory is a Stow package. Running `stow <pkg>` from the repo r
 | `wezterm/` | `$HOME` | `.wezterm.lua` |
 | `opencode/` | `$HOME` | `.opencode/` |
 
-`init-base.sh` uses `stow --adopt --restow zsh` and `stow --restow --target="$HOME/bin" bin` — the `--adopt` flag is intentional: it pulls any pre-existing file into the repo before re-linking.
+All stowing goes through `stow_pkg` in `bin/init-lib.sh`, never `stow` directly. It dry-runs first, and if a real (non-symlink) file already occupies a target it lists the conflicts and asks whether to keep them. Keeping skips that package entirely; declining backs the files up to `<name>.bak.<timestamp>` and links the repo version. `--adopt` is deliberately **not** used anywhere — the repo is always the source of truth and is never written to by an init script.
+
+`bin/init-lib.sh` also provides `resolve_repo_root` (scripts must not assume the repo is the parent of their own directory — that breaks when they run via the `~/bin` symlink) and `ensure_brew` (a freshly installed Homebrew is not on `PATH` until `brew shellenv` is evaluated).
 
 ## Initial Setup
 
@@ -33,6 +35,12 @@ source ~/.zshrc
 ```
 
 `init.sh` orchestrates a sequence of `init-*.sh` sub-scripts. Optional tools (Starship, opencode, Nvim, Tmux, WezTerm, recommended CLI tools) are each prompted individually — pressing Enter skips.
+
+On a fresh Mac the first step is `init-brew.sh`, which installs Homebrew (confirming first, since it needs `sudo` and pulls in Xcode Command Line Tools). Every other step depends on it.
+
+Steps already satisfied are skipped, **except** those in `ALWAYS_RUN_KEYS` (currently `base`). Restowing is idempotent, and skipping it is how `~/bin` silently drifts from the repo when a new script is added — so it always runs.
+
+Everything targets macOS on Apple Silicon; Homebrew is assumed at `/opt/homebrew`. All scripts must run under the stock `/bin/bash` 3.2 — no associative arrays, `mapfile`, or other Bash 4+ features.
 
 ## Credentials
 

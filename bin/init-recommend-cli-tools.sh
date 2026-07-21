@@ -1,5 +1,9 @@
 #!/bin/bash
 
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+# shellcheck source=/dev/null
+source "$SCRIPT_DIR/init-lib.sh"
+
 function install_recommended_cli_tools() {
     local packages=(
         "zoxide:zoxide"
@@ -7,13 +11,19 @@ function install_recommended_cli_tools() {
         "eza:eza"
         "lazygit:lazygit"
     )
+    # zsh plugins provide no command of their own, so they are detected by the
+    # file .zshrc sources rather than by command -v.
+    local zsh_plugins=(
+        "zsh-autosuggestions"
+        "zsh-syntax-highlighting"
+    )
 
     echo ""
     echo "=== 推薦 CLI 工具 ==="
     echo ""
 
-    if ! command -v brew &>/dev/null; then
-        echo "尚未安裝 Homebrew。請先安裝 Homebrew：https://brew.sh"
+    if ! ensure_brew; then
+        echo "尚未安裝 Homebrew。請先執行 init-brew.sh。"
         exit 1
     fi
 
@@ -22,12 +32,23 @@ function install_recommended_cli_tools() {
         local command_name="${package_spec##*:}"
 
         if command -v "$command_name" &>/dev/null; then
-            echo "✓ $formula 已安裝"
+            echo "✓ ${formula} 已安裝"
             continue
         fi
 
-        echo "正在安裝 $formula..."
-        brew install "$formula" || { echo "安裝 $formula 失敗。"; exit 1; }
+        echo "正在安裝 ${formula}..."
+        brew install "$formula" || { echo "安裝 ${formula} 失敗。"; exit 1; }
+    done
+
+    local plugin
+    for plugin in "${zsh_plugins[@]}"; do
+        if [ -f "/opt/homebrew/share/$plugin/$plugin.zsh" ]; then
+            echo "✓ ${plugin} 已安裝"
+            continue
+        fi
+
+        echo "正在安裝 ${plugin}..."
+        brew install "$plugin" || { echo "安裝 ${plugin} 失敗。"; exit 1; }
     done
 
     echo "✓ 推薦 CLI 工具安裝完成"

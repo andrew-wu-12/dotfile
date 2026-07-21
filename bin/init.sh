@@ -1,13 +1,16 @@
 #!/bin/bash
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+# shellcheck source=/dev/null
+source "$SCRIPT_DIR/init-lib.sh"
 
 # Ordered step table as three parallel indexed arrays (kept index-aligned so this
-# runs under macOS's stock Bash 3.2 — init.sh itself bootstraps newer Bash).
+# runs under macOS's stock Bash 3.2 — nothing here needs a newer Bash).
 # STEP_KEYS[i] is the detect_status key, STEP_LABELS[i] its Traditional Chinese
 # label, STEP_SCRIPTS[i] the sub-script. Order mirrors the safe install sequence.
-STEP_KEYS=(required omz base recommend-cli starship opencode nvim tmux wezterm claude check-paths credentials ssh gh clone)
+STEP_KEYS=(brew required omz base recommend-cli starship opencode nvim tmux wezterm claude check-paths credentials ssh gh clone)
 STEP_LABELS=(
+    "Homebrew"
     "必要套件（jq、gh、curl、git、stow、nvm）"
     "Oh My Zsh"
     "基礎設定（stow zsh + bin）"
@@ -25,6 +28,7 @@ STEP_LABELS=(
     "複製專案儲存庫"
 )
 STEP_SCRIPTS=(
+    "init-brew.sh"
     "init-required.sh"
     "init-omz.sh"
     "init-base.sh"
@@ -43,7 +47,20 @@ STEP_SCRIPTS=(
 )
 
 # Core steps for the minimal install (skips the optional editor/terminal/CLI tools).
-MINIMAL_KEYS=(required omz base check-paths credentials ssh gh clone)
+MINIMAL_KEYS=(brew required omz base check-paths credentials ssh gh clone)
+
+# Steps that must run every time regardless of detect_status. Restowing is
+# idempotent and cheap, and skipping it is how ~/bin silently drifts from the repo
+# whenever a new script is added.
+ALWAYS_RUN_KEYS=(base)
+
+function is_always_run() {
+    local key
+    for key in "${ALWAYS_RUN_KEYS[@]}"; do
+        [ "$key" = "$1" ] && return 0
+    done
+    return 1
+}
 
 function run_step() {
     local script_name="$1"
@@ -61,7 +78,7 @@ function run_step() {
     local result=$?
 
     if [ $result -ne 0 ]; then
-        echo "⚠️  警告：$script_name 執行失敗，結束代碼為 $result。"
+        echo "⚠️  警告：${script_name} 執行失敗，結束代碼為 ${result}。"
     else
         echo "✓ $script_name 執行成功。"
     fi
@@ -97,6 +114,9 @@ function load_env_vars() {
 function detect_status() {
     local key="$1"
     case "$key" in
+        brew)
+            ensure_brew || return 1
+            ;;
         required)
             local pkg
             for pkg in jq gh curl git stow; do
@@ -111,9 +131,12 @@ function detect_status() {
             [ -L "$HOME/.zshrc" ] || return 1
             ;;
         recommend-cli)
-            local cmd
+            local cmd plugin
             for cmd in zoxide rg eza lazygit; do
                 command -v "$cmd" &>/dev/null || return 1
+            done
+            for plugin in zsh-autosuggestions zsh-syntax-highlighting; do
+                [ -f "/opt/homebrew/share/$plugin/$plugin.zsh" ] || return 1
             done
             ;;
         starship)
@@ -129,6 +152,7 @@ function detect_status() {
             command -v tmux &>/dev/null && [ -L "$HOME/.tmux.conf" ] || return 1
             ;;
         wezterm)
+            ensure_brew || return 1
             brew list --cask wezterm &>/dev/null && [ -L "$HOME/.wezterm.lua" ] || return 1
             ;;
         claude)
@@ -191,7 +215,7 @@ function run_step_by_key() {
     local target="$1" i
     for ((i = 0; i < ${#STEP_KEYS[@]}; i++)); do
         [ "${STEP_KEYS[i]}" = "$target" ] || continue
-        if detect_status "$target"; then
+        if ! is_always_run "$target" && detect_status "$target"; then
             echo "✓ 跳過（已安裝）：${STEP_LABELS[i]}"
         else
             run_step "${STEP_SCRIPTS[i]}"
@@ -216,7 +240,7 @@ function run_full_guided() {
     echo "已安裝的項目會自動跳過。"
     local i
     for ((i = 0; i < ${#STEP_KEYS[@]}; i++)); do
-        if detect_status "${STEP_KEYS[i]}"; then
+        if ! is_always_run "${STEP_KEYS[i]}" && detect_status "${STEP_KEYS[i]}"; then
             echo "✓ 跳過（已安裝）：${STEP_LABELS[i]}"
         else
             run_step "${STEP_SCRIPTS[i]}"

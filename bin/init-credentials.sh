@@ -55,7 +55,7 @@ function handle_credentials() {
         
         # Prompt for credential (display description without escape sequences for the prompt)
         description_plain=$(echo "$credentials" | jq -r ".credentials[$i].description" | sed 's/\\e\]8;;[^\\]*\\e\\\\//g; s/\\e\]8;;\\e\\\\//g')
-        read -r -s -p "請輸入你的 $description_plain：" credential_value </dev/tty
+        read -r -s -p "請輸入你的 ${description_plain}：" credential_value </dev/tty
         echo "" 
         
         if [ -z "$credential_value" ]; then

@@ -1,6 +1,6 @@
 # Global User Instructions
 
-My name is Andrew Wu. I work at Morrison Express on MOP projects (Vue.js / TypeScript frontends, monorepo structure).
+My name is Andrew Wu. I work at Morrison Express on MOP projects (React.js / TypeScript frontends, monorepo structure).
 
 ## Response Style
 - Concise and direct. No trailing summary after completing a task.

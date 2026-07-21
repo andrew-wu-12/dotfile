@@ -86,6 +86,17 @@ gbc
 | `tvs` | `tmux split-window -v` | 無       | 垂直分割視窗       |
 | `ths` | `tmux split-window -h` | 無       | 水平分割視窗       |
 
+#### Tmux Session 持久化快捷鍵
+
+由 `tmux-resurrect` + `tmux-continuum` 提供，每 5 分鐘自動存檔，開啟 tmux server 時自動還原（重開機後直接執行 `tmux` 即可回復）。關掉終端機視窗本身不會遺失 session，用 `tmux attach` 接回即可。
+
+| 快捷鍵            | 說明                       |
+| ----------------- | -------------------------- |
+| `prefix` `Ctrl-S` | 立即存檔目前所有 session   |
+| `prefix` `Ctrl-R` | 手動還原上一次存檔         |
+
+> 只會還原 shell 與其工作目錄（含 scrollback 內容），執行中的程式不會還原，`nvim` 若有 `Session.vim` 則會重開檔案。
+
 ---
 
 ### Export 環境變數介紹

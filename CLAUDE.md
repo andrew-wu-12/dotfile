@@ -81,7 +81,10 @@ All scripts are symlinked to `~/bin/` and have aliases in `.zshrc`:
 `prefix` is `Ctrl-B`. Notable bindings:
 - `prefix Ctrl-O` — opens opencode in a popup (90% of terminal)
 - `prefix Ctrl-G` — opens lazygit in a popup
+- `prefix Ctrl-S` / `prefix Ctrl-R` — tmux-resurrect save / restore
 - Navigation via vim-tmux-navigator: `Ctrl-h/j/k/l` and arrow variants
+
+Session persistence comes from `tmux-resurrect` + `tmux-continuum`: saves every 5 minutes and restores on tmux server start, so sessions survive a reboot. `tmux-continuum` must stay the **last** `@plugin` entry, and it prepends its save hook to `status-right` — any `set -g status-right` must therefore run *before* `run '~/.config/tmux/plugins/tpm/tpm'`, or the hook is wiped and auto-save silently stops.
 
 ## opencode Config
 

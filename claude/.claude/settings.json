@@ -22,5 +22,29 @@
       ]
     }
   },
-  "awaySummaryEnabled": false
+  "awaySummaryEnabled": false,
+  "hooks": {
+    "Notification": [
+      {
+        "matcher": "permission_prompt|idle_prompt|agent_needs_input",
+        "hooks": [
+          { "type": "command", "command": "$HOME/bin/agent-notify.sh notification" }
+        ]
+      }
+    ],
+    "Stop": [
+      {
+        "hooks": [
+          { "type": "command", "command": "$HOME/bin/agent-notify.sh stop" }
+        ]
+      }
+    ],
+    "UserPromptSubmit": [
+      {
+        "hooks": [
+          { "type": "command", "command": "$HOME/bin/agent-notify.sh clear" }
+        ]
+      }
+    ]
+  }
 }

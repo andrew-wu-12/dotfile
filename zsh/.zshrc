@@ -116,6 +116,8 @@ source $ZSH/oh-my-zsh.sh
 # custom scripts
 alias crt='zsh ~/bin/checkout-ticket.sh'
 alias crc='zsh ~/bin/checkout-config.sh'
+alias wt='zsh ~/bin/worktree-ticket.sh'
+alias wtd='zsh ~/bin/worktree-done.sh'
 alias dpo='zsh ~/bin/deploy-one.sh $(git rev-parse --abbrev-ref HEAD)'
 alias bws='zsh ~/bin/bi-weekly-report.sh'
 alias tbs='zsh ~/bin/trace-build.sh $(git rev-parse --abbrev-ref HEAD)'
@@ -164,6 +166,11 @@ export MOP_CONFIGURATION_PATH="$HOME/project/mop_configuration_files"
 export MOP_CONSOLE_PATH="$HOME/project/mop_console"
 export MOP_MONOREPO_PATH="$HOME/project/mop-console-monorepo"
 export MOP_EPOD_PATH="$HOME/project/mop_epod"
+
+# Shared nx cache: an absolute path is used by every workspace (main checkout and
+# each git worktree), so tickets reuse one another's cached tasks instead of each
+# growing its own multi-GB .nx/cache. Overrides nx's default <root>/.nx/cache.
+export NX_CACHE_DIRECTORY="$HOME/.cache/nx-mop"
 
 # opencode
 export SKILL_PATH="$HOME/.opencode/skills"

@@ -61,6 +61,7 @@ All scripts are symlinked to `~/bin/` and have aliases in `.zshrc`:
 - **`worktree-done.sh` (`wtd [--force]`)** — Tears down the worktree you are currently inside: closes its tmux window, `git worktree remove`, safe `git branch -d`, `git worktree prune`. Refuses the main checkout; refuses a dirty worktree without `--force`.
 - **`ticket-lib.sh`** — Shared zsh JIRA/PR helpers (`get_ticket_content`, `pr_get_params/content/title`, …) sourced by both `crt` and `wt` so the two onboarding scripts never drift. Sourced via `${0:A:h}/ticket-lib.sh`, never executed.
 - **`dev-layout.sh` (`dev`)** — Builds the VSCode-style tmux window (nvim + command + claude) for the current repo/worktree. Idempotent by window name; names windows `{branch}({repo})`.
+- **`agent-notify.sh`** — Claude Code notification hook for worktree sessions; see [Parallel Ticket Workspaces](#parallel-ticket-workspaces-git-worktrees).
 - **`checkout-config.sh` (`crc <MOP-XXXX>`)** — Opens the `[DEV]` `feature/MOP-XXXX → dev` draft PR for the `mop_configuration_files` repo; uat/master promotion PRs are made by hand.
 - **`deploy-one.sh` (`dpo`)** — Triggers both `monorepo_feature` and `monorepo_uat` Jenkins jobs simultaneously.
 - **`trace-build.sh` (`tbs`)** — Polls Jenkins for the current branch's build status; renders a live progress bar and sends a macOS notification on completion.
@@ -91,6 +92,8 @@ All scripts are symlinked to `~/bin/` and have aliases in `.zshrc`:
 
 Session persistence comes from `tmux-resurrect` + `tmux-continuum`: saves every 5 minutes and restores on tmux server start, so sessions survive a reboot. `tmux-continuum` must stay the **last** `@plugin` entry, and it prepends its save hook to `status-right` — any `set -g status-right` must therefore run *before* `run '~/.config/tmux/plugins/tpm/tpm'`, or the hook is wiped and auto-save silently stops.
 
+The status bar renders the window **name** (`#W`), not the pane title: `@catppuccin_window_text` / `@catppuccin_window_current_text` are overridden to `" #W"` before `catppuccin.tmux` runs. catppuccin defaults both to `#T`, which Claude Code and nvim continuously overwrite with their own pane titles — so `dev-layout.sh`'s `{branch}({repo})` names and `agent-notify.sh`'s 🔴/🟢 markers were being set correctly but never appearing on screen.
+
 ## Parallel Ticket Workspaces (git worktrees)
 
 `wt` / `wtd` give one workspace per ticket so you can context-switch between tickets **without `git stash`**. Each ticket is a git worktree under `$MOP_WORKTREE_ROOT` (default `~/project/worktrees/MOP-XXXX`), deliberately **outside** the repo so it never appears in the main checkout's `git status`. Worktrees must stay on the same **APFS** volume as the repo (the `node_modules` clone below depends on it).
@@ -102,7 +105,9 @@ Invariants the scripts guarantee:
 - **The nx cache is shared**, not duplicated. `NX_CACHE_DIRECTORY` is an absolute path, so every workspace resolves to `~/.cache/nx-mop` (verified against `node_modules/nx/src/utils/cache-directory.js`, which reads the env var and precedes `nx.json`). Prune it with `rm -rf ~/.cache/nx-mop` or `nx reset`; never let it grow per-worktree.
 - **`yarn serve` does not parallelize.** This is a Module Federation monorepo with hardcoded per-app ports (`apps/*/project.json`), so only one worktree can serve at a time — serve serially, in whichever worktree you are reviewing. Tests, builds, lint, and typecheck are worktree-isolated and safe to run concurrently.
 
-**Window naming.** `dev-layout.sh` names every tmux window `{branch}({repo})` (e.g. `feature/MOP-27970(mop-console-monorepo)`); the repo half comes from the git *common dir*, so it is the real project name even inside a worktree. Window reuse and `wtd` match this name as a **suffix**, so a marker prefix never spawns a duplicate window.
+**Window naming.** `dev-layout.sh` names every tmux window `{branch}({repo})` (e.g. `feature/MOP-27970(mop-console-monorepo)`); the repo half comes from the git *common dir*, so it is the real project name even inside a worktree. Window reuse and `wtd` match this name as a **suffix**, so a notification marker prefix (below) never spawns a duplicate window.
+
+**Notifications.** `agent-notify.sh` is registered globally as Claude Code `Notification` / `Stop` / `UserPromptSubmit` hooks in `claude/.claude/settings.json`, but **self-guards** to act only when the agent's cwd is under `$MOP_WORKTREE_ROOT`. It renames the agent's window `🔴 …` (needs input) / `🟢 …` (turn done) and clears the marker on the next prompt, plus fires a macOS notification — **suppressed when you are already looking at that window**, so you are only pinged about tickets elsewhere. "Looking at it" requires all three of window active, session attached, *and* the terminal app frontmost: tmux cannot see that you alt-tabbed to a browser (the window stays active), so the frontmost check — `lsappinfo`, walking the tmux client's process tree up to the terminal GUI — is what keeps the popup from being suppressed exactly when you are away from the machine. The hook **must stay silent on stdout**: Claude Code injects a `Stop`/`UserPromptSubmit` hook's stdout back into the conversation as context. Hook changes take effect only in the *next* `claude` launched.
 
 ## opencode Config
 

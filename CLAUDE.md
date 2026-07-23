@@ -56,8 +56,11 @@ Service names: `jenkins.morrison.express`, `morrisonexpress.atlassian.net`, `get
 
 All scripts are symlinked to `~/bin/` and have aliases in `.zshrc`:
 
-- **`checkout-ticket.sh` (`crt <MOP-XXXX>`)** — Queries JIRA for ticket metadata, creates `uat/<parent>` and `feature/<ticket>` branches in `$MOP_MONOREPO_PATH`, opens draft PRs via `gh`. Requires VPN.
-- **`ticket-lib.sh`** — Shared zsh JIRA/PR helpers (`get_ticket_content`, `pr_get_params/content/title`, …) sourced by `crt` so onboarding scripts never drift. Sourced via `${0:A:h}/ticket-lib.sh`, never executed.
+- **`checkout-ticket.sh` (`crt <MOP-XXXX>`)** — Queries JIRA for ticket metadata, creates `uat/<parent>` and `feature/<ticket>` branches in `$MOP_MONOREPO_PATH`, opens draft PRs via `gh`. Requires VPN. This is the **legacy single-checkout** path: it `git add . && git stash`es the working tree and checks the new branch out **in place**, moving the main checkout's HEAD. Kept as a safety net; for parallel ticket work use `wt` instead.
+- **`worktree-ticket.sh` (`wt <MOP-XXXX>`)** — Worktree-native alternative to `crt`. Same JIRA lookup, `uat/<parent>` + `feature/<ticket>` branches, and draft PRs, but creates the branches **without checkout** (via `git commit-tree`) and materializes `feature/<ticket>` as a git worktree under `$MOP_WORKTREE_ROOT`. Never moves the main checkout's HEAD and never stashes. APFS-clones `node_modules` and opens a tmux dev window. See [Parallel Ticket Workspaces](#parallel-ticket-workspaces-git-worktrees). No VPN needed (JIRA Cloud + GitHub are public).
+- **`worktree-done.sh` (`wtd [--force]`)** — Tears down the worktree you are currently inside: closes its tmux window, `git worktree remove`, safe `git branch -d`, `git worktree prune`. Refuses the main checkout; refuses a dirty worktree without `--force`.
+- **`ticket-lib.sh`** — Shared zsh JIRA/PR helpers (`get_ticket_content`, `pr_get_params/content/title`, …) sourced by both `crt` and `wt` so the two onboarding scripts never drift. Sourced via `${0:A:h}/ticket-lib.sh`, never executed.
+- **`dev-layout.sh` (`dev`)** — Builds the VSCode-style tmux window (nvim + command + claude) for the current repo/worktree. Idempotent by window name; names windows `{branch}({repo})`.
 - **`checkout-config.sh` (`crc <MOP-XXXX>`)** — Opens the `[DEV]` `feature/MOP-XXXX → dev` draft PR for the `mop_configuration_files` repo; uat/master promotion PRs are made by hand.
 - **`deploy-one.sh` (`dpo`)** — Triggers both `monorepo_feature` and `monorepo_uat` Jenkins jobs simultaneously.
 - **`trace-build.sh` (`tbs`)** — Polls Jenkins for the current branch's build status; renders a live progress bar and sends a macOS notification on completion.
@@ -71,6 +74,7 @@ All scripts are symlinked to `~/bin/` and have aliases in `.zshrc`:
 | `MOP_MONOREPO_PATH` | Path to `mop-console-monorepo` repo |
 | `MOP_CONFIGURATION_PATH` | Path to `mop_configuration_files` repo |
 | `MOP_EPOD_PATH` | Path to `mop_epod` repo |
+| `NX_CACHE_DIRECTORY` | `~/.cache/nx-mop` — shared nx task cache across the main checkout and every worktree |
 | `JENKINS_TOKEN` | Read from Keychain at shell start |
 | `JIRA_TOKEN` | Read from Keychain at shell start |
 | `GETDATATOKEN` | Read from Keychain at shell start |
@@ -86,6 +90,19 @@ All scripts are symlinked to `~/bin/` and have aliases in `.zshrc`:
 - Navigation via vim-tmux-navigator: `Ctrl-h/j/k/l` and arrow variants
 
 Session persistence comes from `tmux-resurrect` + `tmux-continuum`: saves every 5 minutes and restores on tmux server start, so sessions survive a reboot. `tmux-continuum` must stay the **last** `@plugin` entry, and it prepends its save hook to `status-right` — any `set -g status-right` must therefore run *before* `run '~/.config/tmux/plugins/tpm/tpm'`, or the hook is wiped and auto-save silently stops.
+
+## Parallel Ticket Workspaces (git worktrees)
+
+`wt` / `wtd` give one workspace per ticket so you can context-switch between tickets **without `git stash`**. Each ticket is a git worktree under `$MOP_WORKTREE_ROOT` (default `~/project/worktrees/MOP-XXXX`), deliberately **outside** the repo so it never appears in the main checkout's `git status`. Worktrees must stay on the same **APFS** volume as the repo (the `node_modules` clone below depends on it).
+
+Invariants the scripts guarantee:
+
+- **The main checkout is never disturbed.** `wt` creates branches with `git branch` / `git commit-tree` (no checkout), so the main checkout's HEAD stays put and nothing is ever stashed. Branches must be created *before* `git worktree add`, which refuses a branch already checked out elsewhere. (`crt` is the opposite — it stashes and checks out in place.)
+- **`node_modules` is APFS copy-on-write cloned** (`cp -c -R`): a worktree costs ~0 disk, and a `yarn install` in one ticket cannot mutate another's deps. This is why it is cloned, not symlinked.
+- **The nx cache is shared**, not duplicated. `NX_CACHE_DIRECTORY` is an absolute path, so every workspace resolves to `~/.cache/nx-mop` (verified against `node_modules/nx/src/utils/cache-directory.js`, which reads the env var and precedes `nx.json`). Prune it with `rm -rf ~/.cache/nx-mop` or `nx reset`; never let it grow per-worktree.
+- **`yarn serve` does not parallelize.** This is a Module Federation monorepo with hardcoded per-app ports (`apps/*/project.json`), so only one worktree can serve at a time — serve serially, in whichever worktree you are reviewing. Tests, builds, lint, and typecheck are worktree-isolated and safe to run concurrently.
+
+**Window naming.** `dev-layout.sh` names every tmux window `{branch}({repo})` (e.g. `feature/MOP-27970(mop-console-monorepo)`); the repo half comes from the git *common dir*, so it is the real project name even inside a worktree. Window reuse and `wtd` match this name as a **suffix**, so a marker prefix never spawns a duplicate window.
 
 ## opencode Config
 

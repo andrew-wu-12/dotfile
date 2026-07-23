@@ -20,9 +20,14 @@ repo_root=$(git rev-parse --show-toplevel 2>/dev/null) || {
 }
 repo_name=${repo_root:t}
 
-window_exists() {  # session, window_name
-  tmux list-windows -t "$1" -F '#{window_name}' 2>/dev/null | grep -qxF "$2"
-}
+# Window name is universally "<branch>(<repo>)". The repo name comes from the
+# parent of the shared git common dir, so it is the real project name even from
+# inside a linked worktree (where repo_root's basename is just the ticket).
+branch_name=$(git rev-parse --abbrev-ref HEAD 2>/dev/null)
+common_dir=$(git rev-parse --git-common-dir 2>/dev/null)
+case "$common_dir" in /*) ;; *) common_dir="$repo_root/$common_dir" ;; esac
+main_repo=${common_dir:h:t}
+win_name="${branch_name}(${main_repo})"
 
 # Given the pane id of the (already-created) nvim pane, carve out the claude
 # column and the command pane, launch the tools, and focus nvim.
@@ -47,15 +52,27 @@ layout_panes() {  # nvim_pane_id
 
 build_window() {  # session
   local p_nvim
-  p_nvim=$(tmux new-window -a -t "$1:" -n "$repo_name" -c "$repo_root" -P -F '#{pane_id}')
+  p_nvim=$(tmux new-window -a -t "$1:" -n "$win_name" -c "$repo_root" -P -F '#{pane_id}')
   layout_panes "$p_nvim"
+}
+
+# Echo the id of the window for $2 in session $1. Matches the canonical name
+# exactly or with a leading notification marker (agent-notify.sh renames windows
+# to "<marker><canonical>"), so a flagged window is reused, not duplicated.
+window_id_for() {  # session, window_name
+  tmux list-windows -t "$1" -F '#{window_id} #{window_name}' 2>/dev/null \
+    | while IFS=' ' read -r id name; do
+        [[ "$name" == "$2" || "$name" == *" $2" ]] && { print -r -- "$id"; break; }
+      done
+  return 0  # "no match" is not an error; without this `set -e` aborts the caller
 }
 
 if [[ -n ${TMUX:-} ]]; then
   # Already inside tmux: add/select the window in the current session.
   session=$(tmux display-message -p '#S')
-  if window_exists "$session" "$repo_name"; then
-    tmux select-window -t "$session:$repo_name"
+  win_id=$(window_id_for "$session" "$win_name")
+  if [[ -n "$win_id" ]]; then
+    tmux select-window -t "$win_id"
   else
     build_window "$session"
   fi
@@ -65,12 +82,14 @@ else
   if tmux list-sessions >/dev/null 2>&1; then
     session=$(tmux list-sessions -F '#{session_last_attached} #{session_name}' \
       | sort -rn | head -1 | cut -d' ' -f2-)
-    window_exists "$session" "$repo_name" || build_window "$session"
+    win_id=$(window_id_for "$session" "$win_name")
+    [[ -n "$win_id" ]] || { build_window "$session"; win_id=$(window_id_for "$session" "$win_name"); }
   else
     session=main
-    tmux new-session -d -s "$session" -n "$repo_name" -c "$repo_root"
-    layout_panes "$(tmux list-panes -t "$session:$repo_name" -F '#{pane_id}' | head -1)"
+    tmux new-session -d -s "$session" -n "$win_name" -c "$repo_root"
+    win_id=$(window_id_for "$session" "$win_name")
+    layout_panes "$(tmux list-panes -t "$win_id" -F '#{pane_id}' | head -1)"
   fi
-  tmux select-window -t "$session:$repo_name"
+  tmux select-window -t "$win_id"
   exec tmux attach-session -t "$session"
 fi

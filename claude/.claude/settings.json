@@ -28,21 +28,21 @@
       {
         "matcher": "permission_prompt|idle_prompt|agent_needs_input",
         "hooks": [
-          { "type": "command", "command": "$HOME/bin/agent-notify.sh notification" }
+          { "type": "command", "command": "$HOME/bin/tmux-agent-notify.sh notification" }
         ]
       }
     ],
     "Stop": [
       {
         "hooks": [
-          { "type": "command", "command": "$HOME/bin/agent-notify.sh stop" }
+          { "type": "command", "command": "$HOME/bin/tmux-agent-notify.sh stop" }
         ]
       }
     ],
     "UserPromptSubmit": [
       {
         "hooks": [
-          { "type": "command", "command": "$HOME/bin/agent-notify.sh clear" }
+          { "type": "command", "command": "$HOME/bin/tmux-agent-notify.sh clear" }
         ]
       }
     ]

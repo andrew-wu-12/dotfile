@@ -42,7 +42,7 @@ fi
 
 echo "Tearing down worktree: $ROOT (branch $BRANCH)"
 
-# Close the tmux window dev-layout.sh created for this worktree. It names windows
+# Close the tmux window tmux-dev-layout.sh created for this worktree. It names windows
 # "<branch>(<repo>)", so recompute that and kill by exact name → window id (robust
 # to slashes/parens in the name).
 common_dir=$(git rev-parse --git-common-dir 2>/dev/null)

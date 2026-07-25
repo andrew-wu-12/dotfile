@@ -15,7 +15,7 @@
 set -eu
 
 repo_root=$(git rev-parse --show-toplevel 2>/dev/null) || {
-  print -u2 "dev-layout: not inside a git repo"
+  print -u2 "tmux-dev-layout: not inside a git repo"
   exit 1
 }
 repo_name=${repo_root:t}
@@ -57,7 +57,7 @@ build_window() {  # session
 }
 
 # Echo the id of the window for $2 in session $1. Matches the canonical name
-# exactly or with a leading notification marker (agent-notify.sh renames windows
+# exactly or with a leading notification marker (tmux-agent-notify.sh renames windows
 # to "<marker><canonical>"), so a flagged window is reused, not duplicated.
 window_id_for() {  # session, window_name
   tmux list-windows -t "$1" -F '#{window_id} #{window_name}' 2>/dev/null \

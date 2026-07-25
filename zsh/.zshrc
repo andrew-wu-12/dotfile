@@ -121,7 +121,7 @@ alias wtd='zsh ~/bin/worktree-done.sh'
 alias dpo='zsh ~/bin/deploy-one.sh $(git rev-parse --abbrev-ref HEAD)'
 alias bws='zsh ~/bin/bi-weekly-report.sh'
 alias tbs='zsh ~/bin/trace-build.sh $(git rev-parse --abbrev-ref HEAD)'
-alias dev='zsh ~/bin/dev-layout.sh'
+alias dev='zsh ~/bin/tmux-dev-layout.sh'
 
 # Git
 alias gp='git push origin $(git rev-parse --abbrev-ref HEAD)'

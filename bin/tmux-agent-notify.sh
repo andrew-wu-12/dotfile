@@ -9,7 +9,7 @@
 # hook's stdout as extra context injected back into the conversation, so every
 # command here redirects its output and the script only ever exits 0.
 #
-# Usage (from settings.json): agent-notify.sh <notification|stop|clear>
+# Usage (from settings.json): tmux-agent-notify.sh <notification|stop|clear>
 
 emulate -L zsh
 set -u
@@ -27,7 +27,7 @@ case "$cwd" in
     *) exit 0 ;;   # not a ticket worktree — stay quiet
 esac
 
-# Canonical window name "<branch>(<repo>)", matching dev-layout.sh.
+# Canonical window name "<branch>(<repo>)", matching tmux-dev-layout.sh.
 root=$(git -C "$cwd" rev-parse --show-toplevel 2>/dev/null) || root="$cwd"
 branch=$(git -C "$cwd" rev-parse --abbrev-ref HEAD 2>/dev/null)
 common=$(git -C "$cwd" rev-parse --git-common-dir 2>/dev/null)

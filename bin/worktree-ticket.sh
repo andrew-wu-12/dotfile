@@ -90,7 +90,7 @@ WORKTREE_DIR="$WORKTREE_ROOT/$TICKET_NUMBER"
 if [[ -e "$WORKTREE_DIR" ]]; then
     echo "Worktree already exists at $WORKTREE_DIR — opening it."
     wt_install_hooks "$WORKTREE_DIR"
-    cd "$WORKTREE_DIR" && zsh ~/bin/dev-layout.sh
+    cd "$WORKTREE_DIR" && zsh ~/bin/tmux-dev-layout.sh
     exit 0
 fi
 
@@ -143,4 +143,4 @@ fi
 wt_install_hooks "$WORKTREE_DIR"
 
 echo "Worktree ready: $WORKTREE_DIR"
-cd "$WORKTREE_DIR" && zsh ~/bin/dev-layout.sh
+cd "$WORKTREE_DIR" && zsh ~/bin/tmux-dev-layout.sh

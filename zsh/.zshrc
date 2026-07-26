@@ -141,6 +141,20 @@ alias yd='yarn download-options'
 alias ygm='yarn gen:modal "$(git rev-parse --show-prefix)"'
 alias ygq='yarn gen:query-page "$(git rev-parse --show-prefix)"'
 
+# Bare `tmux` with a server already running starts a NEW numbered session holding a
+# single window, so `exit` there tears the session down and drops you out of tmux
+# instead of closing a window. Attach to the most-recently-used session instead
+# (same MRU pick as tmux-dev-layout.sh). Any explicit args still pass straight through,
+# so `tmux new`, `tmux ls`, etc. are unaffected.
+tmux() {
+  if [[ $# -eq 0 && -z ${TMUX:-} ]] && command tmux has-session 2>/dev/null; then
+    command tmux attach -t "$(command tmux list-sessions -F '#{session_last_attached} #{session_name}' \
+      | sort -rn | head -1 | cut -d' ' -f2-)"
+  else
+    command tmux "$@"
+  fi
+}
+
 alias tpr='tmux select-pane -T'
 alias tvs='tmux split-window -v'
 alias ths='tmux split-window -h'

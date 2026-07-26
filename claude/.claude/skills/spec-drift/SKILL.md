@@ -15,8 +15,6 @@ already written.** When a PM changes a field/rule/endpoint mid-development, code
 written for the earlier spec is silently wrong and surfaces in UAT. This diffs the
 spec's round snapshots and only inspects what changed, then checks the branch.
 
-`SKILL_DIR` = `~/.claude/skills/spec-drift`.
-
 ## Prerequisites
 
 - At least **two rounds** exist for the ticket (`specs/.rounds/MOP-XXXX/`). If
@@ -30,8 +28,8 @@ spec's round snapshots and only inspects what changed, then checks the branch.
 ### 1. Get the spec delta
 
 ```bash
-"$SKILL_DIR/scripts/round_diff.sh" MOP-XXXX        # latest two rounds
-"$SKILL_DIR/scripts/round_diff.sh" MOP-XXXX 3      # explicit: round-02 -> round-03
+~/bin/spec-round-diff.sh MOP-XXXX        # latest two rounds
+~/bin/spec-round-diff.sh MOP-XXXX 3      # explicit: round-02 -> round-03
 ```
 
 Exit 2 = fewer than two rounds (stop, run spec-sync). Otherwise you get a unified

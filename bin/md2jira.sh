@@ -25,7 +25,7 @@ function depth_of(s,   ind) { ind = indent_of(s); return int(ind / 2) + 1 }
 
 # Inline conversions, in dependency order. Code spans are lifted out first so
 # nothing inside them is rewritten, then restored last.
-function inline(s,   out, i, n, code, tok, p, m, t, u) {
+function inline(s,   out, i, n, code, tok, p, m, t, u, c) {
     n = 0
     out = ""
     while (match(s, /`[^`]+`/)) {
@@ -86,10 +86,16 @@ function inline(s,   out, i, n, code, tok, p, m, t, u) {
     }
     s = out s
 
+    # Braces inside {{monospace}} must be escaped: Jira reads a bare { as the start
+    # of a macro, so `Col xs={2}` -> {{Col xs={2}}} desyncs the parser and every
+    # heading and table AFTER it in the document renders as plain text.
     for (i = 1; i <= n; i++) {
         tok = "\001" i "\002"
         p = index(s, tok)
-        if (p > 0) s = substr(s, 1, p - 1) "{{" code[i] "}}" substr(s, p + length(tok))
+        c = code[i]
+        gsub(/\{/, "\\{", c)
+        gsub(/\}/, "\\}", c)
+        if (p > 0) s = substr(s, 1, p - 1) "{{" c "}}" substr(s, p + length(tok))
     }
     return s
 }

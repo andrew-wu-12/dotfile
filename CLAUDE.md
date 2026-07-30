@@ -91,6 +91,7 @@ All scripts are symlinked to `~/bin/` and have aliases in `.zshrc`:
 `prefix` is `Ctrl-B`. Notable bindings:
 - `prefix Ctrl-O` — opens opencode in a popup (90% of terminal)
 - `prefix Ctrl-G` — opens lazygit in a popup
+- `prefix Ctrl-E` — opens nvim in a popup, same path as the current pane
 - `prefix w` — vertical window "tab" picker (fzf popup, all sessions, colored preview); `tmux-window-picker.sh`, replaces native choose-tree
 - `prefix Ctrl-S` / `prefix Ctrl-R` — tmux-resurrect save / restore
 - Navigation via vim-tmux-navigator: `Ctrl-h/j/k/l` and arrow variants

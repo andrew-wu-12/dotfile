@@ -3,8 +3,10 @@
 # remove the worktree, delete the local branch (safely), and prune. Run this
 # from inside the worktree you want to retire.
 #
+# Works against any git repo's linked worktrees, MOP or otherwise.
+#
 # Guardrails:
-#   - refuses to run against the main checkout ($MOP_MONOREPO_PATH)
+#   - refuses to run against a main checkout (see the .git file/dir check below)
 #   - refuses a dirty worktree unless --force is passed (never destroys
 #     uncommitted work silently)
 #   - deletes the branch with `git branch -d` (safe): git refuses if the branch
@@ -20,13 +22,9 @@ FORCE=0
 
 ROOT=$(git rev-parse --show-toplevel 2>/dev/null) || { echo "wtd: not inside a git repo"; exit 1; }
 
-if [[ "$ROOT" == "${MOP_MONOREPO_PATH:A}" || "$ROOT" == "$MOP_MONOREPO_PATH" ]]; then
-    echo "wtd: refusing to tear down the main checkout ($ROOT)"
-    exit 1
-fi
-
 # A linked worktree has a .git *file* (a pointer); the main checkout has a .git
-# *directory*. This is a second guard against running in a non-worktree repo.
+# *directory*. This is the guard against running against the main checkout or
+# any non-worktree repo.
 if [[ ! -f "$ROOT/.git" ]]; then
     echo "wtd: $ROOT is not a linked worktree (no .git pointer file)"
     exit 1
@@ -53,7 +51,10 @@ tmux list-windows -a -F '#{window_id} #{window_name}' 2>/dev/null \
         [[ "$wname" == "$WIN_NAME" || "$wname" == *" $WIN_NAME" ]] && tmux kill-window -t "$wid"
       done
 
-cd "$MOP_MONOREPO_PATH"
+# git worktree remove must run from outside the tree being removed. common_dir
+# (computed above) is the main checkout's .git dir, so its parent is the main
+# worktree root — generic across any repo, not just MOP.
+cd "${common_dir:h}"
 if [[ $FORCE -eq 1 ]]; then
     git worktree remove --force "$ROOT"
 else

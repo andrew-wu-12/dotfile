@@ -2,7 +2,7 @@
 # Claude Code notification hook for ticket worktrees. Registered globally in
 # ~/.claude/settings.json for the Notification / Stop / UserPromptSubmit events,
 # but self-guards to only act when the agent's cwd is inside a ticket worktree
-# under $MOP_WORKTREE_ROOT.
+# under $WORKTREE_ROOT.
 #
 # Side effects only: a macOS notification (osascript) + a tmux window marker.
 # It MUST stay silent on stdout — Claude Code treats a Stop / UserPromptSubmit
@@ -21,7 +21,7 @@ input=$(cat)
 cwd=$(printf '%s' "$input" | jq -r '.cwd // empty' 2>/dev/null)
 [ -z "$cwd" ] && cwd="$PWD"
 
-worktree_root="${MOP_WORKTREE_ROOT:-$HOME/project/worktrees}"
+worktree_root="${WORKTREE_ROOT:-$HOME/project/worktrees}"
 case "$cwd" in
     "$worktree_root"/*) ;;
     *) exit 0 ;;   # not a ticket worktree — stay quiet

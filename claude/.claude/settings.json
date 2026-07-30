@@ -1,10 +1,43 @@
 {
-  "model": "opus[1m]",
+  "hooks": {
+    "Notification": [
+      {
+        "matcher": "permission_prompt|idle_prompt|agent_needs_input",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "$HOME/bin/tmux-agent-notify.sh notification"
+          }
+        ]
+      }
+    ],
+    "Stop": [
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "$HOME/bin/tmux-agent-notify.sh stop"
+          }
+        ]
+      }
+    ],
+    "UserPromptSubmit": [
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "$HOME/bin/tmux-agent-notify.sh clear"
+          }
+        ]
+      }
+    ]
+  },
   "enabledPlugins": {
     "typescript-lsp@claude-plugins-official": true,
     "context7@claude-plugins-official": true
   },
   "effortLevel": "high",
+  "awaySummaryEnabled": false,
   "theme": "auto",
   "mcpServers": {
     "codex": {
@@ -21,30 +54,5 @@
         "source ~/.nvm/nvm.sh && nvm use 20.19 >/dev/null && npx -y chrome-devtools-mcp@latest"
       ]
     }
-  },
-  "awaySummaryEnabled": false,
-  "hooks": {
-    "Notification": [
-      {
-        "matcher": "permission_prompt|idle_prompt|agent_needs_input",
-        "hooks": [
-          { "type": "command", "command": "$HOME/bin/tmux-agent-notify.sh notification" }
-        ]
-      }
-    ],
-    "Stop": [
-      {
-        "hooks": [
-          { "type": "command", "command": "$HOME/bin/tmux-agent-notify.sh stop" }
-        ]
-      }
-    ],
-    "UserPromptSubmit": [
-      {
-        "hooks": [
-          { "type": "command", "command": "$HOME/bin/tmux-agent-notify.sh clear" }
-        ]
-      }
-    ]
   }
 }

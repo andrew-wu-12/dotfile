@@ -10,6 +10,7 @@ function install_recommended_cli_tools() {
         "ripgrep:rg"
         "eza:eza"
         "lazygit:lazygit"
+        "terminal-notifier:terminal-notifier"
     )
     # zsh plugins provide no command of their own, so they are detected by the
     # file .zshrc sources rather than by command -v.

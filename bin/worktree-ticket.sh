@@ -71,6 +71,10 @@ TICKET_DATA=$(get_ticket_content "$TICKET_NUMBER")
 TICKET_ISSUE_TYPE=$(get_from_json "$TICKET_DATA" ".issue_type")
 PARENT_DATA=$(get_ticket_parent "$TICKET_DATA")
 PARENT_TICKET_NUMBER=$(get_from_json "$PARENT_DATA" ".ticket_number")
+
+# Picked up by tmux-dev-layout.sh to tag the window with @ticket_title, so
+# tmux-window-picker.sh can show it without a live JIRA call.
+export TICKET_TITLE=$(get_from_json "$TICKET_DATA" ".summary")
 echo "TICKET_NUMBER: $TICKET_NUMBER
 TICKET_ISSUE_TYPE: $TICKET_ISSUE_TYPE
 PARENT_TICKET_NUMBER: $PARENT_TICKET_NUMBER"

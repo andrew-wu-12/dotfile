@@ -11,6 +11,11 @@
 # One shared template applied at the current repo's root. Idempotent by
 # window name (the repo dir): re-running just re-selects the repo's window.
 # Bootstraps tmux if invoked from a bare terminal.
+#
+# If $TICKET_TITLE is set (worktree-ticket.sh exports it for mwt tickets),
+# it's stashed as the @ticket_title window user option so
+# tmux-window-picker.sh can show it on the window's card without a live JIRA
+# call. Left unset for wt/plain dev windows.
 
 set -eu
 
@@ -67,6 +72,13 @@ window_id_for() {  # session, window_name
   return 0  # "no match" is not an error; without this `set -e` aborts the caller
 }
 
+# Stash $TICKET_TITLE (if set) as a window user option, for
+# tmux-window-picker.sh's card body. No-op for wt/plain dev windows.
+tag_ticket_title() {  # window_id
+  [[ -n "${TICKET_TITLE:-}" && -n "${1:-}" ]] || return 0
+  tmux set-option -w -t "$1" @ticket_title "$TICKET_TITLE"
+}
+
 if [[ -n ${TMUX:-} ]]; then
   # Already inside tmux: add/select the window in the current session.
   session=$(tmux display-message -p '#S')
@@ -75,7 +87,9 @@ if [[ -n ${TMUX:-} ]]; then
     tmux select-window -t "$win_id"
   else
     build_window "$session"
+    win_id=$(window_id_for "$session" "$win_name")
   fi
+  tag_ticket_title "$win_id"
 else
   # Bare terminal: attach to the most-recently-used session if a server is
   # running, otherwise start a fresh 'main' session.
@@ -90,6 +104,7 @@ else
     win_id=$(window_id_for "$session" "$win_name")
     layout_panes "$(tmux list-panes -t "$win_id" -F '#{pane_id}' | head -1)"
   fi
+  tag_ticket_title "$win_id"
   tmux select-window -t "$win_id"
   exec tmux attach-session -t "$session"
 fi

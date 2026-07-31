@@ -37,7 +37,7 @@ canonical="${branch}(${repo})"
 ticket=${root:t}
 
 marker=""; title=""; msg=""; do_popup=0; sound="Glass"
-session=""; window_id=""; term_app=""
+session=""; window_id=""; term_app=""; client_tty=""
 case "$event" in
     notification)
         marker="🔴 "; do_popup=1
@@ -86,9 +86,11 @@ if [ -n "${TMUX_PANE:-}" ]; then
     tmux rename-window -t "$TMUX_PANE" "${marker}${canonical}" >/dev/null 2>&1
 
     # Resolved unconditionally (not just for the suppression check below):
-    # a click-to-focus action needs the terminal app's bundle id exactly when
-    # the popup fires, i.e. when the window is NOT active.
+    # a click-to-focus action needs the terminal app's bundle id, and the
+    # client's tty, exactly when the popup fires, i.e. when the window is
+    # NOT active.
     client_pid=$(tmux list-clients -F '#{client_pid}' -t "$session" 2>/dev/null | head -1)
+    client_tty=$(tmux list-clients -F '#{client_tty}' -t "$session" 2>/dev/null | head -1)
     term_app=$(app_bundle_for_pid "${client_pid:-0}")
 
     # "Already looking at it" needs all three: window active, session attached,
@@ -109,11 +111,21 @@ if [ "$do_popup" = "1" ]; then
     title=${title//\"/ }
 
     if command -v terminal-notifier >/dev/null 2>&1 \
-        && [ -n "$session" ] && [ -n "$window_id" ] && [ -n "$term_app" ]; then
+        && [ -n "$session" ] && [ -n "$window_id" ] && [ -n "$term_app" ] && [ -n "$client_tty" ]; then
         # Click-to-focus: switch tmux to the originating session/window and
         # raise the terminal app. Window is targeted by id (stable), not name
         # (rewritten on every event with the 🔴/🟢 marker).
-        execute="tmux switch-client -t '${session}' && tmux select-window -t '${window_id}' && osascript -e 'tell application id \"${term_app}\" to activate'"
+        #
+        # -execute runs later, in a stripped-down environment spawned by
+        # launchd/Notification Center on click — PATH there is just
+        # /usr/bin:/bin:/usr/sbin:/sbin, so a bare `tmux` is "command not
+        # found"; the absolute path must be resolved now, in the hook's own
+        # (normal) PATH. That relaunched process also isn't itself attached
+        # to any tmux client, so switch-client can't infer "the current
+        # client" — it silently no-ops without an explicit -c <client-tty>.
+        tmux_bin=$(command -v tmux 2>/dev/null)
+        [ -z "$tmux_bin" ] && tmux_bin="/opt/homebrew/bin/tmux"
+        execute="'${tmux_bin}' switch-client -c '${client_tty}' -t '${session}' && '${tmux_bin}' select-window -t '${window_id}' && osascript -e 'tell application id \"${term_app}\" to activate'"
         terminal-notifier -title "$title" -subtitle "$branch" -message "$msg" \
             -sound "$sound" -execute "$execute" >/dev/null 2>&1
     else

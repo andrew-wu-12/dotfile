@@ -8,12 +8,11 @@
 # multi-line item rendering): a bold header line ("session │ window-name",
 # window-name already carrying any 🔴/🟢 marker from tmux-agent-notify.sh),
 # plus for mwt ticket windows a dim indented ticket-title line (from the
-# @ticket_title window option set by worktree-ticket.sh) and a dim indented
-# Claude-status line derived from the marker. Plain wt/dev windows have
-# neither body line, so their card is just the header. No live preview pane —
-# fzf's multi-line matching searches the whole card (header + body) as a
-# side effect of this layout; there's no fzf option to scope it to the header
-# alone once items are multi-line.
+# @ticket_title window option set by worktree-ticket.sh). Plain wt/dev
+# windows have no body line, so their card is just the header. No live
+# preview pane — fzf's multi-line matching searches the whole card (header +
+# body) as a side effect of this layout; there's no fzf option to scope it to
+# the header alone once items are multi-line.
 #
 # Read-only navigator by design — it never creates, renames, or kills windows.
 # Ticket-window lifecycle stays with wt / wtd so worktrees never get orphaned.
@@ -42,17 +41,9 @@ list_file=$(mktemp)
 trap 'rm -f "$list_file"' EXIT
 
 while IFS="$TAB" read -r sess winid header title; do
-  case "$header" in
-    *"🔴 "*) claude_status="Needs confirmation" ;;
-    *"🟢 "*) claude_status="Step complete" ;;
-    *) claude_status="" ;;
-  esac
-
   record="${sess}${TAB}${winid}${TAB}${BOLD}${header}${RESET}"
   [ -n "$title" ] && record="${record}
   ${DIM}${title}${RESET}"
-  [ -n "$claude_status" ] && record="${record}
-  ${DIM}${claude_status}${RESET}"
 
   printf '%s\0' "$record" >> "$list_file"
 done <<EOF

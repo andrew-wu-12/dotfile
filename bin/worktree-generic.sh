@@ -13,9 +13,17 @@ source ~/.zshrc
 
 WORKTREE_ROOT="${WORKTREE_ROOT:-$HOME/project/worktrees}"
 
+# -n/--new-window forwards straight to tmux-dev-layout.sh: open the dev layout
+# in a new tmux window instead of the default of overriding the current one.
+DEV_LAYOUT_FLAGS=()
+while [[ "${1:-}" == -n || "${1:-}" == --new-window ]]; do
+    DEV_LAYOUT_FLAGS=(-n)
+    shift
+done
+
 BRANCH_NAME="${1:-}"
 if [[ -z "$BRANCH_NAME" ]]; then
-    echo "Usage: wt <branch-name>"
+    echo "Usage: wt [-n|--new-window] <branch-name>"
     exit 1
 fi
 
@@ -30,7 +38,7 @@ WORKTREE_DIR="$WORKTREE_ROOT/$REPO_NAME/$DIR_NAME"
 if [[ -e "$WORKTREE_DIR" ]]; then
     echo "Worktree already exists at $WORKTREE_DIR — opening it."
     wt_install_hooks "$WORKTREE_DIR"
-    cd "$WORKTREE_DIR" && zsh ~/bin/tmux-dev-layout.sh
+    cd "$WORKTREE_DIR" && zsh ~/bin/tmux-dev-layout.sh "${DEV_LAYOUT_FLAGS[@]}"
     exit 0
 fi
 
@@ -59,4 +67,4 @@ wt_clone_node_modules "$REPO_ROOT" "$WORKTREE_DIR"
 wt_install_hooks "$WORKTREE_DIR"
 
 echo "Worktree ready: $WORKTREE_DIR"
-cd "$WORKTREE_DIR" && zsh ~/bin/tmux-dev-layout.sh
+cd "$WORKTREE_DIR" && zsh ~/bin/tmux-dev-layout.sh "${DEV_LAYOUT_FLAGS[@]}"

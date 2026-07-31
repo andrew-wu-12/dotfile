@@ -12,12 +12,26 @@
 # window name (the repo dir): re-running just re-selects the repo's window.
 # Bootstraps tmux if invoked from a bare terminal.
 #
+# Default: rebuilds the layout onto the CURRENT window (killing its other
+# panes and renaming it) rather than spawning a new tab. Pass -n/--new-window
+# to open the layout in a new window instead, the old behavior. Either way, if
+# a window matching this repo/branch already exists, it's just selected — the
+# current window is never overridden with a duplicate.
+#
 # If $TICKET_TITLE is set (worktree-ticket.sh exports it for mwt tickets),
 # it's stashed as the @ticket_title window user option so
 # tmux-window-picker.sh can show it on the window's card without a live JIRA
 # call. Left unset for wt/plain dev windows.
 
 set -eu
+
+NEW_WINDOW=0
+while [[ $# -gt 0 ]]; do
+  case "$1" in
+    -n|--new-window) NEW_WINDOW=1; shift ;;
+    *) print -u2 "tmux-dev-layout: unknown argument: $1"; exit 1 ;;
+  esac
+done
 
 repo_root=$(git rev-parse --show-toplevel 2>/dev/null) || {
   print -u2 "tmux-dev-layout: not inside a git repo"
@@ -61,6 +75,31 @@ build_window() {  # session
   layout_panes "$p_nvim"
 }
 
+# Default path: rebuild the layout on the window currently in view instead of
+# opening a new one. Kills every pane but the one this script itself is
+# running in, renames the window, and hands that pane to layout_panes.
+#
+# The current pane can't be respawn-killed like a normal reset — this script's
+# own process is running in it, and killing it here would kill the script
+# mid-flight (respawn-pane -k was tried and does exactly that: the pane's
+# process dies before rename-window/layout_panes ever run). Instead, `cd` and
+# `nvim` are queued via send-keys: the pty just buffers those keystrokes while
+# this script owns the foreground, and its own shell picks them up the moment
+# the script exits and stdin is read again — the same type-ahead-after-a-
+# command-exits behavior a plain terminal gives you.
+override_window() {
+  local cur_win cur_pane
+  cur_win=$(tmux display-message -p '#{window_id}')
+  cur_pane=$(tmux display-message -p '#{pane_id}')
+  tmux list-panes -t "$cur_win" -F '#{pane_id}' | while IFS= read -r pid; do
+    [[ "$pid" == "$cur_pane" ]] || tmux kill-pane -t "$pid"
+  done
+  tmux rename-window -t "$cur_win" "$win_name"
+  tmux send-keys -t "$cur_pane" "cd \"$repo_root\"" C-m
+  layout_panes "$cur_pane"
+  print -r -- "$cur_win"
+}
+
 # Echo the id of the window for $2 in session $1. Matches the canonical name
 # exactly or with a leading notification marker (tmux-agent-notify.sh renames windows
 # to "<marker><canonical>"), so a flagged window is reused, not duplicated.
@@ -85,9 +124,11 @@ if [[ -n ${TMUX:-} ]]; then
   win_id=$(window_id_for "$session" "$win_name")
   if [[ -n "$win_id" ]]; then
     tmux select-window -t "$win_id"
-  else
+  elif [[ "$NEW_WINDOW" == 1 ]]; then
     build_window "$session"
     win_id=$(window_id_for "$session" "$win_name")
+  else
+    win_id=$(override_window)
   fi
   tag_ticket_title "$win_id"
 else

@@ -31,6 +31,14 @@ source ~/.zshrc
 
 WORKTREE_ROOT="${WORKTREE_ROOT:-$HOME/project/worktrees}"
 
+# -n/--new-window forwards straight to tmux-dev-layout.sh: open the dev layout
+# in a new tmux window instead of the default of overriding the current one.
+DEV_LAYOUT_FLAGS=()
+while [[ "${1:-}" == -n || "${1:-}" == --new-window ]]; do
+    DEV_LAYOUT_FLAGS=(-n)
+    shift
+done
+
 # Ensure a branch exists and has a draft PR, without checking it out anywhere.
 # The branch is created one empty commit ahead of its base (so gh has a diff to
 # open the PR against), pushed, and a draft PR is opened. If the branch already
@@ -63,7 +71,7 @@ function wt_ensure_branch() {
 
 TICKET_NUMBER="${1:-}"
 if [[ -z "$TICKET_NUMBER" ]]; then
-    echo "Usage: mwt <MOP-XXXX>"
+    echo "Usage: mwt [-n|--new-window] <MOP-XXXX>"
     exit 1
 fi
 
@@ -84,7 +92,7 @@ WORKTREE_DIR="$WORKTREE_ROOT/$REPO_NAME/$TICKET_NUMBER"
 if [[ -e "$WORKTREE_DIR" ]]; then
     echo "Worktree already exists at $WORKTREE_DIR — opening it."
     wt_install_hooks "$WORKTREE_DIR"
-    cd "$WORKTREE_DIR" && zsh ~/bin/tmux-dev-layout.sh
+    cd "$WORKTREE_DIR" && zsh ~/bin/tmux-dev-layout.sh "${DEV_LAYOUT_FLAGS[@]}"
     exit 0
 fi
 
@@ -115,4 +123,4 @@ wt_clone_node_modules "$MOP_MONOREPO_PATH" "$WORKTREE_DIR"
 wt_install_hooks "$WORKTREE_DIR"
 
 echo "Worktree ready: $WORKTREE_DIR"
-cd "$WORKTREE_DIR" && zsh ~/bin/tmux-dev-layout.sh
+cd "$WORKTREE_DIR" && zsh ~/bin/tmux-dev-layout.sh "${DEV_LAYOUT_FLAGS[@]}"

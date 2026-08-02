@@ -11,6 +11,7 @@ function install_recommended_cli_tools() {
         "eza:eza"
         "lazygit:lazygit"
         "terminal-notifier:terminal-notifier"
+        "fzf:fzf"
     )
     # zsh plugins provide no command of their own, so they are detected by the
     # file .zshrc sources rather than by command -v.

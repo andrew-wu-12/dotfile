@@ -46,7 +46,7 @@ Nothing is sent without an explicit approval in the same session.
 ### 1. Load the note and its round
 
 ```bash
-SPECS="$HOME/self/SyncObsidianNote/005-Sources/公司筆記/specs"
+SPECS="$HOME/personal/office-note/Specs"
 NOTE="$SPECS/MOP-XXXX.md"
 ```
 

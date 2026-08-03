@@ -16,7 +16,7 @@
 set -uo pipefail
 
 TICKET="${1:?usage: spec-round-diff.sh <MOP-XXXX> [BASELINE] [TARGET]}"
-RDIR="$HOME/self/SyncObsidianNote/005-Sources/公司筆記/specs/.rounds/$TICKET"
+RDIR="$HOME/personal/office-note/Specs/.rounds/$TICKET"
 
 [ -d "$RDIR" ] || { echo "error: no rounds dir for $TICKET ($RDIR)" >&2; exit 2; }
 

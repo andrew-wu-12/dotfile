@@ -20,8 +20,8 @@ and grounds it in the actual repos.
 
 ## Artifact location
 
-- Note: `~/self/SyncObsidianNote/005-Sources/公司筆記/specs/MOP-XXXX.md`
-- Round snapshots: `.../specs/.rounds/MOP-XXXX/round-NN.md` (machine-diffable;
+- Note: `~/personal/office-note/Specs/MOP-XXXX.md`
+- Round snapshots: `.../Specs/.rounds/MOP-XXXX/round-NN.md` (machine-diffable;
   the vault auto-commits every ~65s so git history is not a round boundary — these
   files are).
 

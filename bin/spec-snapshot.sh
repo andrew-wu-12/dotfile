@@ -10,7 +10,7 @@
 set -euo pipefail
 
 TICKET="${1:?usage: spec-snapshot.sh <TICKET-ID>}"
-SPECS="$HOME/self/SyncObsidianNote/005-Sources/公司筆記/specs"
+SPECS="$HOME/personal/office-note/Specs"
 NOTE="$SPECS/$TICKET.md"
 RDIR="$SPECS/.rounds/$TICKET"
 

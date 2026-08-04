@@ -40,6 +40,11 @@ fi
 
 echo "Tearing down worktree: $ROOT (branch $BRANCH)"
 
+# Sibling .title file (mwt only; no-op for wt/plain worktrees). Removed here,
+# once teardown is actually committed to, so it never outlives the worktree
+# it was written for.
+rm -f "${ROOT}.title"
+
 # Close the tmux window tmux-dev-layout.sh created for this worktree. It names windows
 # "<branch>(<repo>)", so recompute that and kill by exact name → window id (robust
 # to slashes/parens in the name).

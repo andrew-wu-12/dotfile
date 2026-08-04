@@ -89,6 +89,14 @@ PARENT_TICKET_NUMBER: $PARENT_TICKET_NUMBER"
 
 REPO_NAME=$(wt_repo_name "$MOP_MONOREPO_PATH")
 WORKTREE_DIR="$WORKTREE_ROOT/$REPO_NAME/$TICKET_NUMBER"
+
+# Sibling file (not inside the worktree, so it never shows up in that
+# worktree's own `git status`) that tmux-restore-ticket-titles.sh reads to
+# re-tag @ticket_title after a tmux-resurrect restore, which doesn't capture
+# custom window options. Written on every mwt run, including "already
+# exists", so it self-heals for worktrees created before this existed.
+echo "$TICKET_TITLE" > "${WORKTREE_DIR}.title"
+
 if [[ -e "$WORKTREE_DIR" ]]; then
     echo "Worktree already exists at $WORKTREE_DIR — opening it."
     wt_install_hooks "$WORKTREE_DIR"

@@ -228,10 +228,37 @@ EOF
     echo "✓ [$name] 工作目錄的 SSH 設定完成"
 }
 
+function configure_git_identity() {
+    local current_name current_email name email
+
+    current_name=$(git config --global user.name 2>/dev/null)
+    current_email=$(git config --global user.email 2>/dev/null)
+
+    if [ -n "$current_name" ] && [ -n "$current_email" ]; then
+        echo "✓ Git 全域身分已設定：$current_name <$current_email>"
+        return 0
+    fi
+
+    echo "尚未設定 Git 全域身分（user.name / user.email）"
+    read -r -p "請輸入 Git 使用者名稱：" name </dev/tty
+    read -r -p "請輸入 Git 電子郵件地址：" email </dev/tty
+
+    if [ -z "$name" ] || [ -z "$email" ]; then
+        echo "✗ 需要輸入使用者名稱與電子郵件地址，已略過 Git 身分設定"
+        return 1
+    fi
+
+    git config --global user.name "$name"
+    git config --global user.email "$email"
+    echo "✓ 已設定 Git 全域身分：$name <$email>"
+}
+
 function setup_ssh_key() {
     echo ""
     echo "=== Git SSH 金鑰設定 ==="
     echo ""
+
+    configure_git_identity
 
     SSH_KEY_PATH="$HOME/.ssh/id_ed25519"
     SSH_CONFIG="$HOME/.ssh/config"

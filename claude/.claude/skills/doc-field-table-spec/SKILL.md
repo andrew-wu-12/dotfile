@@ -57,10 +57,11 @@ Below is an example detailing the expected format and values for field columns:
 
 5. **Detail**:
 
-   - Provide a detailed description of the field, e.g., options for a select field.
+   - One short line — the single most load-bearing fact about the field (e.g. its option source, or what it's renamed/split from).
+   - If the field needs more than one fact explained, do **not** cram them into the cell as a run-on sentence. Keep the cell to its one line and put the rest as a bullet list below the table, one field-name-headed group per field that needs it.
 
 6. **Warnings**:
-   - Clearly list warnings, especially when specifications are incomplete or unusual.
+   - Same rule — one line per cell. Multiple warnings become multiple bullets under the table, not a semicolon-chained sentence inside the cell.
 
 ---
 

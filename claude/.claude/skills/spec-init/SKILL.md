@@ -157,4 +157,7 @@ prototype: <figma-url or empty>
 
 - NO GUESSING. Unstated → Open Question.
 - Evidence is `path:line`. A claim about the codebase without a location is a guess.
+  This applies to Open Questions and grounding notes — the `規格` body itself never
+  contains file paths, component/function/constant names, or route/URLs. It speaks
+  in business-level terms only: pages (module + page name), fields, API endpoints.
 - Spec body in Traditional Chinese; your status reporting to the user in English.

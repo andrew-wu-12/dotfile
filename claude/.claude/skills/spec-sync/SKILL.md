@@ -66,6 +66,23 @@ Questions and flag it to the user rather than silently picking one.
 
 - Rewrite the `規格` sections to reflect resolved decisions (Traditional Chinese,
   same doc-* skills as spec-init).
+- If an item was checked this round and came back **unchanged**, do not narrate
+  that in `規格` (no "stayed the same as Round N" callouts, no unchanged-item
+  prose). `規格` documents current truth only, not a diff log. Record the
+  "checked, no change" fact as a Decision Log row instead if it's worth keeping.
+- Any API contract in `後端規格` is a request/response JSON example (with
+  `[MISSING]` placeholders where unknown), not a prose description of fields.
+- `規格` speaks in business-level terms only: pages (by module + page name,
+  never a route/URL), data fields, and API endpoints. No file paths, component
+  names, function/hook names, or code constants (e.g. `configs/Foo.tsx`,
+  `handleSaveStep`, `STEP_DISPATCH_EDIT`, `FormGroup.tsx`). If a decision is
+  really about *how* to implement something (a library choice, a code
+  pattern), it belongs in the Decision Log, not `規格` — `規格` states the
+  observable behavior, not the implementation mechanism.
+- Before writing any multi-fact sentence in `規格` (field tables included), list
+  the discrete facts first, then keep that as a bullet list — don't fuse them
+  back into one run-on sentence or a stuffed table cell. Table cells stay one
+  line; a field needing more gets its own bullet group below the table.
 - **Append** to Decision Log: one dated, source-tagged row per decision this round.
 - **Append** a Round History entry summarizing what changed.
 - Update Open Questions: check off answered ones, add newly surfaced ones.
@@ -96,4 +113,11 @@ unresolved, lead with that — it is the thing that needs their call.
 - NEVER silently overwrite a conflicting value — surface it in step 4 first.
 - Most-recent-explicit wins; genuine ties become Open Questions, not guesses.
 - Decision Log / Round History append-only; `規格` always current truth.
+- `規格` never narrates unchanged items — that's what Decision Log is for.
+- API contracts are payload/response JSON, not prose.
+- List first, write second — multi-fact content is bullets, not run-on sentences
+  or stuffed table cells.
+- No file paths, component/function/constant names, or route/URLs in `規格` —
+  pages are named by module + page name, behavior is described observably.
+  Implementation mechanism belongs in the Decision Log, not `規格`.
 - Spec body in Traditional Chinese; reporting to the user in English.

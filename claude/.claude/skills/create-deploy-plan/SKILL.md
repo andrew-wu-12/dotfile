@@ -15,7 +15,7 @@ description: >-
 
 Turn the epic behind the current branch into a Confluence **deploy plan** page in
 the MOP space, matching the MOP deploy plan template (see the reference example
-`[MOP-27811] Task Mgmt. - Update API Host for Datalake Phase Out`).
+`MOP-27811 Task Mgmt. - Update API Host for Datalake Phase Out`).
 
 This is a **scaffolding** skill, not an auto-detector. The template's structure,
 title, ticket link, and correct parent folder are the fiddly deterministic parts
@@ -104,8 +104,8 @@ What the generator produces (don't hand-edit the storage XML — change
   data row (other cells blank, filled at deploy time). With `--config-deploy`, a
   second `mop_configuration_files` row is added.
 
-**Title**: `[<epic_key>] <epic_summary>` — e.g.
-`[MOP-27811] Task Mgmt. - Update API Host for Datalake Phase Out`.
+**Title**: `<epic_key> <epic_summary>` (no brackets around the ticket) — e.g.
+`MOP-27811 Task Mgmt. - Update API Host for Datalake Phase Out`.
 
 **Show the user the title, parent folder, and the two flag answers, then get one
 explicit confirmation** before publishing. You can dry-run without posting:
@@ -125,3 +125,37 @@ plan already exists — **stop, show the user its URL, and don't overwrite.** On
 success, report the new page's URL and remind the user to fill the Deployments
 table (version / developer / executor — the git project is pre-filled) and work
 through the per-stage checklists in the browser.
+
+### 5. Post the production frontend (and config) PR as comments
+
+Always do this after a successful publish (no need to ask) — it's a standard
+part of every deploy plan:
+
+```bash
+"$SKILL_DIR/scripts/post_pr_comment.sh" <page_id>
+```
+
+Looks up the open PR for the current branch against `main` in
+`mop-console-monorepo` via `gh pr list` and posts it as a native Confluence
+comment (not page body content) reading `Frontend PR` / `<pr_url>`.
+
+- **posted** → done, mention the comment was added when reporting the page URL.
+- **no_pr_found** (exit 2) — no open PR for this branch → **ask the user for
+  the PR URL** and retry with `--url <PR_URL>` (or `--branch <BRANCH>` first if
+  the branch/gh mapping looks wrong).
+
+**If `--config-deploy` was used in step 3**, also post the config PR — a
+*separate* comment. `mop_configuration_files` branches don't follow the
+ticket-name convention, so this searches by ticket key in the PR title instead
+of by branch head:
+
+```bash
+"$SKILL_DIR/scripts/post_pr_comment.sh" <page_id> --search-title <TICKET> \
+  --repo MorrisonExpress/mop_configuration_files --base master
+```
+
+- **posted** → done.
+- **no_pr_found** (exit 2) → ask the user for the PR URL, retry with `--url`.
+- **ambiguous** (exit 3) — more than one open PR title-matched the ticket →
+  **show the user the matches and ask them to pick**, then retry with `--url
+  <PR_URL>`. Don't guess.

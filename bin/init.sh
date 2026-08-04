@@ -14,7 +14,7 @@ STEP_LABELS=(
     "必要套件（jq、gh、curl、git、stow、nvm）"
     "Oh My Zsh"
     "基礎設定（stow zsh + bin）"
-    "推薦 CLI 工具（zoxide、rg、eza、lazygit）"
+    "推薦 CLI 工具（zoxide、rg、eza、lazygit、terminal-notifier、fzf）"
     "Starship 提示主題"
     "opencode"
     "Nvim 編輯器"
@@ -132,7 +132,7 @@ function detect_status() {
             ;;
         recommend-cli)
             local cmd plugin
-            for cmd in zoxide rg eza lazygit; do
+            for cmd in zoxide rg eza lazygit terminal-notifier fzf; do
                 command -v "$cmd" &>/dev/null || return 1
             done
             for plugin in zsh-autosuggestions zsh-syntax-highlighting; do

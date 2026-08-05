@@ -69,6 +69,44 @@ function wt_ensure_branch() {
     gh pr create -a @me -B "$PR_BASE" -H "$NAME" -t "$TITLE" -b "$CONTENT" -d
 }
 
+# Populates $WORKTREE_DIR/systemOptions — generated, gitignored data (enums,
+# menus, ports, etc. from `yarn download-options`) that a fresh `git worktree
+# add` never gets, since only the .d.ts stubs are tracked in git (see
+# .gitignore: "systemOptions/*" + "!systemOptions/**/*.d.ts"). Runs on every
+# mwt invocation (new worktree or reopening an existing one), so it
+# self-heals worktrees created before this existed.
+function wt_ensure_system_options() {
+    local WORKTREE_DIR="$1"
+    local SENTINEL="systemOptions/allCity.js"
+
+    [[ -e "$WORKTREE_DIR/$SENTINEL" ]] && return 0
+
+    if [[ -e "$MOP_MONOREPO_PATH/$SENTINEL" ]]; then
+        echo "Cloning systemOptions/ from main checkout…"
+        rm -rf "$WORKTREE_DIR/systemOptions"
+        cp -c -R "$MOP_MONOREPO_PATH/systemOptions" "$WORKTREE_DIR/systemOptions"
+        # Restores the tracked .d.ts stubs to this worktree's own branch
+        # version — the wholesale copy above just clobbered them with
+        # main's, which cp -R can't avoid short of hand-rolling an exclude.
+        git -C "$WORKTREE_DIR" checkout -- systemOptions 2>/dev/null
+        return 0
+    fi
+
+    # Main checkout has never run download-options either — fetch fresh.
+    # Requires VPN (internal *.local API hosts) and $GETDATATOKEN (exported
+    # from Keychain via ~/.zshrc, sourced above). Never blocks worktree
+    # creation/opening: mwt's whole point vs. crt is not needing VPN, so a
+    # missing/failed fetch here is a warn-and-continue, not a hard failure.
+    if ! scutil --nc list | command grep -q "Connected"; then
+        echo "Warning: systemOptions/ is missing and VPN is off — skipping (some option/enum dropdowns may not work). Connect to VPN and re-run mwt to heal."
+        return 0
+    fi
+
+    echo "Fetching systemOptions/ via yarn download-options (requires VPN)…"
+    (cd "$WORKTREE_DIR" && yarn download-options) || \
+        echo "Warning: yarn download-options failed. Some option/enum dropdowns may not work."
+}
+
 TICKET_NUMBER="${1:-}"
 if [[ -z "$TICKET_NUMBER" ]]; then
     echo "Usage: mwt [-n|--new-window] <MOP-XXXX>"
@@ -100,6 +138,7 @@ echo "$TICKET_TITLE" > "${WORKTREE_DIR}.title"
 if [[ -e "$WORKTREE_DIR" ]]; then
     echo "Worktree already exists at $WORKTREE_DIR — opening it."
     wt_install_hooks "$WORKTREE_DIR"
+    wt_ensure_system_options "$WORKTREE_DIR"
     cd "$WORKTREE_DIR" && zsh ~/bin/tmux-dev-layout.sh "${DEV_LAYOUT_FLAGS[@]}"
     exit 0
 fi
@@ -129,6 +168,7 @@ git worktree add "$WORKTREE_DIR" "$FEATURE_BRANCH" || { echo "git worktree add f
 
 wt_clone_node_modules "$MOP_MONOREPO_PATH" "$WORKTREE_DIR"
 wt_install_hooks "$WORKTREE_DIR"
+wt_ensure_system_options "$WORKTREE_DIR"
 
 echo "Worktree ready: $WORKTREE_DIR"
 cd "$WORKTREE_DIR" && zsh ~/bin/tmux-dev-layout.sh "${DEV_LAYOUT_FLAGS[@]}"

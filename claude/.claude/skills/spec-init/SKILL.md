@@ -1,11 +1,11 @@
 ---
 name: spec-init
 description: >-
-  Create a durable, codebase-grounded spec artifact for a Jira ticket in the
-  Obsidian vault, plus a private Open-Questions gap list. Use whenever starting a
-  new ticket, initializing/bootstrapping a spec, opening the spec for MOP-XXXX, or
-  "spec-init MOP-XXXX". This is the persistent-artifact entry point that replaces
-  the one-shot /spec for real ticket work; use spec-sync for later rounds.
+  Create a persistent, codebase-grounded spec artifact for a Jira ticket in the
+  Obsidian vault, plus a private Open-Questions list. Use when starting a new
+  ticket, initializing a spec, opening the spec for MOP-XXXX, or "spec-init
+  MOP-XXXX". Replaces the one-shot /spec for real ticket work; use spec-sync for
+  later rounds.
 ---
 
 # Spec Init → durable spec artifact
@@ -27,7 +27,7 @@ and grounds it in the actual repos.
 
 ## Prerequisites
 
-- **VPN + `JIRA_TOKEN`** (`source ~/.zshrc`). Do **not** hard-gate on `scutil --nc list` — it reports false negatives while the VPN is up. Just run the fetch; it returns a clean error if connectivity or the token is actually wrong.
+- **`JIRA_TOKEN`** (`source ~/.zshrc`). The fetch returns a clean error if the token is wrong.
 - Repos on disk: `$MOP_MONOREPO_PATH`, `$MOP_CONFIGURATION_PATH`.
 - If `specs/MOP-XXXX.md` **already exists**, stop — this is a later round. Tell the
   user to run `spec-sync` instead.
@@ -46,10 +46,12 @@ Read `manifest.json` (summary, type, parent, description, comments, attachments)
 screenshots and are part of the spec. Note any Figma/prototype URLs found in the
 description or comments; record them in the note header.
 
-### 2. Ground in the codebase — the five checks
+### 2. Ground in the codebase — the five checks (delegated)
 
-Do these against the real repos, and cite evidence as `path:line`. These are what
-turn ambiguity into round-1 questions instead of five rounds of discovery.
+Delegate to a **general-purpose subagent**, run in the foreground (step 3
+depends on its output). Give it: the ticket summary/description from
+`manifest.json`, `$MOP_MONOREPO_PATH`, `$MOP_CONFIGURATION_PATH`, and these five
+checks to run against the real repos, each cited as `path:line`:
 
 1. **Similar feature already built?** Search `$MOP_MONOREPO_PATH/apps` and
    `/libs` for related pages/components/routes. If found, the spec should reuse or
@@ -76,6 +78,10 @@ turn ambiguity into round-1 questions instead of five rounds of discovery.
    ```
    Report the **promotion state** (e.g. "in dev, missing in uat/master → promote")
    rather than a flat "missing". The v2 `/privilege-node` skill resolves it.
+
+Require the subagent's report to give a finding (or "none found") per check, with
+`path:line` evidence only — no raw grep dumps or file contents. **NO GUESSING**
+carries into the subagent: unstated stays unstated, never inferred.
 
 ### 3. Generate the consolidated spec
 

@@ -1,13 +1,12 @@
 ---
 name: spec-post
 description: >-
-  Sync the consolidated spec note to its Jira ticket — overwrite the description
-  with the current spec (stamped with round + last-updated date) and post a
-  round-scoped change record as a comment, with a curated subset of the private
-  Open Questions. Use when a spec round is ready for the PM, when asking the PM
-  to confirm the spec, publishing the spec to the ticket, pushing spec questions
-  to Jira, or "spec-post MOP-XXXX". Requires the note created by spec-init /
-  spec-sync.
+  Sync the consolidated spec note to its Jira ticket: overwrite the description
+  with the current spec (stamped round + date) and post a round-scoped change
+  record as a comment with a curated subset of the private Open Questions. Use
+  when a spec round is ready for the PM, confirming the spec with the PM,
+  publishing/pushing the spec or its questions to Jira, or "spec-post MOP-XXXX".
+  Requires the note from spec-init/spec-sync.
 ---
 
 # Spec Post → publish the spec, record what changed
@@ -36,8 +35,7 @@ Nothing is sent without an explicit approval in the same session.
 ## Prerequisites
 
 - `specs/MOP-XXXX.md` exists. If not, stop — run `spec-init` first.
-- **VPN + `JIRA_TOKEN`** (`source ~/.zshrc`). Do not hard-gate on `scutil --nc list`
-  (false negatives while the VPN is up); let the fetch surface real errors.
+- **`JIRA_TOKEN`** (`source ~/.zshrc`). The fetch surfaces a clean error if the token is wrong.
 - Scripts: `~/bin/fetch-ticket.sh`, `~/bin/md2jira.sh`, `~/bin/jira-comment.sh`,
   `~/bin/jira-description.sh`, `~/bin/spec-round-diff.sh`.
 
@@ -56,9 +54,13 @@ the last Round History date, and the Open Questions.
 **The diff baseline is the last *posted* round**, not `N-1` — the newest `round:`
 in `posted:`. When rounds 1-2 were never posted and round 3 is, the PM's delta
 spans 01 → 03; anything else reports a change history they never saw. No `posted:`
-entries at all = **first post** (see step 6).
+entries at all = **first post** (see step 5).
 
-### 2. Fetch the ticket — this feeds the guards
+### 2. Fetch + run the guards (delegated)
+
+Delegate to a **general-purpose subagent**, run in the foreground (step 3
+depends on its output). Give it `MOP-XXXX`, the note's frontmatter (`round`,
+`posted:` entries, last Round History date), and have it run:
 
 ```bash
 OUT=$(mktemp -d)
@@ -70,13 +72,13 @@ OUT=$(mktemp -d)
 lossy to archive or ownership-check a description. `jira-description.sh get`
 returns the raw wiki markup, which is what a description guard needs.
 
-### 3. Run the guards — all warn-and-confirm, none hard-block
+Then have it run the four guards — all warn-and-confirm, none hard-block:
 
 1. **Description ownership.** Empty (`! -s "$OUT/description.live"`) or carrying
-   the `spec-post` stamp (step 5) → ours, overwrite freely, no prompt. **Foreign
-   content** → stop. Show it **in full**, state plainly that a PUT replaces it
-   outright, and require an explicit approval; on approval, archive it verbatim to
-   a comment *before* overwriting:
+   the `spec-post` stamp (step 4) → ours, overwrite freely, no prompt. **Foreign
+   content** → flag it, and require the subagent to return that content
+   **verbatim, in full** in its report. On approval (back in the main thread),
+   archive it verbatim to a comment *before* overwriting:
    ```bash
    { echo "h3. 原 description 備份（spec-post 覆寫前，$(date +%F)）"; echo "{quote}";
      cat "$OUT/description.live"; echo "{quote}"; } > "$OUT/archive.wiki"
@@ -105,9 +107,11 @@ returns the raw wiki markup, which is what a description guard needs.
    existing snapshot and never create a round N+1 — a round with no decisions in it
    is a lie.
 
-Present all triggered guards together, once. Proceed on the user's confirmation.
+Require the subagent's report to give a verdict + evidence for each of the four
+guards (full verbatim text for guard 1 only if triggered). Present all triggered
+guards together, once. Proceed on the user's confirmation.
 
-### 4. Curate the questions
+### 3. Curate the questions
 
 Eligible = **unchecked `- [ ]` items only**, anywhere under Open Questions.
 `- [x]` / `~~struck~~` / `已解決` items are never posted.
@@ -121,7 +125,7 @@ and reads as noise to a PM.
 If nothing is unchecked, that is fine — the comment becomes a change record with
 `本輪無未決問題。`
 
-### 5. Assemble the description (verbatim — do not retype the spec)
+### 4. Assemble the description (verbatim — do not retype the spec)
 
 ```bash
 DRAFTS="/tmp/spec-post/MOP-XXXX"; mkdir -p "$DRAFTS"
@@ -161,7 +165,7 @@ EOF
 - Warn if the result exceeds ~30,000 chars (`wc -m`); Jira's field limit is 32,767
   and `jira-description.sh set` refuses past it.
 
-### 6. Assemble the comment
+### 5. Assemble the comment
 
 Get the delta:
 
@@ -196,7 +200,7 @@ Body language is Traditional Chinese (it is the note's language and the PM's).
 ~/bin/md2jira.sh < "$DRAFTS/comment.md" > "$DRAFTS/comment.wiki"
 ```
 
-### 7. Resolve the mention target
+### 6. Resolve the mention target
 
 Only when a comment is being posted — a description-only re-sync notifies nobody.
 
@@ -214,7 +218,7 @@ curl -s -u "$JIRA_TOKEN" -H "Content-Type: application/json" \
 A mention fires a real notification at a named human. State who will be notified,
 by name, in the approval step.
 
-### 8. Get approval
+### 7. Get approval
 
 Both drafts live at stable paths, overwritten on every re-render, so an editor left
 open on them refreshes in place:
@@ -230,7 +234,7 @@ question count, and every triggered guard — and tell the user to review the fi
 The user revises by telling you what to change; re-render in place and re-show.
 Write only on an explicit approval.
 
-### 9. Write — description first, comment second
+### 8. Write — description first, comment second
 
 ```bash
 ~/bin/jira-description.sh set MOP-XXXX "$DRAFTS/description.wiki"   # prints browse URL
@@ -242,7 +246,7 @@ the un-retryable write goes last. If the comment fails, the description is alrea
 current truth and the comment can simply be retried — nothing is duplicated. If it
 succeeds and something later fails, **never re-run the whole flow** to fix it.
 
-### 10. Record it in the note
+### 9. Record it in the note
 
 Append to the frontmatter `posted:` list (create the key if absent). `url:` keeps
 its existing meaning — the comment URL — so old entries and the step-1 baseline
@@ -263,7 +267,7 @@ Nothing else in the note changes, and **do not re-snapshot** — posting is not 
 round. If this write fails after a successful post, report the URLs prominently so
 they can be added by hand; never re-post to "fix" it.
 
-### 11. Report
+### 10. Report
 
 Description URL + round + char count, comment URL, who was notified, which
 questions went out and which were held back (and why), whether an original

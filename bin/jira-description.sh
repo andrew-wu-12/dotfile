@@ -14,7 +14,7 @@
 # Usage:
 #   jira-description.sh get <TICKET-ID>              # raw wiki markup -> stdout
 #   jira-description.sh set <TICKET-ID> <body-file>  # overwrite; prints browse URL
-# Requires: JIRA_TOKEN in the environment, VPN connection, jq, curl.
+# Requires: JIRA_TOKEN in the environment, jq, curl.
 set -euo pipefail
 
 ACTION="${1:?usage: jira-description.sh get|set <TICKET-ID> [body-file]}"

@@ -12,7 +12,7 @@
 # listed in the manifest with an empty path but not downloaded.
 #
 # Usage: fetch-ticket.sh <TICKET-ID> <out_dir>
-# Requires: JIRA_TOKEN in the environment, VPN connection, jq, curl.
+# Requires: JIRA_TOKEN in the environment, jq, curl.
 set -euo pipefail
 
 TICKET="${1:?usage: fetch-ticket.sh <TICKET-ID> <out_dir>}"
@@ -32,7 +32,7 @@ curl -s -u "$JIRA_TOKEN" -H "Content-Type: application/json" \
   "$API/$TICKET?expand=renderedFields" > "$RAW"
 
 if ! jq -e '.fields // empty' "$RAW" >/dev/null 2>&1; then
-  echo "error: could not fetch $TICKET (check ticket id / VPN / token)" >&2
+  echo "error: could not fetch $TICKET (check ticket id / token)" >&2
   exit 1
 fi
 

@@ -1,26 +1,24 @@
 ---
 name: spec-sync
 description: >-
-  Merge a new round of spec decisions into an existing spec artifact: re-fetch
-  Jira, extract decisions from a pasted chat/verbal log, flag contradictions
-  across Jira vs chat vs the current spec, rewrite to current truth, and snapshot
-  the round. Use after a PM discussion or spec change, when reconciling updated
-  requirements, or "spec-sync MOP-XXXX". Requires the note created by spec-init.
+  Merge new decisions into an existing spec: re-fetch Jira, extract decisions
+  from a pasted chat/verbal log, flag contradictions across Jira/chat/current
+  spec, rewrite to current truth, and snapshot the round. Use after a PM
+  discussion or spec change, when reconciling updated requirements, or
+  "spec-sync MOP-XXXX". Requires the note from spec-init.
 ---
 
 # Spec Sync → reconcile a new round
 
 Fold a fresh round of decisions into the durable spec note. The spec lives in
 three channels — Jira, chat/verbal, prototype — and chat is ephemeral. This skill
-is the reconciliation the human does badly across three sources: it surfaces
-contradictions instead of silently overwriting, and records every decision with
-its source so the artifact stays trustworthy.
+surfaces contradictions, and records trustworthy decisions with their sources.
 
 `SKILL_DIR` = `~/.claude/skills/spec-sync`.
 
 ## Prerequisites
 
-- **VPN + `JIRA_TOKEN`** (`source ~/.zshrc`). Do not hard-gate on `scutil --nc list` — it false-negatives while the VPN is up; let the fetch surface real connectivity errors.
+- **`JIRA_TOKEN`** (`source ~/.zshrc`). The fetch surfaces a clean error if the token is wrong.
 - `specs/MOP-XXXX.md` **must already exist**. If not, stop and tell the user to run
   `spec-init` first.
 - **The pasted chat/verbal log.** It comes as the skill argument or in the user's
@@ -35,15 +33,23 @@ its source so the artifact stays trustworthy.
 Read `specs/MOP-XXXX.md` — especially the current `規格`, `Decision Log`, and
 `Open Questions`. Note the current `round` from frontmatter (new round = +1).
 
-### 2. Re-fetch Jira
+### 2. Re-fetch Jira (delegated)
+
+Delegate the fetch to a **general-purpose subagent**, run in the foreground
+(step 3 depends on its output). Give it the ticket ID and the note's current
+state (what comments/attachments it already reflects); have it run:
 
 ```bash
 OUT=$(mktemp -d)
 ~/bin/fetch-ticket.sh MOP-XXXX "$OUT" > "$OUT/manifest.json"
 ```
 
-Read new comments and any **new** attachments (Read the images). New prototype
-images can silently change the spec — treat them as a decision source.
+Require its report to list, for anything new since the note's last round: each
+comment verbatim (author, date, text), and the **file paths** of any new
+attachments — not a description of what they show.
+
+Then **you** (main thread) `Read()` every new attachment image directly. New
+prototype images can silently change the spec — treat them as a decision source.
 
 ### 3. Extract decisions from the chat log
 
@@ -64,32 +70,29 @@ Questions and flag it to the user rather than silently picking one.
 
 ### 5. Rewrite to current truth
 
-- Rewrite the `規格` sections to reflect resolved decisions (Traditional Chinese,
-  same doc-* skills as spec-init).
-- If an item was checked this round and came back **unchanged**, do not narrate
-  that in `規格` (no "stayed the same as Round N" callouts, no unchanged-item
-  prose). `規格` documents current truth only, not a diff log. Record the
-  "checked, no change" fact as a Decision Log row instead if it's worth keeping.
-- Any API contract in `後端規格` is a request/response JSON example (with
-  `[MISSING]` placeholders where unknown), not a prose description of fields.
-- `規格` speaks in business-level terms only: pages (by module + page name,
-  never a route/URL), data fields, and API endpoints. No file paths, component
-  names, function/hook names, or code constants (e.g. `configs/Foo.tsx`,
-  `handleSaveStep`, `STEP_DISPATCH_EDIT`, `FormGroup.tsx`). If a decision is
-  really about *how* to implement something (a library choice, a code
-  pattern), it belongs in the Decision Log, not `規格` — `規格` states the
-  observable behavior, not the implementation mechanism.
-- Before writing any multi-fact sentence in `規格` (field tables included), list
-  the discrete facts first, then keep that as a bullet list — don't fuse them
-  back into one run-on sentence or a stuffed table cell. Table cells stay one
-  line; a field needing more gets its own bullet group below the table.
-- **Append** to Decision Log: one dated, source-tagged row per decision this round.
-- **Append** a Round History entry summarizing what changed.
+- Rewrite the `規格` sections with the following rules:
+  - Written in Traditional Chinese.
+  - Uses the same doc-* skills as spec-init.
+  - If an item was checked this round and came back **unchanged**, leave its entry
+    in `規格` exactly as-is — do not narrate that it was checked (no "unchanged
+    since Round N" callouts, no unchanged-item prose). Record the "checked, no
+    change" fact as a Decision Log row instead if it's worth keeping.
+  - `規格` documents current truth only, not a diff log — it is never narrated,
+    only stated.
+  - `後端規格` should be demonstrated  with **Request/Response** JSON example, not descriptions. Show `[MISSING]` for unknown value.
+  - Speaks in **business-level terms only**
+    - **Display**: pages (`{module_name} - {page_name}`), data fields, i18n keys, and API endpoints.
+    - **Avoid**: file paths, component/function/hook names, route/URL, or code constants.
+  - If a decision is really about *how* to implement something (a library choice,
+    a code pattern), it belongs in the Decision Log, not `規格` — `規格` states
+    the observable behavior, not the implementation mechanism.
+  - When writing a multi-fact sentence in `規格`, keep it short and use a bullet
+    list. A table cell longer than one line gets its own bullet group below the
+    table instead.
+- **Append** to Decision Log (append-only): one dated, source-tagged row per decision this round.
+- **Append** a Round History entry summarizing what changed (append-only).
 - Update Open Questions: check off answered ones, add newly surfaced ones.
 - Bump `round` in frontmatter.
-
-Decision Log and Round History are append-only — never rewrite history, only the
-`規格` reflects current truth.
 
 ### 6. Snapshot the round
 
@@ -103,21 +106,8 @@ round's change.
 
 ### 7. Report what changed
 
-Tell the user (English): the decisions folded in and their sources, every
-contradiction found and how it resolved, what is still open, and a one-line
-"changed this round" summary. If any contradiction was pushed to Open Questions
-unresolved, lead with that — it is the thing that needs their call.
+List the following in English:
+- New decisions with sources
+- One-line "changed this round" summary.
+- Unresolved Open Questions
 
-## Rules
-
-- NEVER silently overwrite a conflicting value — surface it in step 4 first.
-- Most-recent-explicit wins; genuine ties become Open Questions, not guesses.
-- Decision Log / Round History append-only; `規格` always current truth.
-- `規格` never narrates unchanged items — that's what Decision Log is for.
-- API contracts are payload/response JSON, not prose.
-- List first, write second — multi-fact content is bullets, not run-on sentences
-  or stuffed table cells.
-- No file paths, component/function/constant names, or route/URLs in `規格` —
-  pages are named by module + page name, behavior is described observably.
-  Implementation mechanism belongs in the Decision Log, not `規格`.
-- Spec body in Traditional Chinese; reporting to the user in English.

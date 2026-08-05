@@ -8,7 +8,7 @@
 # Prints the browse URL of the created comment to stdout.
 #
 # Usage: jira-comment.sh <TICKET-ID> <body-file>
-# Requires: JIRA_TOKEN in the environment, VPN connection, jq, curl.
+# Requires: JIRA_TOKEN in the environment, jq, curl.
 set -euo pipefail
 
 TICKET="${1:?usage: jira-comment.sh <TICKET-ID> <body-file>}"

@@ -71,29 +71,15 @@ picking one.
 
 ### 5. Rewrite to current truth
 
-- Rewrite the `規格` sections with the following rules:
-  - Written in Traditional Chinese.
-  - Uses the same field-table format, API-payload, and test-scenario
-    conventions as spec-init step 3.
-  - If an item was checked this round and came back **unchanged**, leave its
-    entry in `規格` exactly as it was. Do not narrate that you checked it — no
-    "unchanged since Round N" callouts, no unchanged-item prose. If the "checked,
-    no change" fact is worth keeping, record it as a Decision Log row instead.
-  - `規格` documents current truth only. It is not a diff log. State facts; do
-    not narrate them.
-  - Show `後端規格` as a **Request/Response** JSON example, not as a
-    description. Show `[MISSING]` for any unknown value.
-  - Speak in **business-level terms only**:
-    - **Show**: pages (`{module_name} - {page_name}`), data fields, i18n keys,
-      and API endpoints.
-    - **Avoid**: file paths, component names, function names, hook names,
-      routes, URLs, or code constants.
-  - If a decision is really about *how* to implement something — a library
-    choice, a code pattern — put it in the Decision Log, not in `規格`. `規格`
-    states observable behavior only, not the implementation mechanism.
-  - When a `規格` sentence carries more than one fact, keep it short and use a
-    bullet list instead. If a table cell would need more than one line, move
-    that content to its own bullet group below the table.
+- Rewrite the `規格` sections using `doc-spec-body`'s conventions (language,
+  field/API/test-scenario formats, business-level terms only, decision-log
+  boundary, bullet formatting).
+- If an item was checked this round and came back **unchanged**, leave its
+  entry in `規格` exactly as it was. Do not narrate that you checked it — no
+  "unchanged since Round N" callouts, no unchanged-item prose. If the "checked,
+  no change" fact is worth keeping, record it as a Decision Log row instead.
+- `規格` documents current truth only. It is not a diff log. State facts; do
+  not narrate them.
 - **Append** to Decision Log (append-only): one dated, source-tagged row per decision this round.
 - **Append** a Round History entry summarizing what changed (append-only).
 - Update Open Questions: check off answered ones, add newly surfaced ones.

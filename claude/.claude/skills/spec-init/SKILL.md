@@ -12,9 +12,8 @@ description: >-
 
 Turn a Jira ticket into a persistent, versioned spec note. The note accumulates
 across rounds. It reconciles the ticket, chat decisions, and the prototype into
-one source of truth, so you stop acting as the manual integration layer. The
-one-shot `/spec` command reads only the ticket and saves nothing. This skill
-writes a real artifact and grounds it in the actual repositories.
+one source of truth. This skill writes a real artifact and grounds it in the actual 
+repositories.
 
 `SKILL_DIR` = `~/.claude/skills/spec-init`.
 
@@ -85,12 +84,9 @@ does not state something, record it as unstated. Never infer it.
 
 ### 3. Generate the consolidated spec
 
-Output the spec body in **Traditional Chinese** (team/PM consumption):
-- **Frontend fields** — use `doc-field-table-spec`'s table format.
-- **API payloads** — show a Request/Response JSON example per endpoint, not a
-  description. Use `[MISSING]` for any value the ticket does not state.
-- **Test scenarios** — one Precondition/Action/Expected-Result block per
-  scenario, covering the main flow plus its edge and negative cases.
+Write the spec body using `doc-spec-body`'s conventions — language, the
+field/API/test-scenario formats, business-level terms only, and the
+decision-log boundary.
 
 Use only concrete details from the ticket, the prototype, and the codebase. **Do
 not invent** fields, APIs, or behaviors. If the ticket does not state something,

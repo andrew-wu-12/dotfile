@@ -113,9 +113,9 @@ end-of-round-1 state.
 
 ### 6. Report
 
-Summarize to the user (in English): the consolidated spec's shape, the Open
-Questions list in full, and any cross-source conflicts already visible. Remind
-them the questions are private until curated and pushed with `/spec-post` (v2).
+List the following in English:
+- Open Questions list
+- Cross-source conflicts
 
 ## Note template
 

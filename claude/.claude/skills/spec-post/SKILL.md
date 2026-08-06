@@ -37,7 +37,7 @@ Nothing is sent without an explicit approval in the same session.
 - `specs/MOP-XXXX.md` exists. If not, stop — run `spec-init` first.
 - **`JIRA_TOKEN`** (`source ~/.zshrc`). The fetch surfaces a clean error if the token is wrong.
 - Scripts: `~/bin/fetch-ticket.sh`, `~/bin/md2jira.sh`, `~/bin/jira-comment.sh`,
-  `~/bin/jira-description.sh`, `~/bin/spec-round-diff.sh`.
+  `~/bin/jira-description.sh`.
 
 ## Workflow
 
@@ -122,26 +122,34 @@ privilege id is not a PM question. The user decides. Strip the
 `· evidence: path:line` tail from anything that goes out; it is internal grounding
 and reads as noise to a PM.
 
-If nothing is unchecked, that is fine — the comment becomes a change record with
-`本輪無未決問題。`
+If nothing is unchecked, skip the comment entirely (see step 5) — the description
+sync alone is the report.
 
 ### 4. Assemble the description (verbatim — do not retype the spec)
+
+Extract `規格` and `Decision Log` **separately** — the latter is wrapped in a
+collapsible macro, so it cannot go through the same pass as the ever-visible spec:
 
 ```bash
 DRAFTS="/tmp/spec-post/MOP-XXXX"; mkdir -p "$DRAFTS"
 awk '
-  /^## /              { p = 0 }          # any H2 closes the previous section
-  /^## 規格/           { p = 1 }
-  /^## Decision Log/  { p = 1 }
+  /^## /    { p = 0 }          # any H2 closes the previous section
+  /^## 規格/ { p = 1 }
   p
-' "$NOTE" > "$DRAFTS/description.md"
+' "$NOTE" > "$DRAFTS/spec.md"
+awk '
+  /^## Decision Log/ { p = 1; next }   # next: drop the heading, {expand} supplies its own title
+  /^## /             { p = 0 }
+  p
+' "$NOTE" > "$DRAFTS/decisionlog.md"
 ```
 
-**No heading demotion** — the stamp panel is the header, so `## 規格` → `h2.` sits
-right. (The comment path demotes; this one must not.)
+**No heading demotion** on `spec.md` — the stamp panel is the header, so
+`## 規格` → `h2.` sits right. (The comment path demotes; this one must not.)
 
-Write the stamp panel first — it is already Jira markup, so it goes in ahead of the
-conversion, not through it:
+Write the stamp panel first, then the spec body, then the Decision Log wrapped in
+`{expand}` — panel and expand are already Jira markup, so they go in around the
+`md2jira.sh` conversion, not through it:
 
 ```bash
 cat > "$DRAFTS/description.wiki" <<EOF
@@ -151,13 +159,19 @@ cat > "$DRAFTS/description.wiki" <<EOF
 {panel}
 
 EOF
-~/bin/md2jira.sh < "$DRAFTS/description.md" >> "$DRAFTS/description.wiki"
+~/bin/md2jira.sh < "$DRAFTS/spec.md" >> "$DRAFTS/description.wiki"
+echo "" >> "$DRAFTS/description.wiki"
+echo "{expand:title=Decision Log}" >> "$DRAFTS/description.wiki"
+~/bin/md2jira.sh < "$DRAFTS/decisionlog.md" >> "$DRAFTS/description.wiki"
+echo "{expand}" >> "$DRAFTS/description.wiki"
 ```
 
 - The date is **today** — "last updated" describes the text the reader is looking
   at, not when the round happened.
 - The panel doubles as the ownership sentinel for guard 1, and `spec-post` is the
   token that is matched. Keep that word in the body verbatim.
+- Decision Log stays collapsed by default so it doesn't push the actual spec below
+  the fold as rounds accumulate — a PM opens it only when they want the history.
 - **Excluded, always:** frontmatter, the `# [MOP-XXXX] …` title, the `> Jira:` /
   `> Parent:` metadata lines, the header callouts, 技術檢查結論, Open Questions,
   Round History. The callouts are dropped deliberately: `本子票 description 為空`
@@ -167,32 +181,19 @@ EOF
 
 ### 5. Assemble the comment
 
-Get the delta:
+The comment is **question-only** — no framing sentence, no change table, no
+closing ask, no ticket number in the title. What changed is already current
+truth in the description's Decision Log; the comment exists purely to carry the
+sign-off ask to a human.
 
-```bash
-~/bin/spec-round-diff.sh MOP-XXXX <last-posted-round> <current-round>
-```
-
-Turn the diff into a **本輪變更 table** — `項目 | Round X | Round N | 來源` — one row
-per concrete spec change, ignoring prose churn and rewrapping. Cross-check every
-row against this round's Decision Log rows so nothing is invented or dropped; the
-`來源` column is the Decision Log's source tag (`jira` / `chat` / `codebase`).
-
-**First post** (no `posted:` entries): there is no baseline, so **no table**. Say
-初次規格上傳 and point at the description instead.
-
-Then write `$DRAFTS/comment.md` in this order:
+Write `$DRAFTS/comment.md` in this order:
 
 1. `[~accountid:<id>]` (omit the line entirely if no mention)
-2. `## [Round N] 規格確認 — MOP-XXXX`
-3. Framing: the full spec is now synced to the ticket's description (round + date);
-   below is what changed since Round X, please confirm.
-4. The 本輪變更 table (or the 初次規格上傳 line)
-5. `### 需要確認` — the curated questions as a numbered list
-6. Closing ask: confirm if correct; answer the numbered items by number. **No deadline.**
+2. `## [Round N] 規格確認` (no `— MOP-XXXX`; the ticket is already the page you're on)
+3. `### 需要確認` — the curated questions as a numbered list
 
-No 已確認事項 section — a resolved question that changed the spec is already a row
-in the table, and one that changed nothing is not worth the PM's attention.
+If nothing is unchecked in Open Questions, skip posting a comment entirely —
+there is nothing left to ask, and a description-only sync notifies no one.
 
 Body language is Traditional Chinese (it is the note's language and the PM's).
 
@@ -238,7 +239,7 @@ Write only on an explicit approval.
 
 ```bash
 ~/bin/jira-description.sh set MOP-XXXX "$DRAFTS/description.wiki"   # prints browse URL
-~/bin/jira-comment.sh      MOP-XXXX "$DRAFTS/comment.wiki"          # prints comment URL
+~/bin/jira-comment.sh      MOP-XXXX "$DRAFTS/comment.wiki"          # prints comment URL, skip if no comment (step 5)
 ```
 
 The order is not cosmetic: the PUT is idempotent and the comment POST is not, so

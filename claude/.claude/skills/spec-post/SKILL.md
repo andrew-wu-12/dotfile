@@ -36,8 +36,7 @@ Nothing goes out without an explicit approval in the same session.
 
 - `specs/MOP-XXXX.md` exists. If not, stop — run `spec-init` first.
 - **`JIRA_TOKEN`** (`source ~/.zshrc`). The fetch surfaces a clean error if the token is wrong.
-- Scripts: `~/bin/fetch-ticket.sh`, `~/bin/md2jira.sh`, `~/bin/jira-comment.sh`,
-  `~/bin/jira-description.sh`.
+- Scripts: `~/bin/md2jira.sh`, `~/bin/jira-comment.sh`, `~/bin/jira-description.sh`.
 
 ## Workflow
 
@@ -61,16 +60,16 @@ all means this is the **first post** (see step 5).
 
 Delegate to a **general-purpose subagent**. Run it in the foreground — step 3
 needs its output first. Give it `MOP-XXXX` and the note's frontmatter
-(`round`, `posted:` entries, last Round History date). Have it run:
+(`round`, `posted:` entries, last Round History date). Have it use
+`tool-ticket-get` to fetch the ticket, note the temp dir that fetch creates as
+`$OUT`, then also run:
 
 ```bash
-OUT=$(mktemp -d)
-~/bin/fetch-ticket.sh MOP-XXXX "$OUT" > "$OUT/manifest.json"
 ~/bin/jira-description.sh get MOP-XXXX > "$OUT/description.live"
 ```
 
-`fetch-ticket.sh` gives HTML-stripped plain text. That text is fine for
-reading comments, but it loses too much detail to archive or to
+`tool-ticket-get`'s manifest gives HTML-stripped plain text. That text is fine
+for reading comments, but it loses too much detail to archive or to
 ownership-check a description. `jira-description.sh get` returns the raw wiki
 markup instead — that is what a description guard needs.
 
@@ -288,23 +287,3 @@ prominently so the user can add them by hand. Never re-post to "fix" it.
 Description URL + round + char count, comment URL, who was notified, which
 questions went out and which were held back (and why), whether an original
 description was archived, and any guard that was overridden.
-
-## Rules
-
-- **Never write without explicit in-session approval.** Send nothing silently.
-  Retry nothing automatically.
-- The description gets **overwritten**. Never touch a description this skill
-  does not own without first showing it in full and archiving it.
-- Comments are append-only: post one new comment per round. **Never edit or
-  delete an existing comment** — the PM may have replied to it.
-- Description holds current truth (規格 + Decision Log). History lives in
-  comments.
-- **Never** post the spec body as a comment.
-- Only unchecked Open Questions are eligible. Strip the evidence tail from
-  each one before it goes out.
-- Always ask for the mention target. Never infer it.
-- Copy the spec body verbatim through the pipeline. Never retype it or
-  summarize it — either one breaks the match between the description and the
-  artifact.
-- Guards warn; the user decides. Approval is the one rule that is never
-  negotiable.

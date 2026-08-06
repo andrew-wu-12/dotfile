@@ -142,14 +142,3 @@ the user in English, most actionable first:
 
 This is a pre-ready guard. `/pr-ready` runs it, alongside its own review step,
 before it flips the PR to ready. Surface findings; let the user decide.
-
-## Rules
-
-- Round-diff path: inspect **only the delta**. Never re-audit unchanged spec
-  items. The old value is the search key; code that still matches the new
-  spec is aligned, and aligned items stay silent.
-- Ambiguity-scan path (1b): scope to the **PR's diff only**. Never run an
-  unprompted full-spec audit. Contradiction and ambiguity findings are both
-  **warn-only**, never a block — the same rule as drift findings.
-- No guessing: every finding needs a real `path:line`, not a hunch.
-- Report in English. The spec rounds themselves stay in Traditional Chinese.

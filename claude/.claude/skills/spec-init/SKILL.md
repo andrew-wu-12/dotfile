@@ -36,12 +36,8 @@ writes a real artifact and grounds it in the actual repositories.
 
 ### 1. Fetch the ticket
 
-```bash
-OUT=$(mktemp -d)
-~/bin/fetch-ticket.sh MOP-XXXX "$OUT" > "$OUT/manifest.json"
-```
-
-Read `manifest.json` (summary, type, parent, description, comments, attachments).
+Use `tool-ticket-get` to fetch `MOP-XXXX` and read its manifest (summary, type,
+parent, description, comments, attachments).
 **Read every image in `.attachments[].path`** — these are the prototype
 screenshots and are part of the spec. Note any Figma/prototype URLs found in the
 description or comments; record them in the note header.
@@ -89,10 +85,12 @@ does not state something, record it as unstated. Never infer it.
 
 ### 3. Generate the consolidated spec
 
-Output the spec body in **Traditional Chinese** (team/PM consumption), using:
-- `doc-field-table-spec` — frontend field tables
-- `doc-api-spec` — API request/response payloads
-- `doc-test-scenario` — test scenarios / edge cases
+Output the spec body in **Traditional Chinese** (team/PM consumption):
+- **Frontend fields** — use `doc-field-table-spec`'s table format.
+- **API payloads** — show a Request/Response JSON example per endpoint, not a
+  description. Use `[MISSING]` for any value the ticket does not state.
+- **Test scenarios** — one Precondition/Action/Expected-Result block per
+  scenario, covering the main flow plus its edge and negative cases.
 
 Use only concrete details from the ticket, the prototype, and the codebase. **Do
 not invent** fields, APIs, or behaviors. If the ticket does not state something,
@@ -146,10 +144,10 @@ prototype: <figma-url or empty>
 - **視圖邏輯：** 載入、錯誤、邊界、權限狀態
 
 ### 2. 後端規格
-- API 端點（doc-api-spec）
+- API 端點（Request/Response JSON，`[MISSING]` 標示未知值）
 
 ### 3. 測試案例情境
-- 邊界案例（doc-test-scenario）
+- 邊界案例（Precondition/Action/Expected Result）
 
 ## Open Questions (private — curate before /spec-post)
 - [ ] <question>  ·  evidence: `path:line`
@@ -162,13 +160,3 @@ prototype: <figma-url or empty>
 ## Round History
 - **Round 1** (<YYYY-MM-DD>): initial spec from Jira ticket and prototype.
 ```
-
-## Rules
-
-- NO GUESSING. Unstated → Open Question.
-- Evidence means `path:line`. A codebase claim without a location is a guess.
-  This rule covers Open Questions and grounding notes. The `規格` body never
-  contains file paths, component names, function names, constant names, or
-  route URLs. It uses business-level terms only: pages (module + page name),
-  fields, and API endpoints.
-- Write the spec body in Traditional Chinese. Report status to the user in English.

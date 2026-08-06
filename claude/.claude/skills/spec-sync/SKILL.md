@@ -37,14 +37,10 @@ Read `specs/MOP-XXXX.md` — especially the current `規格`, `Decision Log`, an
 
 ### 2. Re-fetch Jira (delegated)
 
-Delegate the fetch to a **general-purpose subagent**. Run it in the foreground
-— step 3 needs its output first. Give it the ticket ID and the note's current
-state: which comments and attachments it already reflects. Have it run:
-
-```bash
-OUT=$(mktemp -d)
-~/bin/fetch-ticket.sh MOP-XXXX "$OUT" > "$OUT/manifest.json"
-```
+Delegate the fetch to a **general-purpose subagent** using `tool-ticket-get`.
+Run it in the foreground — step 3 needs its output first. Give it the ticket
+ID and the note's current state: which comments and attachments it already
+reflects.
 
 For anything new since the note's last round, require its report to list each
 comment verbatim (author, date, text) and the **file paths** of any new
@@ -77,7 +73,8 @@ picking one.
 
 - Rewrite the `規格` sections with the following rules:
   - Written in Traditional Chinese.
-  - Uses the same doc-* skills as spec-init.
+  - Uses the same field-table format, API-payload, and test-scenario
+    conventions as spec-init step 3.
   - If an item was checked this round and came back **unchanged**, leave its
     entry in `規格` exactly as it was. Do not narrate that you checked it — no
     "unchanged since Round N" callouts, no unchanged-item prose. If the "checked,

@@ -42,12 +42,7 @@ Below is an example detailing the expected format and values for field columns:
 3. **I18n Key**:
 
    - Must include `module` and `key` components.
-   - Rules for `module`:
-     - Must be one of the following:
-       - `billing`, `cfs`, `commons`, `config`, `ct`, `customer_report`,
-         `devops`, `edi`, `epod`, `hrs`, `kpi`, `maintain`, `packing_station`,
-         `pricebook`, `shalog`, `shpt`, `sop_mgmt`, `sys`, `task_mgmt`,
-         `tms`, `user_registration_mgmt`, `utilities_mgmt`, `wms`.
+   - `module` must be one of the allowed prefixes listed in `format-i18n-key`.
    - Rules for `key`:
      - Must be a string with lowercase characters and underscores.
 

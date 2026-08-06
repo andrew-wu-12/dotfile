@@ -27,7 +27,12 @@ Automates the process of managing internationalization (i18n) keys, including:
    - **Exact Match:** Return key.
    - **Similar Match:** Suggest potential reusability.
    - **No Match:** If uncertain, confirm the appropriate prefix with the user before proposing a new key:
-     - Allowed prefixes: ["billing", "cfs", "commons", "config", "ct", "customer_report", "edi", "epod", "hrs", "kpi", "packing_station", "pricebook", "shalog", "shpt", "sop_mgmt", "sys", "task_mgmt", "tms", "user_registration_mgmt", "utilities_mgmt"].
+     - Allowed prefixes (the canonical module list — other skills reference
+       this list instead of keeping their own copy): `billing`, `cfs`,
+       `commons`, `config`, `ct`, `customer_report`, `devops`, `edi`, `epod`,
+       `hrs`, `kpi`, `maintain`, `packing_station`, `pricebook`, `shalog`,
+       `shpt`, `sop_mgmt`, `sys`, `task_mgmt`, `tms`,
+       `user_registration_mgmt`, `utilities_mgmt`, `wms`.
 3. Return matching results with clarity for agent usage.
 
 ## Code Example:

@@ -11,8 +11,9 @@ description: >-
 # Spec Sync → reconcile a new round
 
 Fold a fresh round of decisions into the durable spec note. The spec lives in
-three channels — Jira, chat/verbal, prototype — and chat is ephemeral. This skill
-surfaces contradictions, and records trustworthy decisions with their sources.
+three channels: Jira, chat or verbal discussion, and the prototype. Chat is
+ephemeral. This skill surfaces contradictions between the channels and records
+trustworthy decisions with their sources.
 
 `SKILL_DIR` = `~/.claude/skills/spec-sync`.
 
@@ -21,10 +22,11 @@ surfaces contradictions, and records trustworthy decisions with their sources.
 - **`JIRA_TOKEN`** (`source ~/.zshrc`). The fetch surfaces a clean error if the token is wrong.
 - `specs/MOP-XXXX.md` **must already exist**. If not, stop and tell the user to run
   `spec-init` first.
-- **The pasted chat/verbal log.** It comes as the skill argument or in the user's
-  message. If none was provided, ask the user to paste it (a rough summary is fine
-  — no formatting required). It is valid to sync with no chat log when only Jira
-  changed; say so and proceed with Jira + prototype only.
+- **The pasted chat/verbal log.** It arrives as the skill argument or in the
+  user's message. If it is missing, ask the user to paste it — a rough summary
+  is fine; no formatting is required. A sync with no chat log is valid when
+  only Jira changed. State that this is the case, then proceed with Jira and
+  the prototype only.
 
 ## Workflow
 
@@ -35,21 +37,23 @@ Read `specs/MOP-XXXX.md` — especially the current `規格`, `Decision Log`, an
 
 ### 2. Re-fetch Jira (delegated)
 
-Delegate the fetch to a **general-purpose subagent**, run in the foreground
-(step 3 depends on its output). Give it the ticket ID and the note's current
-state (what comments/attachments it already reflects); have it run:
+Delegate the fetch to a **general-purpose subagent**. Run it in the foreground
+— step 3 needs its output first. Give it the ticket ID and the note's current
+state: which comments and attachments it already reflects. Have it run:
 
 ```bash
 OUT=$(mktemp -d)
 ~/bin/fetch-ticket.sh MOP-XXXX "$OUT" > "$OUT/manifest.json"
 ```
 
-Require its report to list, for anything new since the note's last round: each
-comment verbatim (author, date, text), and the **file paths** of any new
-attachments — not a description of what they show.
+For anything new since the note's last round, require its report to list each
+comment verbatim (author, date, text) and the **file paths** of any new
+attachments. Do not accept a description of what the attachments show — the
+report needs the actual paths.
 
-Then **you** (main thread) `Read()` every new attachment image directly. New
-prototype images can silently change the spec — treat them as a decision source.
+Then **you** (main thread) `Read()` every new attachment image directly. A new
+prototype image can silently change the spec. Treat every new image as a
+decision source.
 
 ### 3. Extract decisions from the chat log
 
@@ -58,37 +62,41 @@ changes, scope cuts. Ignore chatter. Tag each with source `chat`.
 
 ### 4. Cross-source contradiction check — the core step
 
-For each item that changed, compare the value across the three sources and the
-current spec. **List every contradiction explicitly**, e.g.:
+For each changed item, compare its value across the three sources and the
+current spec. **List every contradiction explicitly.** Example:
 
 > `eta` field — current spec: optional · Jira comment (07-14): optional · chat
 > (07-15): **required**. → chat is newer and explicit → resolve to required.
 
 Resolution rule: prefer the **most recent explicit** decision. If two sources
-conflict with no clear recency/authority, **do not guess** — add it to Open
-Questions and flag it to the user rather than silently picking one.
+conflict and neither has clear recency or authority, **do not guess**. Add the
+conflict to Open Questions and flag it to the user instead of silently
+picking one.
 
 ### 5. Rewrite to current truth
 
 - Rewrite the `規格` sections with the following rules:
   - Written in Traditional Chinese.
   - Uses the same doc-* skills as spec-init.
-  - If an item was checked this round and came back **unchanged**, leave its entry
-    in `規格` exactly as-is — do not narrate that it was checked (no "unchanged
-    since Round N" callouts, no unchanged-item prose). Record the "checked, no
-    change" fact as a Decision Log row instead if it's worth keeping.
-  - `規格` documents current truth only, not a diff log — it is never narrated,
-    only stated.
-  - `後端規格` should be demonstrated  with **Request/Response** JSON example, not descriptions. Show `[MISSING]` for unknown value.
-  - Speaks in **business-level terms only**
-    - **Display**: pages (`{module_name} - {page_name}`), data fields, i18n keys, and API endpoints.
-    - **Avoid**: file paths, component/function/hook names, route/URL, or code constants.
-  - If a decision is really about *how* to implement something (a library choice,
-    a code pattern), it belongs in the Decision Log, not `規格` — `規格` states
-    the observable behavior, not the implementation mechanism.
-  - When writing a multi-fact sentence in `規格`, keep it short and use a bullet
-    list. A table cell longer than one line gets its own bullet group below the
-    table instead.
+  - If an item was checked this round and came back **unchanged**, leave its
+    entry in `規格` exactly as it was. Do not narrate that you checked it — no
+    "unchanged since Round N" callouts, no unchanged-item prose. If the "checked,
+    no change" fact is worth keeping, record it as a Decision Log row instead.
+  - `規格` documents current truth only. It is not a diff log. State facts; do
+    not narrate them.
+  - Show `後端規格` as a **Request/Response** JSON example, not as a
+    description. Show `[MISSING]` for any unknown value.
+  - Speak in **business-level terms only**:
+    - **Show**: pages (`{module_name} - {page_name}`), data fields, i18n keys,
+      and API endpoints.
+    - **Avoid**: file paths, component names, function names, hook names,
+      routes, URLs, or code constants.
+  - If a decision is really about *how* to implement something — a library
+    choice, a code pattern — put it in the Decision Log, not in `規格`. `規格`
+    states observable behavior only, not the implementation mechanism.
+  - When a `規格` sentence carries more than one fact, keep it short and use a
+    bullet list instead. If a table cell would need more than one line, move
+    that content to its own bullet group below the table.
 - **Append** to Decision Log (append-only): one dated, source-tagged row per decision this round.
 - **Append** a Round History entry summarizing what changed (append-only).
 - Update Open Questions: check off answered ones, add newly surfaced ones.
@@ -100,9 +108,9 @@ Questions and flag it to the user rather than silently picking one.
 ~/bin/spec-snapshot.sh MOP-XXXX   # creates round-NN
 ```
 
-Run **last**, after the rewrite, so `round-NN.md` equals the end-of-round-N state
-and `/spec-drift` (v2) can diff round-(N-1) against round-N for exactly this
-round's change.
+Run this **last**, after the rewrite, so `round-NN.md` matches the
+end-of-round-N state. This lets `/spec-drift` diff round-(N-1) against round-N
+for exactly this round's change.
 
 ### 7. Report what changed
 

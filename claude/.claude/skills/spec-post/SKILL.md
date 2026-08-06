@@ -12,9 +12,9 @@ description: >-
 # Spec Post → publish the spec, record what changed
 
 The last step of a spec round. `/spec-init` and `/spec-sync` keep a private,
-consolidated artifact; this publishes it so the PM confirms the *whole*
-understanding and answers the open questions **in round 1 instead of leaking them
-across five**. Chat is ephemeral — a ticket is not.
+consolidated artifact. This skill publishes it, so the PM confirms the *whole*
+understanding and answers the open questions **in round 1 instead of across
+five separate rounds**. Chat is ephemeral. A ticket is not.
 
 Two write targets, one approval:
 
@@ -23,12 +23,12 @@ Two write targets, one approval:
 | **Description** | the current spec (規格 + Decision Log) | **overwritten** every round |
 | **Comment** | what changed since the PM last saw it + the sign-off ask | append-only, one per round |
 
-Description is current truth; comments are history. That is the same invariant the
-note already keeps, and it is why the spec body is **never** posted as a comment —
-one canonical copy, on the ticket, always current.
+Description holds current truth; comments hold history. The note already keeps
+this same rule. This is why the spec body is **never** posted as a comment —
+there is one canonical copy, on the ticket, always current.
 
-This is the **only write path to Jira** in this setup, and it is PM-visible.
-Nothing is sent without an explicit approval in the same session.
+This is the **only write path to Jira** in this setup, and the PM sees it.
+Nothing goes out without an explicit approval in the same session.
 
 `SKILL_DIR` = `~/.claude/skills/spec-post`.
 
@@ -48,19 +48,20 @@ SPECS="$HOME/personal/office-note/Specs"
 NOTE="$SPECS/MOP-XXXX.md"
 ```
 
-Read it. Note the frontmatter `round: N`, the existing `posted:` entries (if any),
-the last Round History date, and the Open Questions.
+Read it. Note the frontmatter `round: N`, any existing `posted:` entries, the
+last Round History date, and the Open Questions.
 
-**The diff baseline is the last *posted* round**, not `N-1` — the newest `round:`
-in `posted:`. When rounds 1-2 were never posted and round 3 is, the PM's delta
-spans 01 → 03; anything else reports a change history they never saw. No `posted:`
-entries at all = **first post** (see step 5).
+**The diff baseline is the last *posted* round** — the newest `round:` value
+inside `posted:` — not `N-1`. Example: rounds 1 and 2 were never posted, and
+round 3 now is. The PM's delta then spans round 01 to round 03. Any other
+baseline reports a change history the PM never saw. No `posted:` entries at
+all means this is the **first post** (see step 5).
 
 ### 2. Fetch + run the guards (delegated)
 
-Delegate to a **general-purpose subagent**, run in the foreground (step 3
-depends on its output). Give it `MOP-XXXX`, the note's frontmatter (`round`,
-`posted:` entries, last Round History date), and have it run:
+Delegate to a **general-purpose subagent**. Run it in the foreground — step 3
+needs its output first. Give it `MOP-XXXX` and the note's frontmatter
+(`round`, `posted:` entries, last Round History date). Have it run:
 
 ```bash
 OUT=$(mktemp -d)
@@ -68,67 +69,75 @@ OUT=$(mktemp -d)
 ~/bin/jira-description.sh get MOP-XXXX > "$OUT/description.live"
 ```
 
-`fetch-ticket.sh` gives HTML-stripped plain text — fine for reading comments, too
-lossy to archive or ownership-check a description. `jira-description.sh get`
-returns the raw wiki markup, which is what a description guard needs.
+`fetch-ticket.sh` gives HTML-stripped plain text. That text is fine for
+reading comments, but it loses too much detail to archive or to
+ownership-check a description. `jira-description.sh get` returns the raw wiki
+markup instead — that is what a description guard needs.
 
-Then have it run the four guards — all warn-and-confirm, none hard-block:
+Then have it run the four guards. Each guard warns and asks for confirmation.
+None of the four hard-blocks:
 
-1. **Description ownership.** Empty (`! -s "$OUT/description.live"`) or carrying
-   the `spec-post` stamp (step 4) → ours, overwrite freely, no prompt. **Foreign
-   content** → flag it, and require the subagent to return that content
-   **verbatim, in full** in its report. On approval (back in the main thread),
-   archive it verbatim to a comment *before* overwriting:
+1. **Description ownership.** If the description is empty
+   (`! -s "$OUT/description.live"`) or carries the `spec-post` stamp (step 4),
+   it is ours — overwrite it freely, with no prompt. If it carries **foreign
+   content**, flag it, and require the subagent to return that content
+   **verbatim, in full** in its report. After approval (back in the main
+   thread), archive it verbatim to a comment *before* you overwrite it:
    ```bash
    { echo "h3. 原 description 備份（spec-post 覆寫前，$(date +%F)）"; echo "{quote}";
      cat "$OUT/description.live"; echo "{quote}"; } > "$OUT/archive.wiki"
    ~/bin/jira-comment.sh MOP-XXXX "$OUT/archive.wiki"
    ```
-   Match the stamp loosely — Jira round-trips wiki → ADF → wiki, so formatting
-   shifts. The literal token `spec-post` in the panel body is the reliable anchor.
-   A hand-edit made *inside* an owned description is silently overwritten; that is
-   a knowingly accepted risk, and Jira's History tab is its undo path.
-2. **Round already posted.** Scan `.comments[]` (authored by the user) for a
-   `Round N` + `規格確認` header. Match loosely — the posted source contains
-   escaped brackets (`\[Round 5\]`) while the manifest holds the *rendered* text.
-   If present, **default to a description-only re-sync**: the PUT is idempotent and
-   re-syncing after a typo fix is the normal reason to re-run, while a second
-   comment duplicates a change record and re-notifies a human. Offer: proceed
-   description-only (default), also post a new comment, or abort.
-3. **Newer Jira activity.** Any comment whose `created` is later than the note's
-   last Round History date is not folded into the spec. List author · date ·
-   first line, and say they are unreflected. Offer `/spec-sync` first, or post anyway.
+   Match the stamp loosely. Jira round-trips wiki markup through ADF and back
+   to wiki, so formatting shifts each time. The literal token `spec-post` in
+   the panel body is the reliable anchor. A hand-edit made *inside* an owned
+   description gets silently overwritten. That is a known, accepted risk;
+   Jira's History tab is the undo path.
+2. **Round already posted.** Scan `.comments[]`, filtered to comments authored
+   by the user, for a `Round N` + `規格確認` header. Match loosely: the posted
+   source contains escaped brackets (`\[Round 5\]`), while the manifest holds
+   the *rendered* text. If a match exists, **default to a description-only
+   re-sync**. The PUT is idempotent, and re-syncing after a typo fix is the
+   normal reason to re-run it. A second comment, by contrast, duplicates a
+   change record and re-notifies a human. Offer three choices: proceed
+   description-only (the default), also post a new comment, or abort.
+3. **Newer Jira activity.** Flag any comment whose `created` date is later
+   than the note's last Round History date — the spec does not reflect it yet.
+   List each one as author, date, first line. Offer two choices: run
+   `/spec-sync` first, or post anyway.
 4. **Note drifted from its snapshot.**
    ```bash
    diff -u "$SPECS/.rounds/MOP-XXXX/round-NN.md" "$NOTE" | tail -n +3
    ```
-   If it differs, report ±line counts and roughly which section, and state plainly
-   that the note's **current** content is what will be published. Never rewrite an
-   existing snapshot and never create a round N+1 — a round with no decisions in it
-   is a lie.
+   If it differs, report the line-count delta and roughly which section
+   changed. State plainly that the note's **current** content is what gets
+   published. Never rewrite an existing snapshot, and never create a round
+   N+1 for this — a round with no decisions in it is a lie.
 
-Require the subagent's report to give a verdict + evidence for each of the four
-guards (full verbatim text for guard 1 only if triggered). Present all triggered
-guards together, once. Proceed on the user's confirmation.
+Require the subagent's report to give a verdict and evidence for each of the
+four guards. Include the full verbatim text for guard 1 only when it
+triggers. Present all triggered guards together, once. Proceed only after the
+user confirms.
 
 ### 3. Curate the questions
 
-Eligible = **unchecked `- [ ]` items only**, anywhere under Open Questions.
-`- [x]` / `~~struck~~` / `已解決` items are never posted.
+Eligible items are **unchecked `- [ ]` items only**, anywhere under Open
+Questions. Never post `- [x]`, `~~struck~~`, or `已解決` items.
 
-Present them numbered, each with an **inferred audience** (PM / BE / internal) and
-an include/exclude recommendation — e.g. a question about correcting a BE ticket's
-privilege id is not a PM question. The user decides. Strip the
-`· evidence: path:line` tail from anything that goes out; it is internal grounding
-and reads as noise to a PM.
+Present them numbered. For each, infer an audience (PM, BE, or internal) and
+give an include/exclude recommendation. Example: a question about correcting a
+BE ticket's privilege id is not a PM question. The user makes the final call.
+Strip the `· evidence: path:line` tail from anything that goes out — it is
+internal grounding, and it reads as noise to a PM.
 
-If nothing is unchecked, skip the comment entirely (see step 5) — the description
-sync alone is the report.
+If nothing is unchecked, skip the comment entirely (see step 5). The
+description sync alone is the report.
 
 ### 4. Assemble the description (verbatim — do not retype the spec)
 
-Extract `規格` and `Decision Log` **separately** — the latter is wrapped in a
-collapsible macro, so it cannot go through the same pass as the ever-visible spec:
+Extract `規格` and `Decision Log` **separately**. The Decision Log is wrapped
+in a collapsible macro, so it needs its own pass and cannot go through the
+same pass as the always-visible spec:
 
 ```bash
 DRAFTS="/tmp/spec-post/MOP-XXXX"; mkdir -p "$DRAFTS"
@@ -144,12 +153,13 @@ awk '
 ' "$NOTE" > "$DRAFTS/decisionlog.md"
 ```
 
-**No heading demotion** on `spec.md` — the stamp panel is the header, so
-`## 規格` → `h2.` sits right. (The comment path demotes; this one must not.)
+**Do not demote headings** in `spec.md`. The stamp panel already acts as the
+header, so `## 規格` maps correctly to `h2.`. (The comment path does demote
+headings — that rule is different. This one must not.)
 
-Write the stamp panel first, then the spec body, then the Decision Log wrapped in
-`{expand}` — panel and expand are already Jira markup, so they go in around the
-`md2jira.sh` conversion, not through it:
+Write the stamp panel first, then the spec body, then the Decision Log wrapped
+in `{expand}`. Panel and expand markup are already valid Jira markup, so add
+them around the `md2jira.sh` conversion — do not run them through it:
 
 ```bash
 cat > "$DRAFTS/description.wiki" <<EOF
@@ -166,25 +176,27 @@ echo "{expand:title=Decision Log}" >> "$DRAFTS/description.wiki"
 echo "{expand}" >> "$DRAFTS/description.wiki"
 ```
 
-- The date is **today** — "last updated" describes the text the reader is looking
-  at, not when the round happened.
-- The panel doubles as the ownership sentinel for guard 1, and `spec-post` is the
-  token that is matched. Keep that word in the body verbatim.
-- Decision Log stays collapsed by default so it doesn't push the actual spec below
-  the fold as rounds accumulate — a PM opens it only when they want the history.
-- **Excluded, always:** frontmatter, the `# [MOP-XXXX] …` title, the `> Jira:` /
-  `> Parent:` metadata lines, the header callouts, 技術檢查結論, Open Questions,
-  Round History. The callouts are dropped deliberately: `本子票 description 為空`
-  becomes false the moment the description is written.
-- Warn if the result exceeds ~30,000 chars (`wc -m`); Jira's field limit is 32,767
-  and `jira-description.sh set` refuses past it.
+- Use **today's** date. "Last updated" describes the text the reader is
+  looking at now, not when the round happened.
+- The panel also acts as the ownership sentinel for guard 1. `spec-post` is
+  the token guard 1 matches. Keep that word in the body verbatim.
+- The Decision Log stays collapsed by default, so it does not push the actual
+  spec below the fold as rounds accumulate. A PM opens it only to see the
+  history.
+- **Always exclude:** frontmatter, the `# [MOP-XXXX] …` title, the `> Jira:`
+  and `> Parent:` metadata lines, the header callouts, 技術檢查結論, Open
+  Questions, and Round History. Drop the callouts deliberately: the moment
+  you write the description, `本子票 description 為空` becomes false.
+- Warn if the result exceeds ~30,000 characters (`wc -m`). Jira's field limit
+  is 32,767 characters, and `jira-description.sh set` refuses anything past
+  it.
 
 ### 5. Assemble the comment
 
-The comment is **question-only** — no framing sentence, no change table, no
-closing ask, no ticket number in the title. What changed is already current
-truth in the description's Decision Log; the comment exists purely to carry the
-sign-off ask to a human.
+The comment is **question-only**. Do not add a framing sentence, a change
+table, a closing ask, or a ticket number in the title. What changed is already
+current truth in the description's Decision Log. The comment exists only to
+carry the sign-off ask to a human.
 
 Write `$DRAFTS/comment.md` in this order:
 
@@ -192,8 +204,8 @@ Write `$DRAFTS/comment.md` in this order:
 2. `## [Round N] 規格確認` (no `— MOP-XXXX`; the ticket is already the page you're on)
 3. `### 需要確認` — the curated questions as a numbered list
 
-If nothing is unchecked in Open Questions, skip posting a comment entirely —
-there is nothing left to ask, and a description-only sync notifies no one.
+If nothing is unchecked in Open Questions, skip posting a comment entirely.
+There is nothing left to ask, and a description-only sync notifies no one.
 
 Body language is Traditional Chinese (it is the note's language and the PM's).
 
@@ -203,11 +215,12 @@ Body language is Traditional Chinese (it is the note's language and the PM's).
 
 ### 6. Resolve the mention target
 
-Only when a comment is being posted — a description-only re-sync notifies nobody.
+Do this step only when you are posting a comment — a description-only re-sync
+notifies nobody.
 
-**Always ask** — never auto-resolve. Offer the real candidates with display names:
-the ticket reporter, the parent ticket's reporter (`.parent` in the manifest;
-the reporter is often the PM when the sub-ticket was filed by the user), recent
+**Always ask. Never auto-resolve.** Offer the real candidates with display
+names: the ticket reporter, the parent ticket's reporter (`.parent` in the
+manifest — often the PM, when the user filed the sub-ticket), recent
 commenters, or **no mention**. Get the `accountId` from Jira:
 
 ```bash
@@ -216,24 +229,25 @@ curl -s -u "$JIRA_TOKEN" -H "Content-Type: application/json" \
   | jq '{reporter: .fields.reporter | {displayName, accountId}, parent: .fields.parent.key}'
 ```
 
-A mention fires a real notification at a named human. State who will be notified,
-by name, in the approval step.
+A mention sends a real notification to a named person. State who gets
+notified, by name, in the approval step.
 
 ### 7. Get approval
 
-Both drafts live at stable paths, overwritten on every re-render, so an editor left
-open on them refreshes in place:
+Both drafts live at stable paths. Each re-render overwrites the file in place,
+so an editor left open on them refreshes automatically:
 
 ```
 /tmp/spec-post/MOP-XXXX/description.wiki
 /tmp/spec-post/MOP-XXXX/comment.wiki
 ```
 
-Show a summary in-session — target ticket, round, both paths with char counts,
-whether the description is empty / ours / foreign, who gets notified (by name),
-question count, and every triggered guard — and tell the user to review the files.
-The user revises by telling you what to change; re-render in place and re-show.
-Write only on an explicit approval.
+Show a summary in-session: target ticket, round, both paths with character
+counts, whether the description is empty, ours, or foreign, who gets notified
+(by name), the question count, and every triggered guard. Tell the user to
+review the files. The user revises by telling you what to change; re-render
+the drafts in place and show the summary again. Write only after an explicit
+approval.
 
 ### 8. Write — description first, comment second
 
@@ -242,16 +256,17 @@ Write only on an explicit approval.
 ~/bin/jira-comment.sh      MOP-XXXX "$DRAFTS/comment.wiki"          # prints comment URL, skip if no comment (step 5)
 ```
 
-The order is not cosmetic: the PUT is idempotent and the comment POST is not, so
-the un-retryable write goes last. If the comment fails, the description is already
-current truth and the comment can simply be retried — nothing is duplicated. If it
-succeeds and something later fails, **never re-run the whole flow** to fix it.
+This order matters. The PUT is idempotent; the comment POST is not. The
+write you cannot safely retry goes last. If the comment fails, the
+description is already current truth, and you can simply retry the comment —
+nothing gets duplicated. If the comment succeeds and something later fails,
+**never re-run the whole flow** to fix it.
 
 ### 9. Record it in the note
 
-Append to the frontmatter `posted:` list (create the key if absent). `url:` keeps
-its existing meaning — the comment URL — so old entries and the step-1 baseline
-lookup still parse:
+Append to the frontmatter `posted:` list — create the key if it does not
+exist yet. `url:` keeps its existing meaning: the comment URL. This keeps old
+entries and the step-1 baseline lookup parsing correctly:
 
 ```yaml
 posted:
@@ -264,9 +279,9 @@ posted:
     description: resynced      # description-only re-sync — no comment, so no url
 ```
 
-Nothing else in the note changes, and **do not re-snapshot** — posting is not a
-round. If this write fails after a successful post, report the URLs prominently so
-they can be added by hand; never re-post to "fix" it.
+Nothing else in the note changes. **Do not re-snapshot** — posting is not a
+round. If this write fails after a successful post, report the URLs
+prominently so the user can add them by hand. Never re-post to "fix" it.
 
 ### 10. Report
 
@@ -276,15 +291,20 @@ description was archived, and any guard that was overridden.
 
 ## Rules
 
-- **Never write without explicit in-session approval.** No silent sends, no retries.
-- The description is **overwritten**; a description this skill does not own is
-  never touched without showing it in full and archiving it first.
-- Comments are append-only: a new comment per post; **never edit or delete an
-  existing comment** — the PM may have replied to it.
-- Description = current truth (規格 + Decision Log). History lives in comments.
-- The spec body is **never** posted as a comment.
-- Only unchecked Open Questions are eligible; evidence tails are stripped.
-- The mention target is always asked, never inferred.
-- The spec body is copied verbatim through the pipeline — never retyped or
-  summarized, or the description stops matching the artifact.
-- Guards warn; the user decides. The one thing that is not negotiable is approval.
+- **Never write without explicit in-session approval.** Send nothing silently.
+  Retry nothing automatically.
+- The description gets **overwritten**. Never touch a description this skill
+  does not own without first showing it in full and archiving it.
+- Comments are append-only: post one new comment per round. **Never edit or
+  delete an existing comment** — the PM may have replied to it.
+- Description holds current truth (規格 + Decision Log). History lives in
+  comments.
+- **Never** post the spec body as a comment.
+- Only unchecked Open Questions are eligible. Strip the evidence tail from
+  each one before it goes out.
+- Always ask for the mention target. Never infer it.
+- Copy the spec body verbatim through the pipeline. Never retype it or
+  summarize it — either one breaks the match between the description and the
+  artifact.
+- Guards warn; the user decides. Approval is the one rule that is never
+  negotiable.

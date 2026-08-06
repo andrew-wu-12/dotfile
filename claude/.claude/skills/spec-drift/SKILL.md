@@ -12,23 +12,26 @@ description: >-
 
 # Spec Drift → is the code still aligned with the spec?
 
-Fixes the second alignment problem the workflow has no answer for: **spec ↔ code
-already written.** When a PM changes a field/rule/endpoint mid-development, code
-written for the earlier spec is silently wrong and surfaces in UAT. This diffs the
-spec's round snapshots and only inspects what changed, then checks the branch.
+Fixes a gap the workflow has no other answer for: checking **spec against code
+already written.** When a PM changes a field, rule, or endpoint mid-development,
+code written for the earlier spec becomes silently wrong, and the mismatch
+surfaces later in UAT. This skill diffs the spec's round snapshots, inspects
+only what changed, and then checks the branch against that change.
 
-With only one round there's no delta to diff, but code can still silently assume
-something the spec never actually said (e.g. "one reference maps to exactly one
-shipment") — no round comparison will ever catch that, since it was never stated,
-let alone changed. Step 1b covers that case.
+With only one round, there is no delta to diff. But code can still silently
+assume something the spec never actually stated — for example, "one reference
+maps to exactly one shipment." No round comparison can catch that case, because
+the assumption was never stated, let alone changed. Step 1b covers that case
+instead.
 
 ## Prerequisites
 
-- The monorepo (`$MOP_MONOREPO_PATH`) is on the ticket's feature branch (usually
-  `feature/MOP-XXXX`). Confirm with `git -C "$MOP_MONOREPO_PATH" rev-parse --abbrev-ref HEAD`;
-  if not, check it out or ask.
-- At least **one round** exists for the ticket (`specs/.rounds/MOP-XXXX/`). With
-  zero, there's nothing to check against at all — tell the user to run
+- The monorepo (`$MOP_MONOREPO_PATH`) sits on the ticket's feature branch
+  (usually `feature/MOP-XXXX`). Confirm with
+  `git -C "$MOP_MONOREPO_PATH" rev-parse --abbrev-ref HEAD`. If it is not on
+  that branch, check it out or ask the user.
+- At least **one round** exists for the ticket (`specs/.rounds/MOP-XXXX/`).
+  With zero rounds, there is nothing to check against. Tell the user to run
   `spec-sync` first.
 
 ## Workflow
@@ -40,18 +43,18 @@ let alone changed. Step 1b covers that case.
 ~/bin/spec-round-diff.sh MOP-XXXX 3      # explicit: round-02 -> round-03
 ```
 
-Exit 2 = fewer than two rounds → skip straight to **step 1b** instead of steps
-2-4 (no delta exists, so there's nothing for the round-diff path to inspect).
-Otherwise you get a unified diff of `round-(N-1)` -> `round-N` and continue with
-steps 2-4 below; step 1b does not apply.
+Exit code 2 means fewer than two rounds exist. Skip straight to **step 1b**
+instead of steps 2-4 — no delta exists, so the round-diff path has nothing to
+inspect. Otherwise, you get a unified diff of `round-(N-1)` to `round-N`.
+Continue with steps 2-4 below; step 1b does not apply in that case.
 
 ### 1b. Fallback: cardinality ambiguity scan (only when step 1 exits 2)
 
-There's no round to diff, so this doesn't hunt for drift — it hunts for a
-*different* bug shape: code that silently assumes a 1:1 relationship the spec
-never confirmed (or, worse, that the spec actually says is 1:N). Scope to the
-**PR's own diff**, not the whole app — this is not a full spec audit, only
-checking what this PR actually touches:
+No round exists to diff here, so this step does not hunt for drift. It hunts
+for a *different* bug shape: code that silently assumes a 1:1 relationship the
+spec never confirmed — or, worse, that the spec actually states is 1:N. Scope
+the check to the **PR's own diff**, not the whole app. This is not a full spec
+audit; it checks only what this PR actually touches:
 
 ```bash
 git -C "$MOP_MONOREPO_PATH" diff main...HEAD -- 'apps/<app>/**/*.ts' 'apps/<app>/**/*.tsx'
@@ -65,30 +68,33 @@ git -C "$MOP_MONOREPO_PATH" diff main...HEAD -- 'apps/<app>/**/*.ts' 'apps/<app>
      (skip trivial type-guard/enum lookups — they're not relationship lookups).
 2. For each match, name the **key field** (what it searches by) and the
    **target entity** (what it returns).
-3. Grep the single current spec round for both concepts together and classify:
-   - Spec explicitly confirms one-to-one (e.g. "唯一", "unique", "一個...對應一個")
-     → **aligned**, do not report.
-   - Spec explicitly states or implies one-to-many (e.g. "多筆", "多個", "list",
-     "multiple") and the code still does a singular lookup → **contradiction**:
-     a confirmed mismatch even without a second round, report it with that
-     severity (not just "worth asking").
-   - Spec says nothing about cardinality for that relationship either way →
-     **ambiguity**: flag it as worth confirming with the PM/business, not as a
-     confirmed bug — most unstated cardinality is genuinely fine, this is a
-     nudge, not an accusation.
-4. Cite every finding as `path:line`, same bar as the round-diff path.
+3. Grep the single current spec round for both concepts together, then
+   classify the result into one of three cases:
+   - The spec explicitly confirms one-to-one (e.g. "唯一", "unique",
+     "一個...對應一個"). This is **aligned** — do not report it.
+   - The spec explicitly states or implies one-to-many (e.g. "多筆", "多個",
+     "list", "multiple"), and the code still does a singular lookup. This is a
+     **contradiction** — a confirmed mismatch even without a second round.
+     Report it at that severity, not as "worth asking."
+   - The spec says nothing about cardinality for that relationship either way.
+     This is an **ambiguity** — flag it as worth confirming with the PM or
+     business, not as a confirmed bug. Most unstated cardinality is genuinely
+     fine; treat this as a nudge, not an accusation.
+4. Cite every finding as `path:line`, using the same bar as the round-diff
+   path.
 
 Report (English), separate from step 4 below, most actionable first:
 - **Contradiction** — spec explicitly says one-to-many, code assumes one-to-one.
   `path:line` plus the spec's own wording.
-- **Ambiguity** — spec is silent on cardinality for a relationship the code
-  assumes is 1:1. `path:line` plus a one-line "worth confirming: can `<key>` map
-  to more than one `<target>`?"
-- If nothing found: say so plainly — no single-record lookups in this diff assume
-  an unconfirmed relationship.
-- **Never a blocker** — same posture as drift-report findings below, surface and
-  let the user decide. Most code doing a singular lookup is correct; this exists
-  to catch the cases where it silently isn't.
+- **Ambiguity** — the spec is silent on cardinality for a relationship the
+  code assumes is 1:1. Give `path:line` plus a one-line prompt: "worth
+  confirming: can `<key>` map to more than one `<target>`?"
+- If you find nothing: say so plainly. No single-record lookup in this diff
+  assumes an unconfirmed relationship.
+- **Never a blocker.** This takes the same posture as the drift-report
+  findings below: surface the finding and let the user decide. Most singular
+  lookups are correct; this check exists only to catch the cases where one
+  silently isn't.
 
 ### 2. Identify the changed items
 
@@ -101,8 +107,8 @@ From the diff, pull the **concrete, code-mappable** changes — ignore prose chu
 - result **column** added / removed / renamed
 - **privilege** id changed
 
-For each, note the **old** value and the **new** value — the old value is what you
-hunt for in code.
+For each change, note the **old** value and the **new** value. The old value
+is what you hunt for in code.
 
 ### 3. Check the feature branch for contradictions
 
@@ -119,28 +125,31 @@ Judge per change type:
 - **removed field/column/endpoint** → code still referencing it = drift.
 - **added item** → usually no existing code yet; note as informational, not drift.
 
-A changed item whose code already matches the new spec is **aligned** — do not
-report it. Only report genuine contradictions. Cite every finding as `path:line`.
+A changed item whose code already matches the new spec is **aligned** — do
+not report it. Report only genuine contradictions. Cite every finding as
+`path:line`.
 
 ### 4. Drift report
 
-Only when step 1 ran the round-diff path (steps 2-3), report to the user
-(English), most actionable first:
-- **Drift** — code that now contradicts the new spec, each with `path:line` and the
-  old→new change that caused it.
-- **Informational** — items that changed but have no code yet (new work, not drift).
-- If nothing contradicts: say so plainly — the round's changes are already
-  reflected in code (or have no code surface yet).
+Run this step only when step 1 ran the round-diff path (steps 2-3). Report to
+the user in English, most actionable first:
+- **Drift** — code that now contradicts the new spec. Give `path:line` and
+  the old-to-new change that caused it.
+- **Informational** — items that changed but have no code yet. This is new
+  work, not drift.
+- If nothing contradicts: say so plainly. The round's changes are already
+  reflected in code, or have no code surface yet.
 
-This is a pre-ready guard: it's what `/pr-ready` runs, alongside its own owned
-review step, before flipping the PR to ready. Surface findings; the user decides.
+This is a pre-ready guard. `/pr-ready` runs it, alongside its own review step,
+before it flips the PR to ready. Surface findings; let the user decide.
 
 ## Rules
 
-- Round-diff path: inspect **only the delta** — never re-audit unchanged spec
-  items. The old value is the search key; matching code = aligned = silent.
-- Ambiguity-scan path (1b): scope to the **PR's diff only** — never an
+- Round-diff path: inspect **only the delta**. Never re-audit unchanged spec
+  items. The old value is the search key; code that still matches the new
+  spec is aligned, and aligned items stay silent.
+- Ambiguity-scan path (1b): scope to the **PR's diff only**. Never run an
   unprompted full-spec audit. Contradiction and ambiguity findings are both
-  **WARN-only**, never a block, same as drift findings.
-- No guessing: a finding needs a real `path:line`, not a hunch.
-- Report in English; the spec rounds themselves stay Traditional Chinese.
+  **warn-only**, never a block — the same rule as drift findings.
+- No guessing: every finding needs a real `path:line`, not a hunch.
+- Report in English. The spec rounds themselves stay in Traditional Chinese.

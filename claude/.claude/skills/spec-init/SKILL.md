@@ -10,11 +10,11 @@ description: >-
 
 # Spec Init → durable spec artifact
 
-Turn a Jira ticket into a persistent, versioned spec note that accumulates across
-rounds — the single source of truth that reconciles the ticket, chat decisions,
-and prototype, so you stop being the human integration layer. The one-shot `/spec`
-command reads only the ticket and persists nothing; this writes a real artifact
-and grounds it in the actual repos.
+Turn a Jira ticket into a persistent, versioned spec note. The note accumulates
+across rounds. It reconciles the ticket, chat decisions, and the prototype into
+one source of truth, so you stop acting as the manual integration layer. The
+one-shot `/spec` command reads only the ticket and saves nothing. This skill
+writes a real artifact and grounds it in the actual repositories.
 
 `SKILL_DIR` = `~/.claude/skills/spec-init`.
 
@@ -48,16 +48,19 @@ description or comments; record them in the note header.
 
 ### 2. Ground in the codebase — the five checks (delegated)
 
-Delegate to a **general-purpose subagent**, run in the foreground (step 3
-depends on its output). Give it: the ticket summary/description from
-`manifest.json`, `$MOP_MONOREPO_PATH`, `$MOP_CONFIGURATION_PATH`, and these five
-checks to run against the real repos, each cited as `path:line`:
+Delegate this to a **general-purpose subagent**. Run it in the foreground —
+step 3 needs its output first. Give the subagent:
+- the ticket summary and description from `manifest.json`
+- `$MOP_MONOREPO_PATH`
+- `$MOP_CONFIGURATION_PATH`
+- these five checks to run against the real repos, each cited as `path:line`
 
 1. **Similar feature already built?** Search `$MOP_MONOREPO_PATH/apps` and
-   `/libs` for related pages/components/routes. If found, the spec should reuse or
-   align — flag divergences.
-2. **Missing details?** Error handling, validation rules, empty/loading/permission
-   states, field-level behavior the ticket leaves unstated.
+   `/libs` for related pages/components/routes. If one exists, the spec should
+   reuse it or align with it. Flag any divergence.
+2. **Missing details?** Check for error handling, validation rules,
+   empty/loading/permission states, and field-level behavior the ticket leaves
+   unstated.
 3. **i18n keys already exist?** Extract the candidate UI strings, then per string:
    ```bash
    ~/bin/check-i18n.sh "Submit"          # searches ALL modules by default
@@ -67,9 +70,9 @@ checks to run against the real repos, each cited as `path:line`:
    `SIMILAR_MATCHES` / `NO_MATCH`, each with the full `<module>.<key>` path).
 4. **Violates existing functionality?** Search for existing behavior the new spec
    would change or break; call it out explicitly.
-5. **New privilege needed?** The config repo is **branch-per-environment**
-   (`dev`/`uat`/`master`), so a single working-tree grep is misleading — a node
-   often exists in `dev` but not yet `uat`/`master`. Check all three:
+5. **New privilege needed?** The config repo uses one branch per environment
+   (`dev`/`uat`/`master`). A single working-tree grep can mislead: a node often
+   exists in `dev` but not yet in `uat` or `master`. Check all three branches:
    ```bash
    git -C "$MOP_CONFIGURATION_PATH" fetch -q origin
    for b in dev uat master; do
@@ -79,9 +82,10 @@ checks to run against the real repos, each cited as `path:line`:
    Report the **promotion state** (e.g. "in dev, missing in uat/master → promote")
    rather than a flat "missing". The v2 `/privilege-node` skill resolves it.
 
-Require the subagent's report to give a finding (or "none found") per check, with
-`path:line` evidence only — no raw grep dumps or file contents. **NO GUESSING**
-carries into the subagent: unstated stays unstated, never inferred.
+Require the subagent's report to give one finding per check, or state "none
+found." Support each finding with `path:line` evidence only — no raw grep dumps
+or file contents. **NO GUESSING** applies to the subagent too: if the ticket
+does not state something, record it as unstated. Never infer it.
 
 ### 3. Generate the consolidated spec
 
@@ -90,15 +94,15 @@ Output the spec body in **Traditional Chinese** (team/PM consumption), using:
 - `doc-api-spec` — API request/response payloads
 - `doc-test-scenario` — test scenarios / edge cases
 
-Use only concrete details from the ticket, prototype, and codebase. **Do not
-invent** fields, APIs, or behaviors — anything unstated becomes an Open Question,
-not a guess.
+Use only concrete details from the ticket, the prototype, and the codebase. **Do
+not invent** fields, APIs, or behaviors. If the ticket does not state something,
+add it to Open Questions instead of guessing.
 
 ### 4. Assemble Open Questions (private)
 
-Every gap from step 2 becomes a checkbox with its `path:line` evidence. This list
-stays private — you curate it before any of it reaches the PM (that is the v2
-`/spec-post` step). Keep questions specific and quotable.
+Every gap from step 2 becomes a checkbox with its `path:line` evidence. This
+list stays private. You curate it before it reaches the PM — that happens in
+the `/spec-post` step. Keep each question specific and quotable.
 
 ### 5. Write the note, then snapshot
 
@@ -108,8 +112,8 @@ Write `specs/MOP-XXXX.md` using the template below, then:
 ~/bin/spec-snapshot.sh MOP-XXXX   # creates round-01
 ```
 
-Run the snapshot **last**, after the note is written, so `round-01.md` equals the
-end-of-round-1 state.
+Run the snapshot **last**. Run it only after you write the note, so
+`round-01.md` matches the end-of-round-1 state.
 
 ### 6. Report
 
@@ -162,8 +166,9 @@ prototype: <figma-url or empty>
 ## Rules
 
 - NO GUESSING. Unstated → Open Question.
-- Evidence is `path:line`. A claim about the codebase without a location is a guess.
-  This applies to Open Questions and grounding notes — the `規格` body itself never
-  contains file paths, component/function/constant names, or route/URLs. It speaks
-  in business-level terms only: pages (module + page name), fields, API endpoints.
-- Spec body in Traditional Chinese; your status reporting to the user in English.
+- Evidence means `path:line`. A codebase claim without a location is a guess.
+  This rule covers Open Questions and grounding notes. The `規格` body never
+  contains file paths, component names, function names, constant names, or
+  route URLs. It uses business-level terms only: pages (module + page name),
+  fields, and API endpoints.
+- Write the spec body in Traditional Chinese. Report status to the user in English.

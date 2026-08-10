@@ -1,4 +1,10 @@
 {
+  "permissions": {
+    "allow": [
+      "Read(~/project/mop-console-monorepo/**)",
+      "Read(~/personal/office-note/**)"
+    ]
+  },
   "hooks": {
     "Notification": [
       {
@@ -38,13 +44,8 @@
   },
   "effortLevel": "high",
   "awaySummaryEnabled": false,
+  "tui": "fullscreen",
   "theme": "auto",
-  "permissions": {
-    "allow": [
-      "Read(~/project/mop-console-monorepo/**)",
-      "Read(~/personal/office-note/**)"
-    ]
-  },
   "mcpServers": {
     "codex": {
       "command": "/bin/zsh",
@@ -61,5 +62,5 @@
       ]
     }
   },
-  "tui": "fullscreen"
+  "model": "opus[1m]"
 }

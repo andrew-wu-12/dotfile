@@ -39,6 +39,12 @@
   "effortLevel": "high",
   "awaySummaryEnabled": false,
   "theme": "auto",
+  "permissions": {
+    "allow": [
+      "Read(~/project/mop-console-monorepo/**)",
+      "Read(~/personal/office-note/**)"
+    ]
+  },
   "mcpServers": {
     "codex": {
       "command": "/bin/zsh",

@@ -214,52 +214,50 @@ The regular expression is a start. It does not cover all identifiers. Add these 
 hand: exported symbols, i18n keys, API field names, CSS tokens, `classNamePrefix`
 tokens, `localStorage` keys, and privilege ids.
 
-Grep the whole repository for each identifier. Include the file types that hold the
-callers:
+**The repo-wide search and its triage are delegated to a fork.** A grep of the whole
+repository for a field name hits every unrelated module that uses the same name — one
+real run returned 10 hits, only 2 were defects. That raw dump has no reason to sit in
+this context; only the triaged verdicts do. The fork already has the identifier list
+above and this file's rules in context, so it needs no re-briefing. Give it the
+identifier list from 4a, the old→new mapping for each rename, and each newly-added
+selector token, then have it run and triage both searches below — it must never
+return raw grep output, only verdicts:
 
-```bash
-grep -rnI '<identifier>' apps libs scripts .github .jenkins \
-  --include='*.ts' --include='*.tsx' --include='*.cy.ts' \
-  --include='*.json' --include='*.scss' --include='*.sh' --include='*.yml'
-```
+1. **4a — removed/renamed identifiers.** For each identifier:
+   ```bash
+   grep -rnI '<identifier>' apps libs scripts .github .jenkins \
+     --include='*.ts' --include='*.tsx' --include='*.cy.ts' \
+     --include='*.json' --include='*.scss' --include='*.sh' --include='*.yml'
+   ```
+   `apps/*-e2e/`, `**/fixtures/`, `*.spec.*`, `*.test.*`, and the CI scripts are the
+   purpose of this step. Never limit the grep to the app that was edited. Use scope
+   to decide each hit: a rename usually applies to one module or one screen. A
+   reference is broken only if it points to the same module that the diff renamed.
+   The same name in a different feature is a different field — not a defect. Never
+   change a hit before tracing it to the renamed identifier.
+2. **4b — selectors that now match two elements.** This defect needs no removal. An
+   added element is enough. For each new selector token (a shared `classNamePrefix`,
+   a CSS class, or a `data-testid` pattern), count the matches before and after the
+   change. If the count goes from 1 to 2 or more, find each call site that uses that
+   selector and check whether it expects one element. A bare `.click()`, `.type()`,
+   or `.should('have.value')` expects one element; `.first()`, `.eq()`, and
+   `within()` set a scope. A call site without a scope is now broken. This is the
+   same defect shape as the cardinality check in spec-drift — there the shape
+   applies to data relationships, here to selectors.
 
-`apps/*-e2e/`, `**/fixtures/`, `*.spec.*`, `*.test.*`, and the CI scripts are the
-purpose of this step. Never limit this grep to the app that you edited.
+Require the fork to return one verdict per identifier/selector, `path:line` only:
 
-**Expect most hits to be noise. Triage the hits before you report them.** A grep of
-the whole repository for a field name hits each unrelated module that uses the same
-name. One real run of this step returned 10 hits. Only 2 hits were defects.
+- **Confirmed.** The reference points to the identifier that was removed. Or the
+  call site does a single-element operation on a selector that now matches two
+  elements. This result is mechanical, like drift. It is not a judgment.
+- **Not confirmed.** The name belongs to an unrelated field. Or the code is dead. Or
+  the call site already has a `.first()` scope.
 
-Use scope to decide. A rename usually applies to one module or one screen. A
-reference is broken only if it points to the same module that the diff renamed. The
-same name in a different feature is a different field. Do not change it.
+**Verdicts, back in this context.** A grep hit alone is not a defect, so keep these
+two apart.
 
-Never change a hit before you trace it to the renamed identifier. An untraced change
-makes a new defect.
-
-**4b. Selectors that now match two elements.** This defect needs no removal. An added
-element is enough.
-
-The diff adds a selector token: a shared `classNamePrefix`, a CSS class, or a
-`data-testid` pattern. Count the matches before the change and after the change. If
-the count goes from 1 to 2 or more, find each call site that uses that selector. Then
-check if the call site expects one element. A bare `.click()`, `.type()`, or
-`.should('have.value')` expects one element. `.first()`, `.eq()`, and `within()` set
-a scope. A call site without a scope is now broken.
-
-This is the same defect shape as the cardinality check in spec-drift. Here the shape
-applies to selectors. There the shape applies to data relationships. In both cases,
-code expects one item, and two items now exist.
-
-**Verdicts.** A grep hit alone is not a defect, so keep these two verdicts apart.
-
-- **Confirmed — block the flip.** The reference points to the identifier that you
-  removed. Or the call site does a single-element operation on a selector that now
-  matches two elements. Give `path:line` and the identifier. This result is
-  mechanical, like drift. It is not a judgment.
-- **Not confirmed — report a warning.** The name belongs to an unrelated field. Or
-  the code is dead. Or the call site already has a `.first()` scope. Add these items
-  to the warnings from step 5.
+- **Confirmed — block the flip.** Give `path:line` and the identifier.
+- **Not confirmed — report a warning.** Add these items to the warnings from step 5.
 - **Read the CI coverage before you trust a green check.** PR CI may not run the test
   suite that holds the broken code. Then a green check proves nothing. Write this in
   the report. Do not imply that CI checked the fix.
@@ -273,9 +271,10 @@ field or a dependency that the old target did not have.
 You cannot start `/code-review` from here. See the note above. Do not try it. Do not
 invent a review of unknown depth.
 
-Instead, start a general-purpose subagent. Give it the diff from the scope in step
-1b. Give it the checklist below. A review that only asks "is this correct?" misses
-the first four items. Therefore this file states them.
+Instead, start a fork. It already has this checklist in context — a fresh subagent
+would need it retyped into its prompt, uncached, on every run. Give it the diff from
+the scope in step 1b, and have it apply the checklist below. A review that only asks
+"is this correct?" misses the first four items. Therefore this file states them.
 
 - **Effect re-invocation.** Read each new or changed `useEffect`. React StrictMode
   runs `mount`, then `cleanup`, then `mount` again in development. Does the setup

@@ -41,8 +41,10 @@ description or comments; record them in the note header.
 
 ### 2. Ground in the codebase — the five checks (delegated)
 
-Delegate this to a **general-purpose subagent**. Run it in the foreground —
-step 3 needs its output first. Give the subagent:
+Delegate this to a **fork**. Run it in the foreground — step 3 needs its
+output first. It already has the ticket manifest and attachments from step 1
+in context, so it needs no re-briefing on those; a fresh subagent would need
+them retyped into its prompt, uncached, every run. Give the fork:
 - the ticket summary and description from `manifest.json`
 - `$MOP_MONOREPO_PATH`
 - `$MOP_CONFIGURATION_PATH`

@@ -16,6 +16,10 @@
 
 set -e
 
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+# shellcheck source=/dev/null
+source "$SCRIPT_DIR/init-lib.sh"
+
 if [[ "$1" == "-h" || "$1" == "--help" ]]; then
     sed -n '2,16p' "$0" | sed 's/^# \{0,1\}//'
     exit 0
@@ -58,10 +62,10 @@ else
     echo "✓ SSH key generated: $SSH_KEY_PATH"
 fi
 
-# 2. Add to ssh-agent + macOS Keychain
+# 2. Add to ssh-agent (Keychain-persisted on macOS)
 eval "$(ssh-agent -s)" > /dev/null 2>&1
-ssh-add --apple-use-keychain "$SSH_KEY_PATH" 2>/dev/null || true
-echo "✓ SSH key added to ssh-agent (Keychain)"
+ssh_add_key "$SSH_KEY_PATH" || true
+echo "✓ SSH key added to ssh-agent"
 
 # 3. SSH host alias
 touch "$SSH_CONFIG" && chmod 600 "$SSH_CONFIG"
@@ -109,7 +113,7 @@ fi
 
 # 6. Copy public key to clipboard
 PUB_KEY="$SSH_KEY_PATH.pub"
-pbcopy < "$PUB_KEY"
+clip_copy < "$PUB_KEY"
 echo ""
 echo "✓ Public key copied to clipboard"
 echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"

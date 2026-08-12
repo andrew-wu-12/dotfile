@@ -54,7 +54,7 @@ macOS is via Homebrew; Arch Linux is via pacman for official-repo packages and a
 
 Known package-name divergences, encoded at each call site rather than in a shared table (there are only three): `nvim`→`neovim` (`init-nvim.sh`), `opencode`→`opencode-bin` via AUR (`init-opencode.sh`, official-maintainer package), `wezterm` cask vs. the `extra`-repo package of the same name (`init-wezterm.sh`).
 
-**Not yet ported to Arch** — these remain macOS-only and are out of scope for the package-manager abstraction: `pbcopy`/`pbpaste` clipboard access, `osascript` desktop notifications, and `tmux-agent-notify.sh`'s frontmost-app detection (`lsappinfo`/LaunchServices bundle IDs — see [Notifications](#parallel-ticket-workspaces-git-worktrees)). Each needs its own Linux-side redesign (`xclip`/`wl-copy`, `notify-send`, and an X11/Wayland-specific focus-detection story, respectively) rather than a mechanical swap.
+**Not yet ported to Arch** — these remain macOS-only and are out of scope for the package-manager abstraction: `osascript` desktop notifications, and `tmux-agent-notify.sh`'s frontmost-app detection (`lsappinfo`/LaunchServices bundle IDs — see [Notifications](#parallel-ticket-workspaces-git-worktrees)). Each needs its own Linux-side redesign (`notify-send`, and an X11/Wayland-specific focus-detection story, respectively) rather than a mechanical swap.
 
 ## Credentials
 
@@ -68,6 +68,10 @@ printf '%s' "<token>" | secret-tool store --label="<service-name>" service "<ser
 ```
 
 Service names: `jenkins.morrison.express`, `morrisonexpress.atlassian.net`, `getdata.morrison.express`, `openai.com`.
+
+## Clipboard
+
+macOS ships `pbcopy`/`pbpaste`, builtin. Arch has no equivalent, and which tool works depends on the session type: `wl-clipboard` (`wl-copy`/`wl-paste`) under Wayland, `xclip` under X11 — `init-lib.sh`'s `clip_copy`/`clip_paste` pick between them via `$WAYLAND_DISPLAY` at call time (only set under Wayland) rather than assuming one session type, and fall straight through to `pbcopy`/`pbpaste` when present. `ensure_clipboard_backend` lazily installs whichever tool is needed on Arch; unlike the credentials port, it's called directly from `clip_copy`/`clip_paste` since nothing polls them repeatedly the way `detect_status` polls credentials. `bin/init-ssh.sh`, `bin/setup-git-identity.sh`, and `bin/bi-weekly-report.sh` all source `init-lib.sh` and call `clip_copy` instead of `pbcopy` directly; `.zshrc`'s `gbc` alias uses its own local `_clip_copy` helper (same branch, since `.zshrc` doesn't source `init-lib.sh`).
 
 ## Key Scripts in `bin/`
 

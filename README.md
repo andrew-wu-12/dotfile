@@ -48,7 +48,7 @@ dotfile/
 | `gco` | `git commit -m`                                         | 提交訊息 | 提交變更                       |
 | `gca` | `git commit --amend --no-edit`                          | 無       | 修改最後一次提交（不編輯訊息） |
 | `gs`  | `git status`                                            | 無       | 查看 Git 狀態                  |
-| `gbc` | `echo "$(git rev-parse --abbrev-ref HEAD)" \| pbcopy`   | 無       | 複製當前分支名稱到剪貼簿       |
+| `gbc` | `echo "$(git rev-parse --abbrev-ref HEAD)" \| _clip_copy` | 無     | 複製當前分支名稱到剪貼簿       |
 
 **使用範例：**
 

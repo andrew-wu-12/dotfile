@@ -172,6 +172,87 @@ function cred_store() {
     fi
 }
 
+# Clipboard abstraction ----------------------------------------------------
+#
+# macOS ships pbcopy/pbpaste, builtin. Arch has no equivalent, and which tool
+# works depends on the session type: wl-clipboard (wl-copy/wl-paste) under
+# Wayland, xclip under X11 — $WAYLAND_DISPLAY is only set in the former, so
+# it picks the right one at call time rather than assuming one session type.
+
+# Installs the clipboard tool needed for the current session. No-op on
+# macOS and when the tool is already present.
+function ensure_clipboard_backend() {
+    [ "$(detect_pkg_manager)" = "pacman" ] || return 0
+    if [ -n "$WAYLAND_DISPLAY" ]; then
+        command -v wl-copy &>/dev/null && return 0
+        pkg_install wl-clipboard
+    else
+        command -v xclip &>/dev/null && return 0
+        pkg_install xclip
+    fi
+}
+
+# Copies stdin to the system clipboard.
+function clip_copy() {
+    if command -v pbcopy &>/dev/null; then
+        pbcopy
+    else
+        ensure_clipboard_backend || return 1
+        if [ -n "$WAYLAND_DISPLAY" ]; then
+            wl-copy
+        else
+            xclip -selection clipboard
+        fi
+    fi
+}
+
+# Prints the system clipboard's contents to stdout.
+function clip_paste() {
+    if command -v pbpaste &>/dev/null; then
+        pbpaste
+    else
+        ensure_clipboard_backend || return 1
+        if [ -n "$WAYLAND_DISPLAY" ]; then
+            wl-paste
+        else
+            xclip -selection clipboard -o
+        fi
+    fi
+}
+
+# Date arithmetic ----------------------------------------------------------
+#
+# macOS ships BSD date (`-v-14d`); Arch ships GNU date (`-d "-14 days"`) —
+# incompatible flags for the same relative-date computation.
+
+# Echoes the date N days ago, formatted %Y-%m-%d.
+function date_days_ago() {
+    local days="$1"
+    if [ "$(detect_pkg_manager)" = "brew" ]; then
+        date -v-"${days}"d +%Y-%m-%d
+    else
+        date -d "-${days} days" +%Y-%m-%d
+    fi
+}
+
+# SSH agent ------------------------------------------------------------------
+#
+# macOS's ssh-add takes --apple-use-keychain to persist a key's passphrase in
+# Keychain; no other platform has that flag. The keys this repo generates are
+# all `-N ""` (no passphrase — see generate_ssh_key), so there is nothing for
+# the flag to actually persist here; it's dropped on Arch rather than
+# replaced, since there's no passphrase-caching problem to solve.
+
+# Adds a key to the running ssh-agent, using Keychain persistence on macOS.
+function ssh_add_key() {
+    local key_path="$1"
+    if [ "$(detect_pkg_manager)" = "brew" ]; then
+        ssh-add --apple-use-keychain "$key_path" 2>/dev/null
+    else
+        ssh-add "$key_path" 2>/dev/null
+    fi
+}
+
 # Full path to a zsh plugin's main sourced file, given its brew/pacman package
 # name (identical for zsh-autosuggestions / zsh-syntax-highlighting on both
 # platforms — only the share-dir prefix differs).

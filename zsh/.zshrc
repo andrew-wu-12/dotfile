@@ -132,7 +132,18 @@ alias gc='git checkout'
 alias gco='git commit -m'
 alias gca='git commit --amend --no-edit'
 alias gs='git status'
-alias gbc='echo "$(git rev-parse --abbrev-ref HEAD)" | pbcopy; echo "Copy Branch Name Success!"'
+# macOS: pbcopy, builtin. Arch: wl-copy (Wayland) or xclip (X11), picked via
+# $WAYLAND_DISPLAY since a login session can be either.
+_clip_copy() {
+    if command -v pbcopy &>/dev/null; then
+        pbcopy
+    elif [ -n "$WAYLAND_DISPLAY" ]; then
+        wl-copy
+    else
+        xclip -selection clipboard
+    fi
+}
+alias gbc='echo "$(git rev-parse --abbrev-ref HEAD)" | _clip_copy; echo "Copy Branch Name Success!"'
 
 # Yarn
 alias ys='yarn serve'

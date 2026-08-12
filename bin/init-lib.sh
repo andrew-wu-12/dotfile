@@ -31,6 +31,117 @@ function ensure_brew() {
     return 1
 }
 
+# Package manager abstraction -------------------------------------------------
+#
+# macOS uses Homebrew; Arch Linux uses pacman for anything in the official
+# repos and an AUR helper (yay) for everything else (e.g. wezterm, opencode).
+# Callers install by the same package name on both platforms — that holds for
+# everything this repo currently installs, so there is no per-platform name
+# table yet; add one if a future package's name actually diverges.
+
+PKG_MANAGER=""
+
+# Detects and caches which package manager this machine uses. Echoes "brew" or
+# "pacman"; returns 1 with nothing echoed if neither is present.
+function detect_pkg_manager() {
+    if [ -z "$PKG_MANAGER" ]; then
+        if [[ "$(uname -s)" == "Darwin" ]]; then
+            PKG_MANAGER="brew"
+        elif command -v pacman &>/dev/null; then
+            PKG_MANAGER="pacman"
+        else
+            return 1
+        fi
+    fi
+    echo "$PKG_MANAGER"
+}
+
+# Confirms the OS package manager is usable. macOS: delegates to ensure_brew,
+# since a freshly-installed brew isn't on PATH until `brew shellenv` runs.
+# Arch: pacman ships with the base system, so there is nothing to bootstrap —
+# this just confirms it is there. AUR packages need more than this; see
+# ensure_aur_helper, called separately since not every install needs one.
+function ensure_pkg_manager() {
+    case "$(detect_pkg_manager)" in
+        brew) ensure_brew ;;
+        pacman) command -v pacman &>/dev/null ;;
+        *) return 1 ;;
+    esac
+}
+
+# Bootstraps an AUR helper (yay) on Arch, asking first since it builds from
+# source via makepkg rather than fetching a binary. No-op success on macOS,
+# where AUR has no meaning.
+function ensure_aur_helper() {
+    [ "$(detect_pkg_manager)" = "pacman" ] || return 0
+    command -v yay &>/dev/null && return 0
+
+    local answer
+    echo "尚未安裝 AUR 輔助工具（yay）。安裝這個套件需要它。"
+    read -r -p "現在從原始碼建置並安裝 yay 嗎？[y/N]：" answer </dev/tty
+    if [[ ! "$answer" =~ ^[Yy]$ ]]; then
+        echo "已略過。之後可手動安裝：https://github.com/Jguer/yay"
+        return 1
+    fi
+
+    local tmp_dir result
+    tmp_dir="$(mktemp -d)" || return 1
+    sudo pacman -S --needed --noconfirm base-devel git \
+        && git clone https://aur.archlinux.org/yay.git "$tmp_dir/yay" \
+        && ( cd "$tmp_dir/yay" && makepkg -si --noconfirm )
+    result=$?
+    rm -rf "$tmp_dir"
+    return $result
+}
+
+# Installs a package. brew_name is what Homebrew calls it; pacman_name is
+# what pacman/AUR calls it, defaulting to brew_name since most packages this
+# repo installs share a name across both (e.g. "starship", "ripgrep"). Pass it
+# explicitly when they diverge (e.g. `pkg_install nvim neovim`).
+#
+# modifier tells each package manager how to interpret the request, and is
+# meaningless (and ignored) on the other platform:
+#   cask - macOS GUI app, installed via `brew install --cask` (on Arch, GUI
+#          apps are just regular packages, so this is a no-op there)
+#   aur  - not in Arch's official repos, needs an AUR helper (Homebrew has no
+#          such split, so this is a no-op on macOS)
+function pkg_install() {
+    local brew_name="$1" pacman_name="${2:-$1}" modifier="${3:-}"
+
+    case "$(detect_pkg_manager)" in
+        brew)
+            if [ "$modifier" = "cask" ]; then
+                brew install --cask "$brew_name"
+            else
+                brew install "$brew_name"
+            fi
+            ;;
+        pacman)
+            if [ "$modifier" = "aur" ]; then
+                ensure_aur_helper || return 1
+                yay -S --needed --noconfirm "$pacman_name"
+            else
+                sudo pacman -S --needed --noconfirm "$pacman_name"
+            fi
+            ;;
+        *)
+            echo "錯誤：找不到支援的套件管理工具（brew 或 pacman）" >&2
+            return 1
+            ;;
+    esac
+}
+
+# Full path to a zsh plugin's main sourced file, given its brew/pacman package
+# name (identical for zsh-autosuggestions / zsh-syntax-highlighting on both
+# platforms — only the share-dir prefix differs).
+function zsh_plugin_file() {
+    case "$(detect_pkg_manager)" in
+        brew) echo "/opt/homebrew/share/$1/$1.zsh" ;;
+        pacman) echo "/usr/share/$1/$1.zsh" ;;
+        *) return 1 ;;
+    esac
+}
+
 # Package name -> stow target dir. Everything lands in $HOME except bin.
 function stow_target_for() {
     case "$1" in

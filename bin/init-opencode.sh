@@ -10,8 +10,8 @@ function install_opencode() {
     echo "=== opencode 設定 ==="
     echo ""
 
-    if ! ensure_brew; then
-        echo "尚未安裝 Homebrew。請先執行 init-brew.sh。"
+    if ! ensure_pkg_manager; then
+        echo "尚未偵測到可用的套件管理工具（Homebrew 或 pacman）。macOS 請先執行 init-brew.sh。"
         exit 1
     fi
 
@@ -19,7 +19,8 @@ function install_opencode() {
         echo "✓ opencode 已安裝"
     else
         echo "正在安裝 opencode..."
-        brew install opencode || { echo "安裝 opencode 失敗。"; exit 1; }
+        # Not in Arch's official repos; opencode-bin is the maintainer-run AUR package.
+        pkg_install opencode opencode-bin aur || { echo "安裝 opencode 失敗。"; exit 1; }
     fi
 
     stow_pkg opencode || exit 1

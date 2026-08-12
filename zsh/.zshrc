@@ -194,10 +194,15 @@ export PATH="$HOME/.opencode/bin:$PATH"
 export MCP_PATH="$HOME/dotfile-mcp-server"
 export PATH="$HOME/.local/bin:$PATH"
 
-# Homebrew-installed zsh plugins. Guarded, so a machine that hasn't run
-# init-recommend-cli-tools.sh yet just starts without them instead of erroring.
-# zsh-syntax-highlighting must be sourced last — keep these at the end of the file.
+# Homebrew (macOS) or pacman (Arch) -installed zsh plugins. Guarded, so a
+# machine that hasn't run init-recommend-cli-tools.sh yet just starts without
+# them instead of erroring. zsh-syntax-highlighting must be sourced last —
+# keep these at the end of the file.
 [ -f /opt/homebrew/share/zsh-autosuggestions/zsh-autosuggestions.zsh ] \
     && source /opt/homebrew/share/zsh-autosuggestions/zsh-autosuggestions.zsh
+[ -f /usr/share/zsh-autosuggestions/zsh-autosuggestions.zsh ] \
+    && source /usr/share/zsh-autosuggestions/zsh-autosuggestions.zsh
 [ -f /opt/homebrew/share/zsh-syntax-highlighting/zsh-syntax-highlighting.zsh ] \
     && source /opt/homebrew/share/zsh-syntax-highlighting/zsh-syntax-highlighting.zsh
+[ -f /usr/share/zsh-syntax-highlighting/zsh-syntax-highlighting.zsh ] \
+    && source /usr/share/zsh-syntax-highlighting/zsh-syntax-highlighting.zsh

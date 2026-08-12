@@ -10,7 +10,6 @@ function install_recommended_cli_tools() {
         "ripgrep:rg"
         "eza:eza"
         "lazygit:lazygit"
-        "terminal-notifier:terminal-notifier"
         "fzf:fzf"
     )
     # zsh plugins provide no command of their own, so they are detected by the
@@ -24,9 +23,15 @@ function install_recommended_cli_tools() {
     echo "=== 推薦 CLI 工具 ==="
     echo ""
 
-    if ! ensure_brew; then
-        echo "尚未安裝 Homebrew。請先執行 init-brew.sh。"
+    if ! ensure_pkg_manager; then
+        echo "尚未偵測到可用的套件管理工具（Homebrew 或 pacman）。macOS 請先執行 init-brew.sh。"
         exit 1
+    fi
+
+    if [ "$(detect_pkg_manager)" = "brew" ]; then
+        packages+=("terminal-notifier:terminal-notifier")
+    else
+        echo "ℹ️  terminal-notifier 是 macOS 專用的通知工具，Arch 上沒有對應套件，已略過。"
     fi
 
     for package_spec in "${packages[@]}"; do
@@ -39,18 +44,18 @@ function install_recommended_cli_tools() {
         fi
 
         echo "正在安裝 ${formula}..."
-        brew install "$formula" || { echo "安裝 ${formula} 失敗。"; exit 1; }
+        pkg_install "$formula" || { echo "安裝 ${formula} 失敗。"; exit 1; }
     done
 
     local plugin
     for plugin in "${zsh_plugins[@]}"; do
-        if [ -f "/opt/homebrew/share/$plugin/$plugin.zsh" ]; then
+        if [ -f "$(zsh_plugin_file "$plugin")" ]; then
             echo "✓ ${plugin} 已安裝"
             continue
         fi
 
         echo "正在安裝 ${plugin}..."
-        brew install "$plugin" || { echo "安裝 ${plugin} 失敗。"; exit 1; }
+        pkg_install "$plugin" || { echo "安裝 ${plugin} 失敗。"; exit 1; }
     done
 
     echo "✓ 推薦 CLI 工具安裝完成"

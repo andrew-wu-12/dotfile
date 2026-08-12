@@ -1,5 +1,9 @@
 #!/bin/bash
 
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+# shellcheck source=/dev/null
+source "$SCRIPT_DIR/init-lib.sh"
+
 credentials='{
     "credentials": [
         {
@@ -29,7 +33,12 @@ function handle_credentials() {
     echo ""
     echo "=== 憑證設定腳本 ==="
     echo ""
-    
+
+    if ! ensure_secret_backend; then
+        echo "✗ 找不到可用的憑證儲存工具（secret-tool），且自動安裝失敗。" >&2
+        return 1
+    fi
+
     # Parse credentials from JSON config
     cred_count=$(echo "$credentials" | jq -r '.credentials | length')
     
@@ -42,8 +51,8 @@ function handle_credentials() {
         echo ""
         printf "正在設定：%b \n" "$description"
         
-        # Check if credential already exists in keychain
-        existing=$(security find-generic-password -a "$USER" -s "$service_name" -w 2>/dev/null)
+        # Check if credential already exists in the secret store
+        existing=$(cred_find "$service_name")
         
         if [ -n "$existing" ]; then
             read -p "已存在 $service_name 的憑證，是否更新？（y/n）：" update_choice </dev/tty
@@ -63,20 +72,20 @@ function handle_credentials() {
             continue
         fi
         
-        # Store credential in macOS Keychain
-        echo "正在將憑證儲存到 macOS Keychain..."
-        security add-generic-password -a "$USER" -s "$service_name" -w "$credential_value" -U
-        
+        # Store credential in the platform secret store
+        echo "正在儲存憑證..."
+        cred_store "$service_name" "$service_name" "$credential_value"
+
         if [ $? -eq 0 ]; then
-            echo "✓ 憑證已成功儲存到 Keychain"
+            echo "✓ 憑證已成功儲存"
         else
-            echo "✗ 憑證儲存到 Keychain 失敗"
+            echo "✗ 憑證儲存失敗"
         fi
     done
-    
+
     echo ""
     echo "✓ 憑證設定完成"
-    echo "⚠️  注意：憑證會儲存在 macOS Keychain，並由 .zshrc 載入"
+    echo "⚠️  注意：憑證會儲存在系統憑證儲存區（macOS Keychain / secret-tool），並由 .zshrc 載入"
 }
 
 # Execute if run directly

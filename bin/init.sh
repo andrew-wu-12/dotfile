@@ -172,7 +172,7 @@ function detect_status() {
         credentials)
             local svc
             for svc in jenkins.morrison.express morrisonexpress.atlassian.net getdata.morrison.express; do
-                security find-generic-password -a "$USER" -s "$svc" -w &>/dev/null || return 1
+                cred_find "$svc" &>/dev/null || return 1
             done
             ;;
         ssh)

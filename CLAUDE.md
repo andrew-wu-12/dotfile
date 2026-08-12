@@ -54,17 +54,20 @@ macOS is via Homebrew; Arch Linux is via pacman for official-repo packages and a
 
 Known package-name divergences, encoded at each call site rather than in a shared table (there are only three): `nvim`→`neovim` (`init-nvim.sh`), `opencode`→`opencode-bin` via AUR (`init-opencode.sh`, official-maintainer package), `wezterm` cask vs. the `extra`-repo package of the same name (`init-wezterm.sh`).
 
-**Not yet ported to Arch** — these remain macOS-only and are out of scope for the package-manager abstraction: Keychain-based credential storage (`init-credentials.sh`, `.zshrc` token exports — see [Credentials](#credentials)), `pbcopy`/`pbpaste` clipboard access, `osascript` desktop notifications, and `tmux-agent-notify.sh`'s frontmost-app detection (`lsappinfo`/LaunchServices bundle IDs — see [Notifications](#parallel-ticket-workspaces-git-worktrees)). Each needs its own Linux-side redesign (`secret-tool`/`pass`, `xclip`/`wl-copy`, `notify-send`, and an X11/Wayland-specific focus-detection story, respectively) rather than a mechanical swap.
+**Not yet ported to Arch** — these remain macOS-only and are out of scope for the package-manager abstraction: `pbcopy`/`pbpaste` clipboard access, `osascript` desktop notifications, and `tmux-agent-notify.sh`'s frontmost-app detection (`lsappinfo`/LaunchServices bundle IDs — see [Notifications](#parallel-ticket-workspaces-git-worktrees)). Each needs its own Linux-side redesign (`xclip`/`wl-copy`, `notify-send`, and an X11/Wayland-specific focus-detection story, respectively) rather than a mechanical swap.
 
 ## Credentials
 
-Tokens are stored in macOS Keychain, never in plaintext. `.zshrc` reads them at shell start with `security find-generic-password`. To add or update a token:
+Tokens are stored encrypted, never in plaintext: macOS uses Keychain (`security`), Arch uses `secret-tool` (libsecret) against a Secret Service provider (gnome-keyring or equivalent) — this assumes a desktop login (GNOME/KDE) that unlocks the keyring via PAM; a minimal-WM setup with no such hook needs its own bootstrap, out of scope here. Both backends key items by `(service, account)`, so `init-lib.sh`'s `cred_find`/`cred_store` wrap the platform difference and `ensure_secret_backend` lazily installs `libsecret` on Arch if `secret-tool` is missing — it's called only from `init-credentials.sh`, never from `cred_find`/`cred_store`/`detect_status`, so status checks stay read-only rather than triggering a pacman install as a side effect. `.zshrc` reads tokens at shell start with its own local `_read_cred` helper (mirroring the same branch, since `.zshrc` doesn't source `init-lib.sh`). To add or update a token, run `init-credentials.sh` (or `crt`'s underlying `handle_credentials`), or store one directly:
 
 ```bash
+# macOS
 security add-generic-password -a "$USER" -s "<service-name>" -w "<token>" -U
+# Arch
+printf '%s' "<token>" | secret-tool store --label="<service-name>" service "<service-name>" account "$USER"
 ```
 
-Service names: `jenkins.morrison.express`, `morrisonexpress.atlassian.net`, `getdata.morrison.express`.
+Service names: `jenkins.morrison.express`, `morrisonexpress.atlassian.net`, `getdata.morrison.express`, `openai.com`.
 
 ## Key Scripts in `bin/`
 

@@ -172,10 +172,19 @@ eval "$(starship init zsh)"
 
 # Secure credential retrieval functions (tokens never exposed in environment)
 # Added by init.sh - Do not edit manually
-export JENKINS_TOKEN=$(security find-generic-password -a "$USER" -s "jenkins.morrison.express" -w 2>/dev/null)
-export JIRA_TOKEN=$(security find-generic-password -a "$USER" -s "morrisonexpress.atlassian.net" -w 2>/dev/null)
-export GETDATATOKEN=$(security find-generic-password -a "$USER" -s "getdata.morrison.express" -w 2>/dev/null)
-export OPENAI_API_KEY=$(security find-generic-password -a "$USER" -s "openai.com" -w 2>/dev/null)
+# macOS: Keychain (security). Arch: secret-tool (libsecret), assumes a
+# desktop login already unlocked the Secret Service keyring via PAM.
+_read_cred() {
+    if command -v security &>/dev/null; then
+        security find-generic-password -a "$USER" -s "$1" -w 2>/dev/null
+    else
+        secret-tool lookup service "$1" account "$USER" 2>/dev/null
+    fi
+}
+export JENKINS_TOKEN=$(_read_cred "jenkins.morrison.express")
+export JIRA_TOKEN=$(_read_cred "morrisonexpress.atlassian.net")
+export GETDATATOKEN=$(_read_cred "getdata.morrison.express")
+export OPENAI_API_KEY=$(_read_cred "openai.com")
 
 export MOP_CONFIGURATION_PATH="$HOME/project/mop_configuration_files"
 export MOP_CONSOLE_PATH="$HOME/project/mop_console"

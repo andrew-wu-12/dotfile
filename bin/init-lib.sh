@@ -131,6 +131,47 @@ function pkg_install() {
     esac
 }
 
+# Secret storage abstraction ---------------------------------------------
+#
+# macOS uses Keychain (`security`), builtin to the OS. Arch has no equivalent
+# builtin, so it uses secret-tool (libsecret) against a Secret Service
+# provider (gnome-keyring or equivalent) — this assumes a desktop login
+# (GNOME/KDE) already unlocks that keyring via PAM; a minimal-WM setup with
+# no such hook needs its own bootstrap, out of scope here. Items are keyed by
+# (service, account) on both backends so callers never need to branch.
+
+# Makes sure a secret backend is available. No-op on macOS (security ships
+# with the OS). On Arch, installs libsecret if secret-tool isn't already
+# present. Deliberately never called from cred_find/cred_store themselves —
+# detect_status polls those on every menu render, and a status check must
+# stay read-only rather than triggering a pacman install.
+function ensure_secret_backend() {
+    [ "$(detect_pkg_manager)" = "pacman" ] || return 0
+    command -v secret-tool &>/dev/null && return 0
+    pkg_install libsecret
+}
+
+# Looks up a stored secret by service name. Echoes the secret, or nothing
+# (with a non-zero return) if not found.
+function cred_find() {
+    local service="$1"
+    if command -v security &>/dev/null; then
+        security find-generic-password -a "$USER" -s "$service" -w 2>/dev/null
+    else
+        secret-tool lookup service "$service" account "$USER" 2>/dev/null
+    fi
+}
+
+# Stores (or overwrites) a secret under a service name.
+function cred_store() {
+    local service="$1" label="$2" value="$3"
+    if command -v security &>/dev/null; then
+        security add-generic-password -a "$USER" -s "$service" -w "$value" -U
+    else
+        printf '%s' "$value" | secret-tool store --label="$label" service "$service" account "$USER"
+    fi
+}
+
 # Full path to a zsh plugin's main sourced file, given its brew/pacman package
 # name (identical for zsh-autosuggestions / zsh-syntax-highlighting on both
 # platforms — only the share-dir prefix differs).

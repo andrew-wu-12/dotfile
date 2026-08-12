@@ -61,6 +61,5 @@
         "source ~/.nvm/nvm.sh && nvm use 20.19 >/dev/null && npx -y chrome-devtools-mcp@latest"
       ]
     }
-  },
-  "model": "opus[1m]"
+  }
 }

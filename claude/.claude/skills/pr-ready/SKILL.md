@@ -144,7 +144,8 @@ SPECS="$HOME/personal/office-note/Specs"
 NOTE="$SPECS/MOP-XXXX.md"
 ```
 
-Read the frontmatter of the note. Compare three things.
+See `doc-spec-schema` for this path and the frontmatter fields below. Read the
+frontmatter of the note. Compare three things.
 
 1. **The round number and the posted rounds.** Compare frontmatter `round: N` with
    the highest `round:` in the `posted:` list. If `N` is larger than the highest

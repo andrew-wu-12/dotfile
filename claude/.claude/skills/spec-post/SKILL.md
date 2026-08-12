@@ -264,19 +264,10 @@ nothing gets duplicated. If the comment succeeds and something later fails,
 ### 9. Record it in the note
 
 Append to the frontmatter `posted:` list — create the key if it does not
-exist yet. `url:` keeps its existing meaning: the comment URL. This keeps old
-entries and the step-1 baseline lookup parsing correctly:
-
-```yaml
-posted:
-  - round: 5
-    date: 2026-07-26
-    url: https://morrisonexpress.atlassian.net/browse/MOP-27443?focusedCommentId=123456
-    description: synced
-  - round: 5
-    date: 2026-07-27
-    description: resynced      # description-only re-sync — no comment, so no url
-```
+exist yet, per `doc-spec-schema`'s shape for this field. Write `description:
+synced` for a first sync of the round, `resynced` for a re-sync (omit `url:`
+in that case — no comment went out). This keeps old entries and the step-1
+baseline lookup parsing correctly.
 
 Nothing else in the note changes. **Do not re-snapshot** — posting is not a
 round. If this write fails after a successful post, report the URLs

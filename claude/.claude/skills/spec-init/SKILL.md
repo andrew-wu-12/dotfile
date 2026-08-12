@@ -17,12 +17,10 @@ repositories.
 
 `SKILL_DIR` = `~/.claude/skills/spec-init`.
 
-## Artifact location
+## Artifact schema
 
-- Note: `~/personal/office-note/Specs/MOP-XXXX.md`
-- Round snapshots: `.../Specs/.rounds/MOP-XXXX/round-NN.md` (machine-diffable;
-  the vault auto-commits every ~65s so git history is not a round boundary — these
-  files are).
+See `doc-spec-schema` for the note's path, frontmatter fields, and section
+structure.
 
 ## Prerequisites
 
@@ -100,7 +98,7 @@ the `/spec-post` step. Keep each question specific and quotable.
 
 ### 5. Write the note, then snapshot
 
-Write `specs/MOP-XXXX.md` using the template below, then:
+Write `specs/MOP-XXXX.md` using `doc-spec-schema`'s template, then:
 
 ```bash
 ~/bin/spec-snapshot.sh MOP-XXXX   # creates round-01
@@ -114,45 +112,3 @@ Run the snapshot **last**. Run it only after you write the note, so
 List the following in English:
 - Open Questions list
 - Cross-source conflicts
-
-## Note template
-
-```markdown
----
-tags:
-  - 📥/🟧
-  - spec
-ticket: MOP-XXXX
-created: <YYYY-MM-DD>
-round: 1
-prototype: <figma-url or empty>
----
-# [MOP-XXXX] <summary>
-
-> Jira: https://morrisonexpress.atlassian.net/browse/MOP-XXXX
-
-## 規格 (Consolidated Spec)
-
-### 1. 前端規格
-- **頁面/視圖：** …
-  - 欄位規格：（doc-field-table-spec）
-- **使用者操作：** …
-- **視圖邏輯：** 載入、錯誤、邊界、權限狀態
-
-### 2. 後端規格
-- API 端點（Request/Response JSON，`[MISSING]` 標示未知值）
-
-### 3. 測試案例情境
-- 邊界案例（Precondition/Action/Expected Result）
-
-## Open Questions (private — curate before /spec-post)
-- [ ] <question>  ·  evidence: `path:line`
-
-## Decision Log
-| Date | Source | Decision |
-|------|--------|----------|
-| <YYYY-MM-DD> | jira | Initial spec captured from ticket + prototype. |
-
-## Round History
-- **Round 1** (<YYYY-MM-DD>): initial spec from Jira ticket and prototype.
-```

@@ -5,6 +5,11 @@
 # the namespace). Pass an optional [module] to scope to that module + commons
 # (module matches take precedence); pass 'commons' to scope to commons only.
 # Auto-syncs a local i18n cache (timestamp-gated) before looking up.
+#
+# Batch mode: check-i18n.sh --batch [module] <<< $'string one\nstring two\n...'
+# Classifies every newline-delimited string from stdin in one process (one
+# sync, one scope resolution, one jq pass) instead of one script invocation
+# per string — a caller with N candidate strings gets one round trip, not N.
 
 BASE_URL="https://one-static.morrison.express/i18n/prod"
 CACHE_DIR="${XDG_CACHE_HOME:-$HOME/.cache}/mop-i18n"
@@ -62,12 +67,22 @@ sync_i18n() {
   echo "i18n cache updated ($count modules)." >&2
 }
 
-INPUT="$1"
-MODULE="$2"
-
-if [ -z "$INPUT" ]; then
-  echo "Usage: $0 <key_or_value> [module]" >&2
-  exit 1
+BATCH=false
+if [ "$1" = "--batch" ]; then
+  BATCH=true
+  MODULE="$2"
+  RAW_INPUTS="$(cat)"
+  if [ -z "$RAW_INPUTS" ]; then
+    echo "Usage: $0 --batch [module] <<< \$'string one\\nstring two'" >&2
+    exit 1
+  fi
+else
+  INPUT="$1"
+  MODULE="$2"
+  if [ -z "$INPUT" ]; then
+    echo "Usage: $0 <key_or_value> [module]" >&2
+    exit 1
+  fi
 fi
 
 sync_i18n || exit 1
@@ -79,8 +94,10 @@ fi
 
 # Normalize a key input: strip a leading '<namespace>.' so a full key like
 # "tms.consol_no" also matches by its bare key "consol_no".
-CLEAN_KEY="${INPUT#commons.}"
-[ -n "$MODULE" ] && CLEAN_KEY="${CLEAN_KEY#"$MODULE".}"
+if [ "$BATCH" = false ]; then
+  CLEAN_KEY="${INPUT#commons.}"
+  [ -n "$MODULE" ] && CLEAN_KEY="${CLEAN_KEY#"$MODULE".}"
+fi
 
 # Emit a JSON array of {path,key,value} for every namespace in a file's .enLang.
 file_entries() {
@@ -118,28 +135,73 @@ if [ -z "${SCOPE:-}" ]; then
   fi
 fi
 
-echo "Checking i18n key/value: '$INPUT' (Key check: '$CLEAN_KEY') in $SCOPE..." >&2
+if [ "$BATCH" = false ]; then
+  echo "Checking i18n key/value: '$INPUT' (Key check: '$CLEAN_KEY') in $SCOPE..." >&2
 
-printf '%s' "$ENTRIES" | jq -r --arg input "$INPUT" --arg key "$CLEAN_KEY" '
-  . as $entries |
+  printf '%s' "$ENTRIES" | jq -r --arg input "$INPUT" --arg key "$CLEAN_KEY" '
+    . as $entries |
 
-  # 1. Exact KEY match: bare key ("consol_no") or full path ("tms.consol_no").
-  ($entries | map(select(.key == $key or .path == $input))) as $key_matches |
-  if ($key_matches | length) > 0 then
-    "EXACT_KEY_MATCH: " + $key_matches[0].path + " -> \"" + $key_matches[0].value + "\""
-  else
-    # 2. Exact VALUE match (e.g. "Submit")
-    ($entries | map(select(.value == $input))) as $exact_matches |
-    if ($exact_matches | length) > 0 then
-      "EXACT_VALUE_MATCH: " + $exact_matches[0].path + " -> \"" + $exact_matches[0].value + "\""
+    # 1. Exact KEY match: bare key ("consol_no") or full path ("tms.consol_no").
+    ($entries | map(select(.key == $key or .path == $input))) as $key_matches |
+    if ($key_matches | length) > 0 then
+      "EXACT_KEY_MATCH: " + $key_matches[0].path + " -> \"" + $key_matches[0].value + "\""
     else
-      # 3. SIMILAR values (case-insensitive substring match; capped)
-      ($entries | map(select(.value | type == "string" and (ascii_downcase | contains($input | ascii_downcase))))) as $similar_matches |
-      if ($similar_matches | length) > 0 then
-        "SIMILAR_MATCHES:\n" + ($similar_matches[0:20] | map("- " + .path + ": \"" + .value + "\"") | join("\n"))
+      # 2. Exact VALUE match (e.g. "Submit")
+      ($entries | map(select(.value == $input))) as $exact_matches |
+      if ($exact_matches | length) > 0 then
+        "EXACT_VALUE_MATCH: " + $exact_matches[0].path + " -> \"" + $exact_matches[0].value + "\""
       else
-        "NO_MATCH"
+        # 3. SIMILAR values (case-insensitive substring match; capped)
+        ($entries | map(select(.value | type == "string" and (ascii_downcase | contains($input | ascii_downcase))))) as $similar_matches |
+        if ($similar_matches | length) > 0 then
+          "SIMILAR_MATCHES:\n" + ($similar_matches[0:20] | map("- " + .path + ": \"" + .value + "\"") | join("\n"))
+        else
+          "NO_MATCH"
+        end
       end
     end
-  end
+  '
+  exit 0
+fi
+
+# Batch mode: pair each input with its normalized key (same stripping rule as
+# single mode), then classify all pairs in one jq pass over $ENTRIES.
+PAIRS=""
+while IFS= read -r line; do
+  [ -z "$line" ] && continue
+  clean="${line#commons.}"
+  [ -n "$MODULE" ] && clean="${clean#"$MODULE".}"
+  PAIRS="${PAIRS}${line}"$'\t'"${clean}"$'\n'
+done <<< "$RAW_INPUTS"
+
+PAIRS_JSON=$(printf '%s' "$PAIRS" | jq -R -s -c '
+  split("\n") | map(select(length > 0)) | map(split("\t"))
+')
+
+echo "Checking $(printf '%s' "$PAIRS_JSON" | jq 'length') i18n candidates in $SCOPE..." >&2
+
+printf '%s' "$ENTRIES" | jq -r --argjson pairs "$PAIRS_JSON" '
+  . as $entries |
+  $pairs[] as $p |
+  ($p[0]) as $input |
+  ($p[1]) as $key |
+  (
+    ($entries | map(select(.key == $key or .path == $input))) as $key_matches |
+    if ($key_matches | length) > 0 then
+      "EXACT_KEY_MATCH: " + $key_matches[0].path + " -> \"" + $key_matches[0].value + "\""
+    else
+      ($entries | map(select(.value == $input))) as $exact_matches |
+      if ($exact_matches | length) > 0 then
+        "EXACT_VALUE_MATCH: " + $exact_matches[0].path + " -> \"" + $exact_matches[0].value + "\""
+      else
+        ($entries | map(select(.value | type == "string" and (ascii_downcase | contains($input | ascii_downcase))))) as $similar_matches |
+        if ($similar_matches | length) > 0 then
+          "SIMILAR_MATCHES:\n" + ($similar_matches[0:20] | map("- " + .path + ": \"" + .value + "\"") | join("\n"))
+        else
+          "NO_MATCH"
+        end
+      end
+    end
+  ) as $result |
+  "### " + $input + "\n" + $result
 '

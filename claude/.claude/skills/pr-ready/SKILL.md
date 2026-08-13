@@ -214,27 +214,28 @@ The regular expression is a start. It does not cover all identifiers. Add these 
 hand: exported symbols, i18n keys, API field names, CSS tokens, `classNamePrefix`
 tokens, `localStorage` keys, and privilege ids.
 
-**The repo-wide search and its triage are delegated to a fork.** A grep of the whole
-repository for a field name hits every unrelated module that uses the same name — one
-real run returned 10 hits, only 2 were defects. That raw dump has no reason to sit in
-this context; only the triaged verdicts do. The fork already has the identifier list
-above and this file's rules in context, so it needs no re-briefing. Give it the
-identifier list from 4a, the old→new mapping for each rename, and each newly-added
-selector token, then have it run and triage both searches below — it must never
-return raw grep output, only verdicts:
+**The repo-wide search and its triage are delegated to a fresh subagent.** A grep of
+the whole repository for a field name hits every unrelated module that uses the same
+name — one real run returned 10 hits, only 2 were defects. That raw dump has no
+reason to sit in this context; only the triaged verdicts do. Give the fresh subagent
+the identifier list from 4a, the old→new mapping for each rename, each newly-added
+selector token, and the two numbered checks below, then have it run and triage both
+searches — it must never return raw grep output, only verdicts:
 
-1. **4a — removed/renamed identifiers.** For each identifier:
+1. **4a — removed/renamed identifiers.** For each identifier, run:
    ```bash
-   grep -rnI '<identifier>' apps libs scripts .github .jenkins \
-     --include='*.ts' --include='*.tsx' --include='*.cy.ts' \
-     --include='*.json' --include='*.scss' --include='*.sh' --include='*.yml'
+   ~/bin/identifier-scope-check.sh '<identifier>' "$MOP_MONOREPO_PATH"
    ```
-   `apps/*-e2e/`, `**/fixtures/`, `*.spec.*`, `*.test.*`, and the CI scripts are the
-   purpose of this step. Never limit the grep to the app that was edited. Use scope
-   to decide each hit: a rename usually applies to one module or one screen. A
-   reference is broken only if it points to the same module that the diff renamed.
-   The same name in a different feature is a different field — not a defect. Never
-   change a hit before tracing it to the renamed identifier.
+   This buckets every repo-wide hit into out-of-scope (auto-dismissed, no file
+   opened) vs in-scope (with grep context attached) — an app-local diff is bucketed
+   by directory prefix (plus the matching `-e2e` dir); a `libs/` change instead
+   traces which files actually import the changed lib's resolved alias, since a
+   shared lib is meant to be consumed from any app and prefix-bucketing would
+   wrongly dismiss real cross-app callers. Judge only the in-scope hits it prints —
+   trust its out-of-scope bucketing, do not re-check those by hand. A reference is
+   broken only if it points to the same module that the diff renamed. The same name
+   in a different feature is a different field — not a defect. Never change a hit
+   before tracing it to the renamed identifier.
 2. **4b — selectors that now match two elements.** This defect needs no removal. An
    added element is enough. For each new selector token (a shared `classNamePrefix`,
    a CSS class, or a `data-testid` pattern), count the matches before and after the
@@ -245,7 +246,7 @@ return raw grep output, only verdicts:
    same defect shape as the cardinality check in spec-drift — there the shape
    applies to data relationships, here to selectors.
 
-Require the fork to return one verdict per identifier/selector, `path:line` only:
+Require the subagent to return one verdict per identifier/selector, `path:line` only:
 
 - **Confirmed.** The reference points to the identifier that was removed. Or the
   call site does a single-element operation on a selector that now matches two
@@ -271,10 +272,9 @@ field or a dependency that the old target did not have.
 You cannot start `/code-review` from here. See the note above. Do not try it. Do not
 invent a review of unknown depth.
 
-Instead, start a fork. It already has this checklist in context — a fresh subagent
-would need it retyped into its prompt, uncached, on every run. Give it the diff from
-the scope in step 1b, and have it apply the checklist below. A review that only asks
-"is this correct?" misses the first four items. Therefore this file states them.
+Instead, start a fresh subagent. Give it the diff from the scope in step 1b, and
+have it apply the checklist below. A review that only asks "is this correct?"
+misses the first four items. Therefore this file states them.
 
 - **Effect re-invocation.** Read each new or changed `useEffect`. React StrictMode
   runs `mount`, then `cleanup`, then `mount` again in development. Does the setup

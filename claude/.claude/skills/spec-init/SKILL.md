@@ -41,10 +41,8 @@ description or comments; record them in the note header.
 
 ### 2. Ground in the codebase — the five checks (delegated)
 
-Delegate this to a **fork**. Run it in the foreground — step 3 needs its
-output first. It already has the ticket manifest and attachments from step 1
-in context, so it needs no re-briefing on those; a fresh subagent would need
-them retyped into its prompt, uncached, every run. Give the fork:
+Delegate this to a **fresh subagent**. Run it in the foreground — step 3 needs
+its output first. Give it the ticket manifest and attachments from step 1, plus:
 - the ticket summary and description from `manifest.json`
 - `$MOP_MONOREPO_PATH`
 - `$MOP_CONFIGURATION_PATH`
@@ -56,13 +54,15 @@ them retyped into its prompt, uncached, every run. Give the fork:
 2. **Missing details?** Check for error handling, validation rules,
    empty/loading/permission states, and field-level behavior the ticket leaves
    unstated.
-3. **i18n keys already exist?** Extract the candidate UI strings, then per string:
+3. **i18n keys already exist?** Extract the candidate UI strings, then check them
+   all in one call:
    ```bash
-   ~/bin/check-i18n.sh "Submit"          # searches ALL modules by default
-   ~/bin/check-i18n.sh "Consol No." tms  # optional: scope to a module + commons
+   ~/bin/check-i18n.sh --batch <<< $'Submit\nConsol No.'          # searches ALL modules by default
+   ~/bin/check-i18n.sh --batch tms <<< $'Submit\nConsol No.'      # optional: scope to a module + commons
    ```
-   Reuse exact/similar matches (output: `EXACT_KEY_MATCH` / `EXACT_VALUE_MATCH` /
-   `SIMILAR_MATCHES` / `NO_MATCH`, each with the full `<module>.<key>` path).
+   Reuse exact/similar matches (output per string: `EXACT_KEY_MATCH` /
+   `EXACT_VALUE_MATCH` / `SIMILAR_MATCHES` / `NO_MATCH`, each with the full
+   `<module>.<key>` path).
 4. **Violates existing functionality?** Search for existing behavior the new spec
    would change or break; call it out explicitly.
 5. **New privilege needed?** The config repo uses one branch per environment

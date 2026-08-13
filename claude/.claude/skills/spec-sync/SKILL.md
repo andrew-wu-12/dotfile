@@ -37,11 +37,10 @@ Read `specs/MOP-XXXX.md` — especially the current `規格`, `Decision Log`, an
 
 ### 2. Re-fetch Jira (delegated)
 
-Delegate the fetch to a **fork** using `tool-ticket-get`. Run it in the
-foreground — step 3 needs its output first. It already has the note's current
-state from step 1 — which comments and attachments it already reflects — in
-context, so it needs no re-briefing on that; a fresh subagent would need it
-retyped into its prompt, uncached, every run. Give it the ticket ID.
+Delegate the fetch to a **fresh subagent** using `tool-ticket-get`. Run it in
+the foreground — step 3 needs its output first. Give it the ticket ID and the
+note's last Round History date, so it can tell what is new since the note's
+last round.
 
 For anything new since the note's last round, require its report to list each
 comment verbatim (author, date, text) and the **file paths** of any new

@@ -58,12 +58,11 @@ all means this is the **first post** (see step 5).
 
 ### 2. Fetch + run the guards (delegated)
 
-Delegate to a **fork**. Run it in the foreground — step 3 needs its output
-first. It already has the note's frontmatter (`round`, `posted:` entries, last
-Round History date) from step 1 and the four guard rules below in context, so
-it needs no re-briefing on those; a fresh subagent would need them retyped
-into its prompt, uncached, every run. Have it use `tool-ticket-get` to fetch
-the ticket, note the temp dir that fetch creates as `$OUT`, then also run:
+Delegate to a **fresh subagent**. Run it in the foreground — step 3 needs its
+output first. Give it the note's frontmatter (`round`, `posted:` entries, last
+Round History date) from step 1 and the four guard rules below. Have it use
+`tool-ticket-get` to fetch the ticket, note the temp dir that fetch creates as
+`$OUT`, then also run:
 
 ```bash
 ~/bin/jira-description.sh get MOP-XXXX > "$OUT/description.live"

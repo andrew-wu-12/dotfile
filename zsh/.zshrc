@@ -132,7 +132,18 @@ alias gc='git checkout'
 alias gco='git commit -m'
 alias gca='git commit --amend --no-edit'
 alias gs='git status'
-alias gbc='echo "$(git rev-parse --abbrev-ref HEAD)" | pbcopy; echo "Copy Branch Name Success!"'
+# macOS: pbcopy, builtin. Arch: wl-copy (Wayland) or xclip (X11), picked via
+# $WAYLAND_DISPLAY since a login session can be either.
+_clip_copy() {
+    if command -v pbcopy &>/dev/null; then
+        pbcopy
+    elif [ -n "$WAYLAND_DISPLAY" ]; then
+        wl-copy
+    else
+        xclip -selection clipboard
+    fi
+}
+alias gbc='echo "$(git rev-parse --abbrev-ref HEAD)" | _clip_copy; echo "Copy Branch Name Success!"'
 
 # Yarn
 alias ys='yarn serve'
@@ -172,10 +183,19 @@ eval "$(starship init zsh)"
 
 # Secure credential retrieval functions (tokens never exposed in environment)
 # Added by init.sh - Do not edit manually
-export JENKINS_TOKEN=$(security find-generic-password -a "$USER" -s "jenkins.morrison.express" -w 2>/dev/null)
-export JIRA_TOKEN=$(security find-generic-password -a "$USER" -s "morrisonexpress.atlassian.net" -w 2>/dev/null)
-export GETDATATOKEN=$(security find-generic-password -a "$USER" -s "getdata.morrison.express" -w 2>/dev/null)
-export OPENAI_API_KEY=$(security find-generic-password -a "$USER" -s "openai.com" -w 2>/dev/null)
+# macOS: Keychain (security). Arch: secret-tool (libsecret), assumes a
+# desktop login already unlocked the Secret Service keyring via PAM.
+_read_cred() {
+    if command -v security &>/dev/null; then
+        security find-generic-password -a "$USER" -s "$1" -w 2>/dev/null
+    else
+        secret-tool lookup service "$1" account "$USER" 2>/dev/null
+    fi
+}
+export JENKINS_TOKEN=$(_read_cred "jenkins.morrison.express")
+export JIRA_TOKEN=$(_read_cred "morrisonexpress.atlassian.net")
+export GETDATATOKEN=$(_read_cred "getdata.morrison.express")
+export OPENAI_API_KEY=$(_read_cred "openai.com")
 
 export MOP_CONFIGURATION_PATH="$HOME/project/mop_configuration_files"
 export MOP_CONSOLE_PATH="$HOME/project/mop_console"
@@ -194,10 +214,15 @@ export PATH="$HOME/.opencode/bin:$PATH"
 export MCP_PATH="$HOME/dotfile-mcp-server"
 export PATH="$HOME/.local/bin:$PATH"
 
-# Homebrew-installed zsh plugins. Guarded, so a machine that hasn't run
-# init-recommend-cli-tools.sh yet just starts without them instead of erroring.
-# zsh-syntax-highlighting must be sourced last — keep these at the end of the file.
+# Homebrew (macOS) or pacman (Arch) -installed zsh plugins. Guarded, so a
+# machine that hasn't run init-recommend-cli-tools.sh yet just starts without
+# them instead of erroring. zsh-syntax-highlighting must be sourced last —
+# keep these at the end of the file.
 [ -f /opt/homebrew/share/zsh-autosuggestions/zsh-autosuggestions.zsh ] \
     && source /opt/homebrew/share/zsh-autosuggestions/zsh-autosuggestions.zsh
+[ -f /usr/share/zsh-autosuggestions/zsh-autosuggestions.zsh ] \
+    && source /usr/share/zsh-autosuggestions/zsh-autosuggestions.zsh
 [ -f /opt/homebrew/share/zsh-syntax-highlighting/zsh-syntax-highlighting.zsh ] \
     && source /opt/homebrew/share/zsh-syntax-highlighting/zsh-syntax-highlighting.zsh
+[ -f /usr/share/zsh-syntax-highlighting/zsh-syntax-highlighting.zsh ] \
+    && source /usr/share/zsh-syntax-highlighting/zsh-syntax-highlighting.zsh

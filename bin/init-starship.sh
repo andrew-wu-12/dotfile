@@ -10,8 +10,8 @@ function install_starship() {
     echo "=== Starship 設定 ==="
     echo ""
 
-    if ! ensure_brew; then
-        echo "尚未安裝 Homebrew。請先執行 init-brew.sh。"
+    if ! ensure_pkg_manager; then
+        echo "尚未偵測到可用的套件管理工具（Homebrew 或 pacman）。macOS 請先執行 init-brew.sh。"
         exit 1
     fi
 
@@ -19,7 +19,7 @@ function install_starship() {
         echo "✓ starship 已安裝"
     else
         echo "正在安裝 starship..."
-        brew install starship || { echo "安裝 starship 失敗。"; exit 1; }
+        pkg_install starship || { echo "安裝 starship 失敗。"; exit 1; }
     fi
 
     stow_pkg starship || exit 1

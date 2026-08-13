@@ -10,8 +10,8 @@ function install_nvim() {
     echo "=== Nvim 設定 ==="
     echo ""
 
-    if ! ensure_brew; then
-        echo "尚未安裝 Homebrew。請先執行 init-brew.sh。"
+    if ! ensure_pkg_manager; then
+        echo "尚未偵測到可用的套件管理工具（Homebrew 或 pacman）。macOS 請先執行 init-brew.sh。"
         exit 1
     fi
 
@@ -19,7 +19,8 @@ function install_nvim() {
         echo "✓ nvim 已安裝"
     else
         echo "正在安裝 nvim..."
-        brew install nvim || { echo "安裝 nvim 失敗。"; exit 1; }
+        # brew calls the formula "nvim"; pacman calls the package "neovim".
+        pkg_install nvim neovim || { echo "安裝 nvim 失敗。"; exit 1; }
     fi
 
     stow_pkg nvim-stow || exit 1

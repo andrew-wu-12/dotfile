@@ -1,5 +1,9 @@
 #!/bin/bash
 
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+# shellcheck source=/dev/null
+source "$SCRIPT_DIR/init-lib.sh"
+
 function sanitize_identity_name() {
     echo "$1" | tr '[:upper:]' '[:lower:]' | sed -E 's/[^a-z0-9]+/-/g; s/^-+|-+$//g'
 }
@@ -39,7 +43,7 @@ function add_key_to_agent() {
 
     echo "正在啟動 ssh-agent 並加入金鑰..."
     eval "$(ssh-agent -s)" > /dev/null 2>&1
-    ssh-add --apple-use-keychain "$key_path" 2>/dev/null
+    ssh_add_key "$key_path"
 
     if [ $? -eq 0 ]; then
         echo "✓ SSH 金鑰已加入 ssh-agent"
@@ -73,7 +77,7 @@ function publish_public_key() {
     local key_path="$1"
 
     if [ -f "$key_path.pub" ]; then
-        cat "$key_path.pub" | pbcopy
+        clip_copy < "$key_path.pub"
         echo ""
         echo "✓ 已將 SSH 公鑰複製到剪貼簿"
         echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"

@@ -115,7 +115,7 @@ function detect_status() {
     local key="$1"
     case "$key" in
         brew)
-            ensure_brew || return 1
+            ensure_pkg_manager || return 1
             ;;
         required)
             local pkg
@@ -131,12 +131,13 @@ function detect_status() {
             [ -L "$HOME/.zshrc" ] || return 1
             ;;
         recommend-cli)
-            local cmd plugin
-            for cmd in zoxide rg eza lazygit terminal-notifier fzf; do
+            local cmd plugin required_cmds=(zoxide rg eza lazygit fzf)
+            [ "$(detect_pkg_manager)" = "brew" ] && required_cmds+=(terminal-notifier)
+            for cmd in "${required_cmds[@]}"; do
                 command -v "$cmd" &>/dev/null || return 1
             done
             for plugin in zsh-autosuggestions zsh-syntax-highlighting; do
-                [ -f "/opt/homebrew/share/$plugin/$plugin.zsh" ] || return 1
+                [ -f "$(zsh_plugin_file "$plugin")" ] || return 1
             done
             ;;
         starship)
@@ -152,8 +153,12 @@ function detect_status() {
             command -v tmux &>/dev/null && [ -L "$HOME/.tmux.conf" ] || return 1
             ;;
         wezterm)
-            ensure_brew || return 1
-            brew list --cask wezterm &>/dev/null && [ -L "$HOME/.wezterm.lua" ] || return 1
+            ensure_pkg_manager || return 1
+            case "$(detect_pkg_manager)" in
+                brew) brew list --cask wezterm &>/dev/null || return 1 ;;
+                pacman) pacman -Qi wezterm &>/dev/null || return 1 ;;
+            esac
+            [ -L "$HOME/.wezterm.lua" ] || return 1
             ;;
         claude)
             command -v claude &>/dev/null && [ -L "$HOME/.claude/settings.json" ] || return 1
@@ -167,7 +172,7 @@ function detect_status() {
         credentials)
             local svc
             for svc in jenkins.morrison.express morrisonexpress.atlassian.net getdata.morrison.express; do
-                security find-generic-password -a "$USER" -s "$svc" -w &>/dev/null || return 1
+                cred_find "$svc" &>/dev/null || return 1
             done
             ;;
         ssh)

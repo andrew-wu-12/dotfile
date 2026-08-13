@@ -5,27 +5,40 @@ SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 source "$SCRIPT_DIR/init-lib.sh"
 
 function install_required_packages() {
-    local packages=("jq" "gh" "curl" "git" "stow")
+    # "<brew/command name>:<pacman name>" — pacman name defaults to the first
+    # field when omitted (see the parse below). gh is the one divergence: its
+    # command and brew formula are "gh", but the pacman package is "github-cli".
+    local packages=("jq" "gh:github-cli" "curl" "git" "stow")
 
     echo ""
     echo "=== 必要套件安裝 ==="
     echo ""
-    if ! ensure_brew; then
-        echo "尚未安裝 Homebrew。請先執行 init-brew.sh。"
+    if ! ensure_pkg_manager; then
+        echo "尚未偵測到可用的套件管理工具（Homebrew 或 pacman）。macOS 請先執行 init-brew.sh。"
         exit 1
     fi
 
-    echo "正在更新 Homebrew..."
-    brew update || { echo "更新 Homebrew 失敗，請檢查網路或環境設定。"; exit 1; }
+    case "$(detect_pkg_manager)" in
+        brew)
+            echo "正在更新 Homebrew..."
+            brew update || { echo "更新 Homebrew 失敗，請檢查網路或環境設定。"; exit 1; }
+            ;;
+        pacman)
+            echo "正在更新 pacman 套件資料庫..."
+            sudo pacman -Sy || { echo "更新 pacman 失敗，請檢查網路或環境設定。"; exit 1; }
+            ;;
+    esac
 
-    for pkg in "${packages[@]}"; do
+    for package_spec in "${packages[@]}"; do
+        local pkg="${package_spec%%:*}" pacman_name="${package_spec#*:}"
+
         if command -v "$pkg" &>/dev/null; then
             echo "✓ $pkg 已安裝"
             continue
         fi
 
         echo "正在安裝 $pkg..."
-        brew install "$pkg" || { echo "安裝 $pkg 失敗。"; exit 1; }
+        pkg_install "$pkg" "$pacman_name" || { echo "安裝 $pkg 失敗。"; exit 1; }
     done
 
     if [ -s "$HOME/.nvm/nvm.sh" ]; then

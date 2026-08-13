@@ -2,11 +2,9 @@
 # VSCode-style tmux dev layout for the current git repo.
 #
 #   +---------------------------+----------+
-#   |          nvim (~3/4 h)    |          |
-#   +---------------------------+  claude  |
-#   |      command (~1/4 h)     | (~1/4 w) |
+#   |           nvim            |  claude  |
+#   |         (~3/4 h)          | (~1/4 w) |
 #   +---------------------------+----------+
-#            left ~3/4 w
 #
 # One shared template applied at the current repo's root. Idempotent by
 # window name (the repo dir): re-running just re-selects the repo's window.
@@ -51,9 +49,8 @@ win_name="${branch_name}(${main_repo})"
 # Given the pane id of the (already-created) nvim pane, carve out the claude
 # column and the command pane, launch the tools, and focus nvim.
 layout_panes() {  # nvim_pane_id
-  local p_nvim=$1 p_claude p_cmd
+  local p_nvim=$1 p_claude
   p_claude=$(tmux split-window -h -l 25% -t "$p_nvim" -c "$repo_root" -P -F '#{pane_id}')
-  p_cmd=$(tmux split-window -v -l 25% -t "$p_nvim" -c "$repo_root" -P -F '#{pane_id}')  # command pane: bare shell
 
   # Label each pane border with the repo name. pane-border-status is a
   # window-local option so other windows keep their default (off) look.
@@ -61,7 +58,6 @@ layout_panes() {  # nvim_pane_id
   tmux set-option -w -t "$win" pane-border-status top
   tmux set-option -w -t "$win" pane-border-format ' #{pane_title} '
   tmux select-pane -t "$p_nvim"   -T "$repo_name"
-  tmux select-pane -t "$p_cmd"    -T "$repo_name"
   tmux select-pane -t "$p_claude" -T "$repo_name"
 
   tmux send-keys -t "$p_nvim" 'nvim' C-m

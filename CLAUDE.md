@@ -4,7 +4,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## What This Repo Is
 
-A personal dotfile and dev-environment setup repo for macOS. It uses **GNU Stow** to symlink config directories into their expected locations in `$HOME`. The repo has no build step, no test suite, and no package manager at the root level.
+A personal dotfile and dev-environment setup repo, targeting **macOS** (primary) and **Arch Linux**. It uses **GNU Stow** to symlink config directories into their expected locations in `$HOME`. The repo has no build step, no test suite, and no package manager at the root level.
 
 ## Directory Layout and Stow Targets
 
@@ -23,7 +23,7 @@ Each top-level directory is a Stow package. Running `stow <pkg>` from the repo r
 
 All stowing goes through `stow_pkg` in `bin/init-lib.sh`, never `stow` directly. It dry-runs first, and if a real (non-symlink) file already occupies a target it lists the conflicts and asks whether to keep them. Keeping skips that package entirely; declining backs the files up to `<name>.bak.<timestamp>` and links the repo version. `--adopt` is deliberately **not** used anywhere — the repo is always the source of truth and is never written to by an init script.
 
-`bin/init-lib.sh` also provides `resolve_repo_root` (scripts must not assume the repo is the parent of their own directory — that breaks when they run via the `~/bin` symlink) and `ensure_brew` (a freshly installed Homebrew is not on `PATH` until `brew shellenv` is evaluated).
+`bin/init-lib.sh` also provides `resolve_repo_root` (scripts must not assume the repo is the parent of their own directory — that breaks when they run via the `~/bin` symlink), `ensure_brew` (a freshly installed Homebrew is not on `PATH` until `brew shellenv` is evaluated), and the package-manager abstraction described in [Platform Support](#platform-support).
 
 ## Initial Setup
 
@@ -36,21 +36,42 @@ source ~/.zshrc
 
 `init.sh` orchestrates a sequence of `init-*.sh` sub-scripts. Optional tools (Starship, opencode, Nvim, Tmux, WezTerm, recommended CLI tools) are each prompted individually — pressing Enter skips.
 
-On a fresh Mac the first step is `init-brew.sh`, which installs Homebrew (confirming first, since it needs `sudo` and pulls in Xcode Command Line Tools). Every other step depends on it.
+On a fresh Mac the first step is `init-brew.sh`, which installs Homebrew (confirming first, since it needs `sudo` and pulls in Xcode Command Line Tools). Every other step depends on it. On Arch, pacman ships with the base system, so there is no equivalent bootstrap step — `init-brew.sh` is macOS-only and `detect_status brew` just confirms pacman is present.
 
 Steps already satisfied are skipped, **except** those in `ALWAYS_RUN_KEYS` (currently `base`). Restowing is idempotent, and skipping it is how `~/bin` silently drifts from the repo when a new script is added — so it always runs.
 
-Everything targets macOS on Apple Silicon; Homebrew is assumed at `/opt/homebrew`. All scripts must run under the stock `/bin/bash` 3.2 — no associative arrays, `mapfile`, or other Bash 4+ features.
+All scripts must run under macOS's stock `/bin/bash` 3.2 — no associative arrays, `mapfile`, or other Bash 4+ features. This constraint is a macOS floor, not a ceiling: it also runs unmodified under Arch's modern Bash, so no separate Arch compatibility work is needed on that front.
+
+## Platform Support
+
+macOS is via Homebrew; Arch Linux is via pacman for official-repo packages and an AUR helper (`yay`) for everything else. `bin/init-lib.sh` provides the abstraction every `init-*.sh` script installs through:
+
+- `detect_pkg_manager` — caches `"brew"` or `"pacman"` based on `uname -s` / `command -v pacman`.
+- `ensure_pkg_manager` — macOS delegates to `ensure_brew`; Arch just confirms `pacman` exists.
+- `ensure_aur_helper` — bootstraps `yay` on Arch (confirms first, since it builds from source via `makepkg`); no-op on macOS.
+- `pkg_install <brew_name> [pacman_name] [cask|aur]` — installs a package by name. `pacman_name` defaults to `brew_name` (most packages here share a name across both, e.g. `starship`, `ripgrep`), pass it explicitly when they diverge (e.g. `pkg_install nvim neovim`). The `cask` modifier means `brew install --cask` on macOS and is a no-op on Arch (GUI apps are just regular packages there); `aur` means "not in Arch's official repos, install via `yay`" and is a no-op on macOS.
+- `zsh_plugin_file <plugin>` — resolves the share-dir path for a zsh plugin (`/opt/homebrew/share/...` vs `/usr/share/...`); `.zshrc` guards its own `source` lines for both paths directly rather than calling into `init-lib.sh`, since it isn't sourced from a setup script.
+
+Known package-name divergences, encoded at each call site rather than in a shared table (there are only three): `nvim`→`neovim` (`init-nvim.sh`), `opencode`→`opencode-bin` via AUR (`init-opencode.sh`, official-maintainer package), `wezterm` cask vs. the `extra`-repo package of the same name (`init-wezterm.sh`).
+
+**Not yet ported to Arch** — these remain macOS-only and are out of scope for the package-manager abstraction: `osascript` desktop notifications, and `tmux-agent-notify.sh`'s frontmost-app detection (`lsappinfo`/LaunchServices bundle IDs — see [Notifications](#parallel-ticket-workspaces-git-worktrees)). Each needs its own Linux-side redesign (`notify-send`, and an X11/Wayland-specific focus-detection story, respectively) rather than a mechanical swap.
 
 ## Credentials
 
-Tokens are stored in macOS Keychain, never in plaintext. `.zshrc` reads them at shell start with `security find-generic-password`. To add or update a token:
+Tokens are stored encrypted, never in plaintext: macOS uses Keychain (`security`), Arch uses `secret-tool` (libsecret) against a Secret Service provider (gnome-keyring or equivalent) — this assumes a desktop login (GNOME/KDE) that unlocks the keyring via PAM; a minimal-WM setup with no such hook needs its own bootstrap, out of scope here. Both backends key items by `(service, account)`, so `init-lib.sh`'s `cred_find`/`cred_store` wrap the platform difference and `ensure_secret_backend` lazily installs `libsecret` on Arch if `secret-tool` is missing — it's called only from `init-credentials.sh`, never from `cred_find`/`cred_store`/`detect_status`, so status checks stay read-only rather than triggering a pacman install as a side effect. `.zshrc` reads tokens at shell start with its own local `_read_cred` helper (mirroring the same branch, since `.zshrc` doesn't source `init-lib.sh`). To add or update a token, run `init-credentials.sh` (or `crt`'s underlying `handle_credentials`), or store one directly:
 
 ```bash
+# macOS
 security add-generic-password -a "$USER" -s "<service-name>" -w "<token>" -U
+# Arch
+printf '%s' "<token>" | secret-tool store --label="<service-name>" service "<service-name>" account "$USER"
 ```
 
-Service names: `jenkins.morrison.express`, `morrisonexpress.atlassian.net`, `getdata.morrison.express`.
+Service names: `jenkins.morrison.express`, `morrisonexpress.atlassian.net`, `getdata.morrison.express`, `openai.com`.
+
+## Clipboard
+
+macOS ships `pbcopy`/`pbpaste`, builtin. Arch has no equivalent, and which tool works depends on the session type: `wl-clipboard` (`wl-copy`/`wl-paste`) under Wayland, `xclip` under X11 — `init-lib.sh`'s `clip_copy`/`clip_paste` pick between them via `$WAYLAND_DISPLAY` at call time (only set under Wayland) rather than assuming one session type, and fall straight through to `pbcopy`/`pbpaste` when present. `ensure_clipboard_backend` lazily installs whichever tool is needed on Arch; unlike the credentials port, it's called directly from `clip_copy`/`clip_paste` since nothing polls them repeatedly the way `detect_status` polls credentials. `bin/init-ssh.sh`, `bin/setup-git-identity.sh`, and `bin/bi-weekly-report.sh` all source `init-lib.sh` and call `clip_copy` instead of `pbcopy` directly; `.zshrc`'s `gbc` alias uses its own local `_clip_copy` helper (same branch, since `.zshrc` doesn't source `init-lib.sh`).
 
 ## Key Scripts in `bin/`
 

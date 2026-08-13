@@ -16,6 +16,7 @@ emulate -L zsh
 set -u
 
 source ~/.zshrc
+source "${0:A:h}/tmux-serve-lib.sh"
 
 FORCE=0
 [[ "${1:-}" == "--force" || "${1:-}" == "-f" ]] && FORCE=1
@@ -56,19 +57,10 @@ tmux list-windows -a -F '#{window_id} #{window_name}' 2>/dev/null \
         [[ "$wname" == "$WIN_NAME" || "$wname" == *" $WIN_NAME" ]] && tmux kill-window -t "$wid"
       done
 
-# If the single MOP `yarn serve` window (see tmux-serve-popup.sh) is currently
+# If the single MOP `yarn serve` window (see tmux-serve-lib.sh) is currently
 # targeting this worktree, stop it and clear the target first — otherwise
 # `git worktree remove` fights a running process whose cwd is inside $ROOT.
-SERVE_WIN_NAME="serve(mop-console-monorepo)"
-tmux list-windows -a -F '#{window_id} #{window_name}' 2>/dev/null \
-    | while IFS=' ' read -r wid wname; do
-        [[ "$wname" == "$SERVE_WIN_NAME" || "$wname" == *" $SERVE_WIN_NAME" ]] || continue
-        [[ "$(tmux show-option -w -t "$wid" -v @serve_target 2>/dev/null)" == "$ROOT" ]] || continue
-        SERVE_PANE=$(tmux list-panes -t "$wid" -F '#{pane_id}' | head -1)
-        echo "Stopping yarn serve (currently targeting this worktree)…"
-        tmux send-keys -t "$SERVE_PANE" C-c
-        tmux set-option -w -t "$wid" -u @serve_target
-      done
+serve_stop_if_target "$ROOT"
 
 # git worktree remove must run from outside the tree being removed. common_dir
 # (computed above) is the main checkout's .git dir, so its parent is the main

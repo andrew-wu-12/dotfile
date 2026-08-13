@@ -1,81 +1,223 @@
 #!/bin/bash
-# Vertical window picker: an fzf popup that lists every tmux window across all
-# sessions as a vertical stack of cards. Enter switches to it (across
-# sessions); Esc cancels. Bound to `prefix w` in .tmux.conf, replacing native
-# choose-tree.
+# Vertical window picker + MOP yarn-serve control: an fzf popup listing every
+# tmux window across all sessions as a vertical stack of cards.
+#
+#   enter   switch to the highlighted window (across sessions) and exit
+#   ctrl-s  set the highlighted window's worktree as the yarn-serve target
+#           (does NOT switch — "check out the window, decide separately
+#           whether to serve from it")
+#   ctrl-r  restart whatever is currently served
+#   ctrl-x  stop whatever is currently served
+#   ctrl-v  view the full serve log
+#   esc     cancel
+#
+# ctrl-s/ctrl-r/ctrl-x/ctrl-v act and loop back into a refreshed picker
+# instead of closing the popup; enter/esc are the only ways out. This used to
+# be two separate popups (`prefix w` for switching, `prefix n` for serve
+# control via tmux-serve-popup.sh) — merged here since both start from "which
+# window am I looking at," and serve-targeting only makes sense for a
+# worktree that already has one open. Shared serve helpers live in
+# tmux-serve-lib.sh (also sourced by worktree-done.sh).
 #
 # Each card is a multi-line fzf item (fzf --read0, fzf >= 0.44 required for
 # multi-line item rendering): a bold header line ("session │ window-name",
 # window-name already carrying any 🔴/🟢 marker from tmux-agent-notify.sh),
-# plus for mwt ticket windows a dim indented ticket-title line (from the
-# @ticket_title window option set by worktree-ticket.sh). Plain wt/dev
-# windows have no body line, so their card is just the header. No live
-# preview pane — fzf's multi-line matching searches the whole card (header +
-# body) as a side effect of this layout; there's no fzf option to scope it to
-# the header alone once items are multi-line.
+# then optionally a dim ticket-title line (from @ticket_title, set by
+# worktree-ticket.sh) and/or a serve status/marker line. The header is
+# deliberately the LAST tab-delimited field (session, window_id, worktree
+# path, header) rather than the first three: --with-nth/--delimiter split
+# fields across the whole multi-line record, not per physical line, so any
+# body text appended after the header (title, status lines) has to land
+# after the last tab or it silently falls outside --with-nth's display
+# range. No live preview pane — fzf's multi-line matching searches the whole
+# card as a side effect of this layout.
 #
-# Read-only navigator by design — it never creates, renames, or kills windows.
-# Ticket-window lifecycle stays with wt / wtd so worktrees never get orphaned.
+# The hidden serve window itself never appears in the list — it's plumbing,
+# not somewhere to jump to.
 #
 # Bash 3.2-clean (no associative arrays / mapfile).
 
 set -u
+
+SCRIPT_DIR=$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)
+# shellcheck source=tmux-serve-lib.sh
+source "$SCRIPT_DIR/tmux-serve-lib.sh"
 
 TAB=$(printf '\t')
 BOLD=$'\033[1m'
 DIM=$'\033[38;2;127;132;156m'  # catppuccin mocha "overlay1"
 RESET=$'\033[0m'
 
-# One row per window: <session>\t<window_id>\t<header>\t<ticket_title>.
-# window_name already includes any 🔴/🟢 marker from tmux-agent-notify.sh.
-# @ticket_title is empty for non-mwt windows (unset tmux user option).
-raw=$(tmux list-windows -a \
-  -F "#{session_name}${TAB}#{window_id}${TAB}#{session_name} │ #{window_name}${TAB}#{@ticket_title}")
-[ -z "$raw" ] && exit 0
-
-# Build the NUL-delimited, multi-line card list fzf expects with --read0.
-# Written straight to a temp file via printf, not accumulated in a bash
-# variable: bash (unlike zsh) silently drops embedded NUL bytes from
-# variables, which collapsed every card into one unselectable blob.
-list_file=$(mktemp)
-trap 'rm -f "$list_file"' EXIT
-
-while IFS="$TAB" read -r sess winid header title; do
-  record="${sess}${TAB}${winid}${TAB}${BOLD}${header}${RESET}"
-  [ -n "$title" ] && record="${record}
-  ${DIM}${title}${RESET}"
-
-  printf '%s\0' "$record" >> "$list_file"
-done <<EOF
-$raw
-EOF
-
-# catppuccin mocha palette, to match @catppuccin_flavor "mocha" in .tmux.conf.
 mocha="--color=bg+:#313244,bg:#1e1e2e,spinner:#f5e0dc,hl:#f38ba8,fg:#cdd6f4,\
 header:#f38ba8,info:#cba6f7,pointer:#f5e0dc,marker:#b4befe,fg+:#cdd6f4,\
 prompt:#cba6f7,hl+:#f38ba8,border:#585b70"
 
-selected=$(fzf \
-  --read0 \
-  --ansi \
-  --gap=1 \
-  --delimiter="$TAB" \
-  --with-nth=3 \
-  --layout=reverse \
-  --border=rounded \
-  --margin=0 \
-  --prompt='window ❯ ' \
-  --pointer='▶' \
-  $mocha < "$list_file") || exit 0
+SERVE_INFO=$(serve_ensure_window)
+SERVE_WIN=$(printf '%s' "$SERVE_INFO" | cut -d' ' -f2)
+SERVE_PANE=$(printf '%s' "$SERVE_INFO" | cut -d' ' -f3)
 
-[ -z "$selected" ] && exit 0
+list_file=$(mktemp)
+trap 'rm -f "$list_file"' EXIT
 
-# Only the header (first) line of the selected card carries the session /
-# window-id fields — body lines have no tabs.
-first_line=$(printf '%s\n' "$selected" | head -1)
-sess=$(printf '%s' "$first_line" | cut -d"$TAB" -f1)
-win=$(printf '%s' "$first_line" | cut -d"$TAB" -f2)
-[ -z "$win" ] && exit 0
+# --- start/stop actions on the hidden serve window ---------------------
 
-tmux switch-client -t "$sess"
-tmux select-window -t "$win"
+serve_switch_to() {  # $1 = worktree path to serve
+  local target="$1" cmd
+  echo "Stopping current server…"
+  tmux send-keys -t "$SERVE_PANE" C-c
+  for _ in $(seq 1 20); do
+    cmd=$(tmux display-message -p -t "$SERVE_PANE" '#{pane_current_command}' 2>/dev/null)
+    case "$cmd" in zsh|bash|sh) break ;; esac
+    sleep 0.5
+  done
+  cmd=$(tmux display-message -p -t "$SERVE_PANE" '#{pane_current_command}' 2>/dev/null)
+  case "$cmd" in
+    zsh|bash|sh) : ;;
+    *) tmux send-keys -t "$SERVE_PANE" C-c ;;
+  esac
+
+  echo "Starting yarn serve in $(serve_target_label "$target")…"
+  tmux send-keys -t "$SERVE_PANE" "cd '$target' && yarn serve" Enter
+  tmux set-option -w -t "$SERVE_WIN" @serve_target "$target"
+
+  echo "Switched — refreshing status…"
+  sleep 1
+}
+
+serve_stop_current() {
+  echo "Stopping yarn serve…"
+  tmux send-keys -t "$SERVE_PANE" C-c
+  tmux set-option -w -t "$SERVE_WIN" -u @serve_target
+  sleep 1
+}
+
+# --- card list -----------------------------------------------------------
+#
+# Written to a file, not a variable: bash silently drops embedded NUL bytes
+# from variables, which would collapse every card into one unselectable blob.
+#
+# Windows are only checked against the (relatively expensive) git resolution
+# below when their name ends in the MOP monorepo suffix — a cheap string
+# pre-filter ahead of the per-window git calls.
+build_list() {
+  serve_compute_status
+  CUR_TARGET=$(serve_current_target "$SERVE_WIN")
+  : > "$list_file"
+
+  tmux list-windows -a \
+    -F "#{session_name}${TAB}#{window_id}${TAB}#{session_name} │ #{window_name}${TAB}#{@ticket_title}${TAB}#{pane_current_path}" \
+    | while IFS="$TAB" read -r sess winid header title panepath; do
+        case "$header" in
+          *" │ $SERVE_WIN_NAME"|*" │ "*" $SERVE_WIN_NAME")
+            continue  # hide the hidden serve window (suffix-matched like serve_find_window)
+            ;;
+        esac
+
+        wt_path=""
+        case "$header" in
+          *"(mop-console-monorepo)")
+            top=$(git -C "$panepath" rev-parse --show-toplevel 2>/dev/null)
+            if [ -n "$top" ] && serve_is_mop_path "$top"; then
+              wt_path="$top"
+            fi
+            ;;
+        esac
+
+        record="${sess}${TAB}${winid}${TAB}${wt_path}${TAB}${BOLD}${header}${RESET}"
+        [ -n "$title" ] && record="${record}
+  ${DIM}${title}${RESET}"
+
+        if [ -n "$wt_path" ]; then
+          if [ "$wt_path" = "$CUR_TARGET" ]; then
+            status_line=$(printf '%s %s   http://localhost:%s' "$(serve_status_dot)" "$STATUS" "$SERVE_PORT")
+            record="${record}
+  ${status_line}"
+            if [ "$STATUS" = "error" ] && [ -n "$ERR_DETAIL" ]; then
+              while IFS= read -r errline; do
+                [ -n "$errline" ] && record="${record}
+  ${DIM}${errline}${RESET}"
+              done <<EOF
+$ERR_DETAIL
+EOF
+            fi
+          else
+            record="${record}
+  ${DIM}⚡ servable — ctrl-s to serve${RESET}"
+          fi
+        fi
+
+        printf '%s\0' "$record" >> "$list_file"
+      done
+}
+
+# --- main loop -------------------------------------------------------------
+#
+# enter/esc exit; ctrl-s/ctrl-r/ctrl-x/ctrl-v act and loop back into a
+# refreshed picker, same idiom as tmux-serve-popup.sh used to.
+while true; do
+  build_list
+  [ -s "$list_file" ] || exit 0
+
+  HEADER=$(printf ' %s %-9s serving: %-30s  http://localhost:%s\n enter:switch  ctrl-s:serve  ctrl-r:restart  ctrl-x:stop  ctrl-v:view log' \
+    "$(serve_status_dot)" "$STATUS" "$(serve_target_label "$CUR_TARGET")" "$SERVE_PORT")
+
+  result=$(fzf \
+    --read0 \
+    --ansi \
+    --gap=1 \
+    --delimiter="$TAB" \
+    --with-nth=4 \
+    --layout=reverse \
+    --border=rounded \
+    --margin=0 \
+    --header="$HEADER" \
+    --header-first \
+    --prompt='window ❯ ' \
+    --pointer='▶' \
+    --expect=ctrl-s,ctrl-r,ctrl-x,ctrl-v \
+    $mocha < "$list_file") || exit 0
+
+  [ -z "$result" ] && exit 0
+
+  # --expect prepends the pressed key as its own line (empty for a plain
+  # enter), ahead of the selected card — so the card's header line, which
+  # would otherwise be line 1, is line 2.
+  KEY=$(printf '%s\n' "$result" | sed -n '1p')
+  first_line=$(printf '%s\n' "$result" | sed -n '2p')
+  sess=$(printf '%s' "$first_line" | cut -d"$TAB" -f1)
+  winid=$(printf '%s' "$first_line" | cut -d"$TAB" -f2)
+  wt_path=$(printf '%s' "$first_line" | cut -d"$TAB" -f3)
+
+  case "$KEY" in
+    ctrl-s)
+      if [ -z "$wt_path" ]; then
+        echo "Not a MOP worktree window."; sleep 1; continue
+      fi
+      if [ "$wt_path" = "$CUR_TARGET" ]; then
+        echo "Already serving this worktree."; sleep 1; continue
+      fi
+      serve_switch_to "$wt_path"
+      continue
+      ;;
+    ctrl-r)
+      if [ -z "$CUR_TARGET" ]; then echo "Nothing is being served."; sleep 1; continue; fi
+      serve_switch_to "$CUR_TARGET"
+      continue
+      ;;
+    ctrl-x)
+      if [ -z "$CUR_TARGET" ]; then echo "Nothing is being served."; sleep 1; continue; fi
+      serve_stop_current
+      continue
+      ;;
+    ctrl-v)
+      if [ -z "$CUR_TARGET" ]; then echo "Nothing is being served."; sleep 1; continue; fi
+      tmux capture-pane -p -t "$SERVE_PANE" -S -500 | less -R +G
+      continue
+      ;;
+  esac
+
+  [ -z "$winid" ] && continue
+  tmux switch-client -t "$sess"
+  tmux select-window -t "$winid"
+  exit 0
+done

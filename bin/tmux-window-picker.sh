@@ -56,7 +56,7 @@ DIM=$'\033[38;2;127;132;156m'  # catppuccin mocha "overlay1"
 RESET=$'\033[0m'
 
 mocha="--color=bg+:#313244,bg:#1e1e2e,spinner:#f5e0dc,hl:#f38ba8,fg:#cdd6f4,\
-header:#f38ba8,info:#cba6f7,pointer:#f5e0dc,marker:#b4befe,fg+:#cdd6f4,\
+header:#f5e0dc,info:#cba6f7,pointer:#f5e0dc,marker:#b4befe,fg+:#cdd6f4,\
 prompt:#cba6f7,hl+:#f38ba8,border:#585b70"
 
 # {3} is the worktree path field (empty for non-MOP-worktree windows) — fzf
@@ -174,8 +174,7 @@ while true; do
   build_list
   [ -s "$list_file" ] || exit 0
 
-  HEADER=$(printf ' %s %-9s serving: %-30s  http://localhost:%s\n enter:switch  ctrl-s:serve  ctrl-r:restart  ctrl-x:stop  ctrl-v:view log  ctrl-l:reload ticket status' \
-    "$(serve_status_dot)" "$STATUS" "$(serve_target_label "$CUR_TARGET")" "$SERVE_PORT")
+  HEADER=$(printf 'ctrl-s:serve  ctrl-r:restart  ctrl-x:stop  \nctrl-v:view log  ctrl-l:reload ticket status')
 
   result=$(fzf \
     --read0 \

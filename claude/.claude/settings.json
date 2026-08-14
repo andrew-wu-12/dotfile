@@ -42,7 +42,7 @@
     "typescript-lsp@claude-plugins-official": true,
     "context7@claude-plugins-official": true
   },
-  "effortLevel": "high",
+  "effortLevel": "medium",
   "awaySummaryEnabled": false,
   "tui": "fullscreen",
   "theme": "auto",

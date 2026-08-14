@@ -29,8 +29,15 @@
 # fields across the whole multi-line record, not per physical line, so any
 # body text appended after the header (title, status lines) has to land
 # after the last tab or it silently falls outside --with-nth's display
-# range. No live preview pane — fzf's multi-line matching searches the whole
-# card as a side effect of this layout.
+# range. fzf's multi-line matching searches the whole card as a side effect
+# of this layout.
+#
+# The preview pane (right 60%) runs tmux-ticket-status.sh against the
+# highlighted card's worktree path (field {3}, blank/placeholder for
+# non-MOP windows) — see PREVIEW_CMD below. tmux-ticket-status.sh caches its
+# report per worktree, so re-invoking it on every highlighted row is just a
+# cache read, not a live fetch. ctrl-l busts the cache for the highlighted
+# card and refreshes the preview in place — see the --bind below.
 #
 # The hidden serve window itself never appears in the list — it's plumbing,
 # not somewhere to jump to.
@@ -52,6 +59,19 @@ mocha="--color=bg+:#313244,bg:#1e1e2e,spinner:#f5e0dc,hl:#f38ba8,fg:#cdd6f4,\
 header:#f38ba8,info:#cba6f7,pointer:#f5e0dc,marker:#b4befe,fg+:#cdd6f4,\
 prompt:#cba6f7,hl+:#f38ba8,border:#585b70"
 
+# {3} is the worktree path field (empty for non-MOP-worktree windows) — fzf
+# quotes placeholder substitutions itself, so this is safe as-is. Re-invoked
+# on every highlighted row (including transient ones while scrolling), but
+# tmux-ticket-status.sh caches its report per worktree, so this is a cache
+# read on every cursor move, not a live fetch — see tmux-ticket-status.sh.
+PREVIEW_CMD='wt={3}; if [ -z "$wt" ]; then printf "(not a MOP ticket window)\n"; else ~/bin/tmux-ticket-status.sh "$wt"; fi'
+
+# ctrl-l busts the highlighted card's ticket-status cache, then refreshes
+# the preview — the follow-up preview invocation (PREVIEW_CMD above) is a
+# plain cache miss at that point, so it re-fetches live and repopulates.
+# No-op for non-MOP windows: --reload "" resolves nothing and exits quietly.
+RELOAD_BIND='ctrl-l:execute-silent(~/bin/tmux-ticket-status.sh --reload {3})+refresh-preview'
+
 SERVE_INFO=$(serve_ensure_window)
 SERVE_WIN=$(printf '%s' "$SERVE_INFO" | cut -d' ' -f2)
 SERVE_PANE=$(printf '%s' "$SERVE_INFO" | cut -d' ' -f3)
@@ -63,7 +83,6 @@ trap 'rm -f "$list_file"' EXIT
 
 serve_switch_to() {  # $1 = worktree path to serve
   local target="$1" cmd
-  echo "Stopping current server…"
   tmux send-keys -t "$SERVE_PANE" C-c
   for _ in $(seq 1 20); do
     cmd=$(tmux display-message -p -t "$SERVE_PANE" '#{pane_current_command}' 2>/dev/null)
@@ -76,16 +95,13 @@ serve_switch_to() {  # $1 = worktree path to serve
     *) tmux send-keys -t "$SERVE_PANE" C-c ;;
   esac
 
-  echo "Starting yarn serve in $(serve_target_label "$target")…"
   tmux send-keys -t "$SERVE_PANE" "cd '$target' && yarn serve" Enter
   tmux set-option -w -t "$SERVE_WIN" @serve_target "$target"
 
-  echo "Switched — refreshing status…"
   sleep 1
 }
 
 serve_stop_current() {
-  echo "Stopping yarn serve…"
   tmux send-keys -t "$SERVE_PANE" C-c
   tmux set-option -w -t "$SERVE_WIN" -u @serve_target
   sleep 1
@@ -158,7 +174,7 @@ while true; do
   build_list
   [ -s "$list_file" ] || exit 0
 
-  HEADER=$(printf ' %s %-9s serving: %-30s  http://localhost:%s\n enter:switch  ctrl-s:serve  ctrl-r:restart  ctrl-x:stop  ctrl-v:view log' \
+  HEADER=$(printf ' %s %-9s serving: %-30s  http://localhost:%s\n enter:switch  ctrl-s:serve  ctrl-r:restart  ctrl-x:stop  ctrl-v:view log  ctrl-l:reload ticket status' \
     "$(serve_status_dot)" "$STATUS" "$(serve_target_label "$CUR_TARGET")" "$SERVE_PORT")
 
   result=$(fzf \
@@ -175,6 +191,9 @@ while true; do
     --prompt='window ❯ ' \
     --pointer='▶' \
     --expect=ctrl-s,ctrl-r,ctrl-x,ctrl-v \
+    --bind="$RELOAD_BIND" \
+    --preview="$PREVIEW_CMD" \
+    --preview-window=right:60%:wrap \
     $mocha < "$list_file") || exit 0
 
   [ -z "$result" ] && exit 0

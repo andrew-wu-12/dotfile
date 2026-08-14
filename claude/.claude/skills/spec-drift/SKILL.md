@@ -45,8 +45,16 @@ instead.
 
 Exit code 2 means fewer than two rounds exist. Skip straight to **step 1b**
 instead of steps 2-4 — no delta exists, so the round-diff path has nothing to
-inspect. Otherwise, you get a unified diff of `round-(N-1)` to `round-N`.
-Continue with steps 2-4 below; step 1b does not apply in that case.
+inspect.
+
+Otherwise, a unified diff of `round-(N-1)` to `round-N` exists. **Run it, and
+steps 2-4 below, inside a fresh subagent** — the raw round-diff text (and the
+branch greps in step 3) have no reason to sit in the caller's context; only
+the triaged step 4 report does. Give the subagent the ticket id, the two
+commands above, and steps 2-4 verbatim. Require it to return only the step 4
+report — drift / informational / aligned-and-omitted, each `path:line` — never
+the raw unified diff or raw grep output. Continue reading below to know what
+the subagent should do; the caller only consumes its final report.
 
 ### 1b. Fallback: cardinality ambiguity scan (only when step 1 exits 2)
 

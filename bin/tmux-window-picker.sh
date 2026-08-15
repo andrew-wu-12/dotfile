@@ -9,15 +9,28 @@
 #   ctrl-r  restart whatever is currently served
 #   ctrl-x  stop whatever is currently served
 #   ctrl-v  view the full serve log
+#   ctrl-g  open a new tmux popup tracing this worktree's Jenkins builds
+#           (feature/dev/epic/uat) with a live trace-build.sh-style
+#           progress bar, VPN-gated — see tmux-build-trace-lib.sh. Exits
+#           this popup first (a tmux client only shows one popup at a
+#           time), then the trace popup opens a beat later. (Not ctrl-t:
+#           that's WezTerm's default SpawnTab binding and never reaches
+#           fzf — confirmed via `wezterm show-keys`.) An earlier version
+#           ran this as a detached background process with a per-card
+#           status line instead of a live popup — see git history if
+#           resurrecting that idea; it made the card list look stale the
+#           moment a trace finished, since fzf has no periodic-refresh hook.
 #   esc     cancel
 #
-# ctrl-s/ctrl-r/ctrl-x/ctrl-v act and loop back into a refreshed picker
-# instead of closing the popup; enter/esc are the only ways out. This used to
-# be two separate popups (`prefix w` for switching, `prefix n` for serve
-# control via tmux-serve-popup.sh) — merged here since both start from "which
-# window am I looking at," and serve-targeting only makes sense for a
-# worktree that already has one open. Shared serve helpers live in
-# tmux-serve-lib.sh (also sourced by worktree-done.sh).
+# ctrl-s/ctrl-r/ctrl-x/ctrl-v act and loop back into a refreshed picker;
+# enter/ctrl-g/esc are the only ways out (ctrl-g schedules the trace popup
+# and exits, rather than switching to a plain window, but it's still an
+# exit). This used to be two separate popups (`prefix w` for switching, `prefix n`
+# for serve control via tmux-serve-popup.sh) — merged here since both start
+# from "which window am I looking at," and serve-targeting only makes sense
+# for a worktree that already has one open. Shared serve helpers live in
+# tmux-serve-lib.sh (also sourced by worktree-done.sh); shared build-trace
+# helpers live in tmux-build-trace-lib.sh.
 #
 # Each card is a multi-line fzf item (fzf --read0, fzf >= 0.44 required for
 # multi-line item rendering): a bold header line ("session │ window-name",
@@ -49,6 +62,8 @@ set -u
 SCRIPT_DIR=$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)
 # shellcheck source=tmux-serve-lib.sh
 source "$SCRIPT_DIR/tmux-serve-lib.sh"
+# shellcheck source=tmux-build-trace-lib.sh
+source "$SCRIPT_DIR/tmux-build-trace-lib.sh"
 
 TAB=$(printf '\t')
 BOLD=$'\033[1m'
@@ -174,7 +189,7 @@ while true; do
   build_list
   [ -s "$list_file" ] || exit 0
 
-  HEADER=$(printf 'ctrl-s:serve  ctrl-r:restart  ctrl-x:stop  \nctrl-v:view log  ctrl-l:reload ticket status')
+  HEADER=$(printf 'ctrl-s:serve  ctrl-r:restart  ctrl-x:stop  ctrl-g:trace build\nctrl-v:view log  ctrl-l:reload ticket status')
 
   result=$(fzf \
     --read0 \
@@ -189,7 +204,7 @@ while true; do
     --header-first \
     --prompt='window ❯ ' \
     --pointer='▶' \
-    --expect=ctrl-s,ctrl-r,ctrl-x,ctrl-v \
+    --expect=ctrl-s,ctrl-r,ctrl-x,ctrl-v,ctrl-g \
     --bind="$RELOAD_BIND" \
     --preview="$PREVIEW_CMD" \
     --preview-window=right:60%:wrap \
@@ -231,6 +246,13 @@ while true; do
       if [ -z "$CUR_TARGET" ]; then echo "Nothing is being served."; sleep 1; continue; fi
       tmux capture-pane -p -t "$SERVE_PANE" -S -500 | less -R +G
       continue
+      ;;
+    ctrl-g)
+      if [ -z "$wt_path" ]; then
+        echo "Not a MOP worktree window."; sleep 1; continue
+      fi
+      trace_open_popup "$wt_path" || { sleep 1; continue; }
+      exit 0
       ;;
   esac
 

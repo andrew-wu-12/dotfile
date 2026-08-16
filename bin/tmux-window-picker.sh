@@ -1,36 +1,45 @@
 #!/bin/bash
-# Vertical window picker + MOP yarn-serve control: an fzf popup listing every
+# Vertical window picker with following extracfunctions:+ : an fzf popup listing every
 # tmux window across all sessions as a vertical stack of cards.
-#
 #   enter   switch to the highlighted window (across sessions) and exit
+#
+#   MOP yarn-serve control
 #   ctrl-s  set the highlighted window's worktree as the yarn-serve target
 #           (does NOT switch — "check out the window, decide separately
 #           whether to serve from it")
 #   ctrl-r  restart whatever is currently served
 #   ctrl-x  stop whatever is currently served
 #   ctrl-v  view the full serve log
+#
+#   MOP jenkins build control
 #   ctrl-g  open a new tmux popup tracing this worktree's Jenkins builds
 #           (feature/dev/epic/uat) with a live trace-build.sh-style
 #           progress bar, VPN-gated — see tmux-build-trace-lib.sh. Exits
 #           this popup first (a tmux client only shows one popup at a
-#           time), then the trace popup opens a beat later. (Not ctrl-t:
-#           that's WezTerm's default SpawnTab binding and never reaches
-#           fzf — confirmed via `wezterm show-keys`.) An earlier version
-#           ran this as a detached background process with a per-card
-#           status line instead of a live popup — see git history if
-#           resurrecting that idea; it made the card list look stale the
-#           moment a trace finished, since fzf has no periodic-refresh hook.
+#           time), then the trace popup opens a beat later.
+#   ctrl-p  deploy the highlighted worktree's ticket: same VPN/worktree/
+#           branch gating as ctrl-g, then two decoupled fzf steps — 1) which
+#           branch (the ticket's own branch, or uat/<parent>, deduped to one
+#           line for a hotfix where they're the same), 2) which job(s)
+#           (dev/uat/one) — whichever branch you picked in step 1 is passed
+#           as BRANCH to every job step 2 fires, via tmux-deploy-lib.sh's
+#           deploy_trigger_job, then an inline trace_run over just the
+#           job(s) triggered — right here in this same popup pane (no popup
+#           swap, unlike ctrl-g), then back to the picker. See deploy_run()
+#           below. (ctrl-d was tried first but closes the popup/window
+#           instead of reaching fzf.)
 #   esc     cancel
 #
-# ctrl-s/ctrl-r/ctrl-x/ctrl-v act and loop back into a refreshed picker;
-# enter/ctrl-g/esc are the only ways out (ctrl-g schedules the trace popup
-# and exits, rather than switching to a plain window, but it's still an
-# exit). This used to be two separate popups (`prefix w` for switching, `prefix n`
-# for serve control via tmux-serve-popup.sh) — merged here since both start
-# from "which window am I looking at," and serve-targeting only makes sense
-# for a worktree that already has one open. Shared serve helpers live in
-# tmux-serve-lib.sh (also sourced by worktree-done.sh); shared build-trace
-# helpers live in tmux-build-trace-lib.sh.
+# ctrl-s/ctrl-r/ctrl-x/ctrl-v/ctrl-p act and loop back into a refreshed
+# picker; enter/ctrl-g/esc are the only ways out (ctrl-g schedules the trace
+# popup and exits, rather than switching to a plain window, but it's still
+# an exit). This used to be two separate popups (`prefix w` for switching,
+# `prefix n` for serve control via tmux-serve-popup.sh) — merged here since
+# both start from "which window am I looking at," and serve-targeting only
+# makes sense for a worktree that already has one open. Shared serve helpers
+# live in tmux-serve-lib.sh (also sourced by worktree-done.sh); shared
+# build-trace helpers (also used by ctrl-p) live in tmux-build-trace-lib.sh;
+# shared Jenkins-trigger helpers live in tmux-deploy-lib.sh.
 #
 # Each card is a multi-line fzf item (fzf --read0, fzf >= 0.44 required for
 # multi-line item rendering): a bold header line ("session │ window-name",
@@ -64,6 +73,8 @@ SCRIPT_DIR=$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)
 source "$SCRIPT_DIR/tmux-serve-lib.sh"
 # shellcheck source=tmux-build-trace-lib.sh
 source "$SCRIPT_DIR/tmux-build-trace-lib.sh"
+# shellcheck source=tmux-deploy-lib.sh
+source "$SCRIPT_DIR/tmux-deploy-lib.sh"
 
 TAB=$(printf '\t')
 BOLD=$'\033[1m'
@@ -120,6 +131,112 @@ serve_stop_current() {
   tmux send-keys -t "$SERVE_PANE" C-c
   tmux set-option -w -t "$SERVE_WIN" -u @serve_target
   sleep 1
+}
+
+# --- ctrl-p: deploy ------------------------------------------------------
+#
+# Same three gates as ctrl-g's trace_open_popup (VPN, MOP worktree, feature/
+# hotfix branch). Two-step selection, decoupled: step 1 picks WHICH branch to
+# deploy (the ticket's own branch, or uat/<parent> via trace_resolve_uat_branch
+# — deduped to one line when they're identical, i.e. a hotfix with no parent
+# to resolve), step 2 picks WHICH job(s) to fire (dev/uat/one). Whichever
+# branch was picked in step 1 is passed as BRANCH to every job step 2
+# triggers — jobs no longer have a branch baked in, unlike the old single-step
+# version where "dev" always meant the ticket's own branch and "uat" always
+# meant uat/<parent>. Both resolved branches are computed unconditionally up
+# front (one extra Jira round-trip per invocation) since step 1 has to show
+# both options before step 2 even exists. Triggers on step 2's selection (no
+# extra confirm beyond that — same as ctrl-s/ctrl-r/ctrl-x), then runs
+# trace_run inline in this same popup pane over just the job(s) just
+# triggered — no popup swap like ctrl-g, since deploy_run returns control to
+# the picker's own while-loop afterward.
+deploy_run() {
+  local wt="$1" branch parsed ticket is_hotfix uat_branch
+  local branch_opts branch_choice job_choice
+  local specs=()
+
+  if ! trace_vpn_connected; then
+    echo "VPN required to trigger deploy."; sleep 1; return
+  fi
+
+  branch=$(git -C "$wt" rev-parse --abbrev-ref HEAD 2>/dev/null)
+  parsed=$(trace_parse_branch "$branch") || {
+    echo "Not on a MOP feature/hotfix branch (current: $branch)."; sleep 1; return
+  }
+  ticket="${parsed%%$'\t'*}"
+  is_hotfix="${parsed##*$'\t'}"
+
+  uat_branch=$(trace_resolve_uat_branch "$ticket" "$is_hotfix" "$branch")
+  [ -n "$uat_branch" ] || uat_branch="$branch"
+
+  # Step 1: which branch to deploy. Dedupe: a hotfix's "uat branch" resolves
+  # to the same string as its own branch (no parent to resolve), so don't
+  # show two identical lines — just the one.
+  branch_opts="ticket branch: $branch"
+  [ "$uat_branch" != "$branch" ] && branch_opts="$branch_opts
+uat branch: $uat_branch"
+
+  branch_choice=$(printf '%s\n' "$branch_opts" | fzf \
+    --layout=reverse --border=rounded --height=~6 \
+    --header="Deploy $ticket — pick a branch (1/2 or ↑↓+Enter)" --prompt='branch ❯ ' \
+    --pointer='▶' \
+    --bind='1:pos(1)+accept,2:pos(2)+accept' \
+    $mocha) || return
+  [ -z "$branch_choice" ] && return
+  branch_choice="${branch_choice#ticket branch: }"
+  branch_choice="${branch_choice#uat branch: }"
+
+  # Step 2: which job(s) to fire, all using $branch_choice as BRANCH. All 3
+  # options are always visible (fzf lists every line by default, no
+  # filtering applied) — the d/u/o binds are single-keystroke jumps straight
+  # to accept (fzf's pos(N) action), not typed-search-then-Enter, so picking
+  # one doesn't require arrowing to it first.
+  job_choice=$(printf 'dev\nuat\none\n' | fzf \
+    --layout=reverse --border=rounded --height=~6 \
+    --header="Deploy $branch_choice — d/u/o to pick, or ↑↓+Enter" --prompt='job ❯ ' \
+    --pointer='▶' \
+    --bind='d:pos(1)+accept,u:pos(2)+accept,o:pos(3)+accept' \
+    $mocha) || return
+  [ -z "$job_choice" ] && return
+
+  JENKINS_TOKEN=$(zsh -c 'source ~/.zshrc >/dev/null 2>&1; printf "%s" "$JENKINS_TOKEN"' 2>/dev/null)
+  if [ -z "$JENKINS_TOKEN" ]; then
+    echo "Error: JENKINS_TOKEN is not set."; sleep 1; return
+  fi
+
+  TRACE_NOTIFY_SUBTITLE="$ticket · $branch_choice"
+  case "$job_choice" in
+    dev)
+      deploy_trigger_job mop_console_monorepo_dev "$branch_choice" \
+        && specs+=("DEV|mop_console_monorepo_dev|$branch_choice|one-dev deploy")
+      ;;
+    uat)
+      deploy_trigger_job mop_console_monorepo_uat "$branch_choice" \
+        && specs+=("UAT|mop_console_monorepo_uat|$branch_choice|one-uat deploy")
+      ;;
+    one)
+      deploy_trigger_job mop_console_monorepo_dev "$branch_choice" \
+        && specs+=("DEV|mop_console_monorepo_dev|$branch_choice|one-dev deploy")
+      deploy_trigger_job mop_console_monorepo_uat "$branch_choice" \
+        && specs+=("UAT|mop_console_monorepo_uat|$branch_choice|one-uat deploy")
+      ;;
+    *)
+      return
+      ;;
+  esac
+
+  if [ "${#specs[@]}" -eq 0 ]; then
+    echo "Deploy trigger failed."; sleep 1; return
+  fi
+
+  trace_run "${specs[@]}"
+  if [ $? -eq 1 ]; then
+    echo "No build showed up in Jenkins for the triggered job(s) — check Jenkins directly."
+  fi
+
+  echo ""
+  echo "Press enter to return to the picker..."
+  read -r _
 }
 
 # --- card list -----------------------------------------------------------
@@ -189,7 +306,7 @@ while true; do
   build_list
   [ -s "$list_file" ] || exit 0
 
-  HEADER=$(printf 'ctrl-s:serve  ctrl-r:restart  ctrl-x:stop  ctrl-g:trace build\nctrl-v:view log  ctrl-l:reload ticket status')
+  HEADER=$(printf 'ctrl-s:serve  ctrl-r:restart  ctrl-x:stop  ctrl-g:trace build  ctrl-p:deploy\nctrl-v:view log  ctrl-l:reload ticket status')
 
   result=$(fzf \
     --read0 \
@@ -204,7 +321,7 @@ while true; do
     --header-first \
     --prompt='window ❯ ' \
     --pointer='▶' \
-    --expect=ctrl-s,ctrl-r,ctrl-x,ctrl-v,ctrl-g \
+    --expect=ctrl-s,ctrl-r,ctrl-x,ctrl-v,ctrl-g,ctrl-p \
     --bind="$RELOAD_BIND" \
     --preview="$PREVIEW_CMD" \
     --preview-window=right:60%:wrap \
@@ -253,6 +370,13 @@ while true; do
       fi
       trace_open_popup "$wt_path" || { sleep 1; continue; }
       exit 0
+      ;;
+    ctrl-p)
+      if [ -z "$wt_path" ]; then
+        echo "Not a MOP worktree window."; sleep 1; continue
+      fi
+      deploy_run "$wt_path"
+      continue
       ;;
   esac
 

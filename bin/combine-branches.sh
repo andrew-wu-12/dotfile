@@ -9,7 +9,7 @@
 # @raycast.argument1 {"type": "text", "placeholder": "feat-a feat-b feat-c [-d]" }
 #
 # Rebuild a disposable integration branch from a base branch by merging several
-# feature branches into it, then (optionally) deploy it via deploy-one.sh.
+# feature branches into it.
 #
 # The integration branch is thrown away and recreated on every run, so it never
 # drifts: it is always base + the current tip of each feature branch.
@@ -20,24 +20,20 @@
 # Options:
 #   -b, --base <branch>   base branch to build on            (default: main)
 #   -n, --name <branch>   integration branch name            (default: integration/combined)
-#   -d, --deploy          run deploy-one.sh after push
 #   -l, --local           merge local branches (default: origin/<branch> after fetch)
 #   -p, --no-push         build locally only, do not push
 #   -h, --help            show this help
 #
 # Examples:
 #   combine-branches.sh feature/MOP-1 feature/MOP-2 feature/MOP-3
-#   combine-branches.sh -d -n integration/MOP-demo feature/MOP-1 feature/MOP-2
-#   combine-branches.sh --base uat/MOP-99 -d feature/MOP-1 feature/MOP-2
+#   combine-branches.sh -n integration/MOP-demo feature/MOP-1 feature/MOP-2
+#   combine-branches.sh --base uat/MOP-99 feature/MOP-1 feature/MOP-2
 
 emulate -L zsh
 set -e
-# No need to source ~/.zshrc: git needs nothing from it, and the -d path calls
-# deploy-one.sh, which sources zshrc itself to pick up JENKINS_TOKEN.
 
 BASE="main"
 INT_NAME="integration/combined"
-DO_DEPLOY=0
 USE_LOCAL=0
 DO_PUSH=1
 FEATURES=()
@@ -45,7 +41,7 @@ FEATURES=()
 usage() {
     cat <<'EOF'
 Rebuild a disposable integration branch from a base branch by merging several
-feature branches into it, then (optionally) deploy it via deploy-one.sh.
+feature branches into it.
 
 Usage:
   combine-branches.sh [options] <feature-branch>...
@@ -53,14 +49,13 @@ Usage:
 Options:
   -b, --base <branch>   base branch to build on            (default: main)
   -n, --name <branch>   integration branch name            (default: integration/combined)
-  -d, --deploy          run deploy-one.sh after push
   -l, --local           merge local branches (default: origin/<branch> after fetch)
   -p, --no-push         build locally only, do not push
   -h, --help            show this help
 
 Examples:
   combine-branches.sh feature/MOP-1 feature/MOP-2 feature/MOP-3
-  combine-branches.sh -d -n integration/MOP-demo feature/MOP-1 feature/MOP-2
+  combine-branches.sh -n integration/MOP-demo feature/MOP-1 feature/MOP-2
 EOF
     exit "${1:-0}"
 }
@@ -69,7 +64,6 @@ while [[ $# -gt 0 ]]; do
     case "$1" in
         -b|--base)     BASE="$2"; shift 2 ;;
         -n|--name)     INT_NAME="$2"; shift 2 ;;
-        -d|--deploy)   DO_DEPLOY=1; shift ;;
         -l|--local)    USE_LOCAL=1; shift ;;
         -p|--no-push)  DO_PUSH=0; shift ;;
         -h|--help)     usage 0 ;;
@@ -135,13 +129,4 @@ fi
 
 restore
 
-if [[ $DO_DEPLOY -eq 1 ]]; then
-    if [[ $DO_PUSH -eq 0 ]]; then
-        echo "Skipping deploy: --no-push was set (Jenkins needs the pushed branch)."
-        exit 0
-    fi
-    echo "Triggering deploy for '$INT_NAME'..."
-    "$(dirname "$0")/deploy-one.sh" "$INT_NAME"
-else
-    echo "Done. Deploy with: deploy-one.sh $INT_NAME"
-fi
+echo "Done. Deploy with: deploy-one.sh $INT_NAME"

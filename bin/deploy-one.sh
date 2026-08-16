@@ -14,18 +14,23 @@ emulate -L zsh
 # Source zshrc to get environment variables
 source ~/.zshrc
 
+SCRIPT_DIR="${0:A:h}"
+source "$SCRIPT_DIR/tmux-deploy-lib.sh"
+
 # Check VPN connection
 if ! scutil --nc list | command grep -q "Connected"; then
     echo "Error: VPN connection is off. Please connect to VPN before deploying."
     exit 1
 fi
 
-JOB_NAMES=("mop_console_monorepo_uat" "mop_console_monorepo_dev")
-for JOB in "${JOB_NAMES[@]}"; do
-    echo "Processing Jenkins Job: $JOB"
-    curl "https://jenkins.morrison.express/job/$JOB/buildWithParameters" \
-    --user "$JENKINS_TOKEN" \
-    --data BRANCH="$1"
+FAILED=0
+for JOB in mop_console_monorepo_uat mop_console_monorepo_dev; do
+    deploy_trigger_job "$JOB" "$1" || FAILED=1
 done
 
-echo "Deploy Success!"
+if [ "$FAILED" -eq 0 ]; then
+    echo "Deploy Success!"
+else
+    echo "Deploy finished with errors."
+    exit 1
+fi

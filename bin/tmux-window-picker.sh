@@ -207,17 +207,17 @@ uat branch: $uat_branch"
   TRACE_NOTIFY_SUBTITLE="$ticket · $branch_choice"
   case "$job_choice" in
     dev)
-      deploy_trigger_job mop_console_monorepo_dev "$branch_choice" \
+      deploy_trigger_job mop_console_monorepo_dev BRANCH "$branch_choice" \
         && specs+=("DEV|mop_console_monorepo_dev|$branch_choice|one-dev deploy")
       ;;
     uat)
-      deploy_trigger_job mop_console_monorepo_uat "$branch_choice" \
+      deploy_trigger_job mop_console_monorepo_uat BRANCH "$branch_choice" \
         && specs+=("UAT|mop_console_monorepo_uat|$branch_choice|one-uat deploy")
       ;;
     one)
-      deploy_trigger_job mop_console_monorepo_dev "$branch_choice" \
+      deploy_trigger_job mop_console_monorepo_dev BRANCH "$branch_choice" \
         && specs+=("DEV|mop_console_monorepo_dev|$branch_choice|one-dev deploy")
-      deploy_trigger_job mop_console_monorepo_uat "$branch_choice" \
+      deploy_trigger_job mop_console_monorepo_uat BRANCH "$branch_choice" \
         && specs+=("UAT|mop_console_monorepo_uat|$branch_choice|one-uat deploy")
       ;;
     *)

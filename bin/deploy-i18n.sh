@@ -15,6 +15,9 @@ emulate -L zsh
 # Source zshrc to get environment variables
 source ~/.zshrc
 
+SCRIPT_DIR="${0:A:h}"
+source "$SCRIPT_DIR/tmux-deploy-lib.sh"
+
 # Check VPN connection
 if ! scutil --nc list | command grep -q "Connected"; then
     echo "Error: VPN connection is off. Please connect to VPN before deploying."
@@ -25,8 +28,6 @@ echo "Target ENV : $1"
 
 JOB_NAME="mop_console_i18n_with_version"
 
-curl "https://jenkins.morrison.express/job/$JOB_NAME/buildWithParameters" \
---user $JENKINS_TOKEN \
---data I18N_ENV="$1"
+deploy_trigger_job "$JOB_NAME" I18N_ENV "$1" || exit 1
 
 echo "Deploy Success!"

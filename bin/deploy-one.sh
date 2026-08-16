@@ -25,7 +25,7 @@ fi
 
 FAILED=0
 for JOB in mop_console_monorepo_uat mop_console_monorepo_dev; do
-    deploy_trigger_job "$JOB" "$1" || FAILED=1
+    deploy_trigger_job "$JOB" BRANCH "$1" || FAILED=1
 done
 
 if [ "$FAILED" -eq 0 ]; then

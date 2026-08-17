@@ -11,14 +11,19 @@
 #   ctrl-x  stop whatever is currently served
 #   ctrl-v  view the full serve log
 #
-#   MOP jenkins build control
-#   ctrl-g  open a new tmux popup tracing this worktree's Jenkins builds
-#           (feature/dev/epic/uat) with a live trace-build.sh-style
-#           progress bar, VPN-gated — see tmux-build-trace-lib.sh. Exits
-#           this popup first (a tmux client only shows one popup at a
-#           time), then the trace popup opens a beat later.
-#   ctrl-p  deploy the highlighted worktree's ticket: same VPN/worktree/
-#           branch gating as ctrl-g, then two decoupled fzf steps — 1) which
+#   build/trace (any worktree with a .tmux-build.conf — see
+#   tmux-build-config.sh; not MOP-specific)
+#   ctrl-g  open a new tmux popup tracing this worktree's configured CI jobs
+#           with a live trace-build.sh-style progress bar, gated on VPN only
+#           when the resolved config asks for it — see
+#           tmux-build-trace-lib.sh. Exits this popup first (a tmux client
+#           only shows one popup at a time), then the trace popup opens a
+#           beat later.
+#
+#   MOP jenkins deploy control (MOP-only, unlike ctrl-g above)
+#   ctrl-p  deploy the highlighted worktree's ticket: VPN/worktree/branch
+#           gated (its own MOP-specific check, separate from ctrl-g's
+#           config-driven one), then two decoupled fzf steps — 1) which
 #           branch (the ticket's own branch, or uat/<parent>, deduped to one
 #           line for a hotfix where they're the same), 2) which job(s)
 #           (dev/uat/one) — whichever branch you picked in step 1 is passed
@@ -46,16 +51,22 @@
 # window-name already carrying any 🔴/🟢 marker from tmux-agent-notify.sh),
 # then optionally a dim ticket-title line (from @ticket_title, set by
 # worktree-ticket.sh) and/or a serve status/marker line. The header is
-# deliberately the LAST tab-delimited field (session, window_id, worktree
-# path, header) rather than the first three: --with-nth/--delimiter split
-# fields across the whole multi-line record, not per physical line, so any
-# body text appended after the header (title, status lines) has to land
-# after the last tab or it silently falls outside --with-nth's display
-# range. fzf's multi-line matching searches the whole card as a side effect
-# of this layout.
+# deliberately the LAST tab-delimited field (session, window_id, MOP
+# worktree path, build/trace worktree path, header) rather than the first
+# four: --with-nth/--delimiter split fields across the whole multi-line
+# record, not per physical line, so any body text appended after the header
+# (title, status lines) has to land after the last tab or it silently falls
+# outside --with-nth's display range. fzf's multi-line matching searches the
+# whole card as a side effect of this layout.
+#
+# Two separate worktree-path fields exist because ctrl-g/build-trace is
+# universal (any repo with a .tmux-build.conf) while ctrl-s/ctrl-p/preview
+# stay MOP-only: field {3} is the MOP worktree path (empty for non-MOP
+# windows), field {4} is the build/trace worktree path (empty for non-
+# worktree windows, set for ANY mwt/wt worktree including MOP's).
 #
 # The preview pane (right 60%) runs tmux-ticket-status.sh against the
-# highlighted card's worktree path (field {3}, blank/placeholder for
+# highlighted card's MOP worktree path (field {3}, blank/placeholder for
 # non-MOP windows) — see PREVIEW_CMD below. tmux-ticket-status.sh caches its
 # report per worktree, so re-invoking it on every highlighted row is just a
 # cache read, not a live fetch. ctrl-l busts the cache for the highlighted
@@ -75,6 +86,8 @@ source "$SCRIPT_DIR/tmux-serve-lib.sh"
 source "$SCRIPT_DIR/tmux-build-trace-lib.sh"
 # shellcheck source=tmux-deploy-lib.sh
 source "$SCRIPT_DIR/tmux-deploy-lib.sh"
+
+WORKTREE_ROOT="${WORKTREE_ROOT:-$HOME/project/worktrees}"
 
 TAB=$(printf '\t')
 BOLD=$'\033[1m'
@@ -245,8 +258,10 @@ uat branch: $uat_branch"
 # from variables, which would collapse every card into one unselectable blob.
 #
 # Windows are only checked against the (relatively expensive) git resolution
-# below when their name ends in the MOP monorepo suffix — a cheap string
-# pre-filter ahead of the per-window git calls.
+# below when their pane path is under $WORKTREE_ROOT — a cheap string
+# pre-filter ahead of the per-window git call. That one git call feeds both
+# worktree-path fields: wt_path (MOP-only, serve_is_mop_path-gated) and
+# build_wt_path (any mwt/wt worktree — build/trace doesn't care which repo).
 build_list() {
   serve_compute_status
   CUR_TARGET=$(serve_current_target "$SERVE_WIN")
@@ -262,16 +277,18 @@ build_list() {
         esac
 
         wt_path=""
-        case "$header" in
-          *"(mop-console-monorepo)")
+        build_wt_path=""
+        case "$panepath" in
+          "$WORKTREE_ROOT"/*)
             top=$(git -C "$panepath" rev-parse --show-toplevel 2>/dev/null)
-            if [ -n "$top" ] && serve_is_mop_path "$top"; then
-              wt_path="$top"
+            if [ -n "$top" ]; then
+              build_wt_path="$top"
+              serve_is_mop_path "$top" && wt_path="$top"
             fi
             ;;
         esac
 
-        record="${sess}${TAB}${winid}${TAB}${wt_path}${TAB}${BOLD}${header}${RESET}"
+        record="${sess}${TAB}${winid}${TAB}${wt_path}${TAB}${build_wt_path}${TAB}${BOLD}${header}${RESET}"
         [ -n "$title" ] && record="${record}
   ${DIM}${title}${RESET}"
 
@@ -313,7 +330,7 @@ while true; do
     --ansi \
     --gap=1 \
     --delimiter="$TAB" \
-    --with-nth=4 \
+    --with-nth=5 \
     --layout=reverse \
     --border=rounded \
     --margin=0 \
@@ -337,6 +354,7 @@ while true; do
   sess=$(printf '%s' "$first_line" | cut -d"$TAB" -f1)
   winid=$(printf '%s' "$first_line" | cut -d"$TAB" -f2)
   wt_path=$(printf '%s' "$first_line" | cut -d"$TAB" -f3)
+  build_wt_path=$(printf '%s' "$first_line" | cut -d"$TAB" -f4)
 
   case "$KEY" in
     ctrl-s)
@@ -365,10 +383,10 @@ while true; do
       continue
       ;;
     ctrl-g)
-      if [ -z "$wt_path" ]; then
-        echo "Not a MOP worktree window."; sleep 1; continue
+      if [ -z "$build_wt_path" ]; then
+        echo "Not a worktree window."; sleep 1; continue
       fi
-      trace_open_popup "$wt_path" || { sleep 1; continue; }
+      trace_open_popup "$build_wt_path" || { sleep 1; continue; }
       exit 0
       ;;
     ctrl-p)

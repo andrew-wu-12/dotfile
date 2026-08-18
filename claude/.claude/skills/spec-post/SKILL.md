@@ -20,7 +20,7 @@ Two write targets, one approval:
 
 | Target | Holds | Lifecycle |
 |--------|-------|-----------|
-| **Description** | the current spec (規格 + Decision Log) | **overwritten** every round |
+| **Description** | the current spec (規格) | **overwritten** every round |
 | **Comment** | what changed since the PM last saw it + the sign-off ask | append-only, one per round |
 
 Description holds current truth; comments hold history. The note already keeps
@@ -134,9 +134,8 @@ description sync alone is the report.
 
 ### 4. Assemble the description (verbatim — do not retype the spec)
 
-Extract `規格` and `Decision Log` **separately**. The Decision Log is wrapped
-in a collapsible macro, so it needs its own pass and cannot go through the
-same pass as the always-visible spec:
+Extract `規格` only. The Decision Log is never posted to Jira — it stays
+private to the note:
 
 ```bash
 DRAFTS="/tmp/spec-post/MOP-XXXX"; mkdir -p "$DRAFTS"
@@ -145,20 +144,15 @@ awk '
   /^## 規格/ { p = 1 }
   p
 ' "$NOTE" > "$DRAFTS/spec.md"
-awk '
-  /^## Decision Log/ { p = 1; next }   # next: drop the heading, {expand} supplies its own title
-  /^## /             { p = 0 }
-  p
-' "$NOTE" > "$DRAFTS/decisionlog.md"
 ```
 
 **Do not demote headings** in `spec.md`. The stamp panel already acts as the
 header, so `## 規格` maps correctly to `h2.`. (The comment path does demote
 headings — that rule is different. This one must not.)
 
-Write the stamp panel first, then the spec body, then the Decision Log wrapped
-in `{expand}`. Panel and expand markup are already valid Jira markup, so add
-them around the `md2jira.sh` conversion — do not run them through it:
+Write the stamp panel first, then the spec body. Panel markup is already
+valid Jira markup, so add it around the `md2jira.sh` conversion — do not run
+it through it:
 
 ```bash
 cat > "$DRAFTS/description.wiki" <<EOF
@@ -169,23 +163,16 @@ cat > "$DRAFTS/description.wiki" <<EOF
 
 EOF
 ~/bin/md2jira.sh < "$DRAFTS/spec.md" >> "$DRAFTS/description.wiki"
-echo "" >> "$DRAFTS/description.wiki"
-echo "{expand:title=Decision Log}" >> "$DRAFTS/description.wiki"
-~/bin/md2jira.sh < "$DRAFTS/decisionlog.md" >> "$DRAFTS/description.wiki"
-echo "{expand}" >> "$DRAFTS/description.wiki"
 ```
 
 - Use **today's** date. "Last updated" describes the text the reader is
   looking at now, not when the round happened.
 - The panel also acts as the ownership sentinel for guard 1. `spec-post` is
   the token guard 1 matches. Keep that word in the body verbatim.
-- The Decision Log stays collapsed by default, so it does not push the actual
-  spec below the fold as rounds accumulate. A PM opens it only to see the
-  history.
 - **Always exclude:** frontmatter, the `# [MOP-XXXX] …` title, the `> Jira:`
-  and `> Parent:` metadata lines, the header callouts, 技術檢查結論, Open
-  Questions, and Round History. Drop the callouts deliberately: the moment
-  you write the description, `本子票 description 為空` becomes false.
+  and `> Parent:` metadata lines, the header callouts, Decision Log, 技術檢查結論,
+  Open Questions, and Round History. Drop the callouts deliberately: the
+  moment you write the description, `本子票 description 為空` becomes false.
 - Warn if the result exceeds ~30,000 characters (`wc -m`). Jira's field limit
   is 32,767 characters, and `jira-description.sh set` refuses anything past
   it.

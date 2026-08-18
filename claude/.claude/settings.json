@@ -5,6 +5,7 @@
       "Read(~/personal/office-note/**)"
     ]
   },
+  "model": "claude-sonnet-4-6",
   "hooks": {
     "Notification": [
       {
@@ -40,12 +41,46 @@
   },
   "enabledPlugins": {
     "typescript-lsp@claude-plugins-official": true,
-    "context7@claude-plugins-official": true
+    "context7@claude-plugins-official": true,
+    "mattpocock-skills@claude-plugins-official": true
   },
   "effortLevel": "medium",
   "awaySummaryEnabled": false,
   "tui": "fullscreen",
   "theme": "auto",
+  "autoMode": {
+    "soft_deny": [
+      "$defaults",
+      "Bash(yarn docker:deploy:*) in MorrisonExpress/mop-console-monorepo — production-facing deploy script",
+      "Bash(git push --force:*) to protected branches (main, uat/MOP-*) in MorrisonExpress/mop-console-monorepo"
+    ],
+    "environment": [
+      "### Org-wide",
+      "**Organization**: Morrison Express (GitHub org: MorrisonExpress)",
+      "**Cloud provider(s)**: None configured",
+      "**Repository visibility**: Private — MorrisonExpress/mop-console-monorepo (confirmed via gh)",
+      "**Internal sharing / snippet hosting**: None configured — treat public paste/gist services as outside the trust boundary",
+      "**Secrets management**: None configured",
+      "**Default / protected branches**: Default branch `main`; protected branches include `main` and numerous `uat/MOP-*` branches (56 total); rulesets active: `repository-delete-policy`, `main-approval-before-merged` (a disabled Copilot review ruleset also present)",
+      "**CI/CD deploy targets**: Jenkins (referenced via JENKINS_AUTH_TOKEN, JENKINS_EXECUTE_TOKEN, JENKINS_X_TOKEN secrets and `.jenkins/prod/jenkinsfile`); per-app prod webpack configs under `apps/*/webpack.config.prod.js` suggest per-app production builds",
+      "**Network posture**: None configured",
+      "**Source control**: GitHub — MorrisonExpress/mop-console-monorepo (origin) only, as scoped by Trusted repo and Repository visibility above",
+      "**Trusted internal domains**: None configured",
+      "**Trusted cloud buckets**: None configured",
+      "**Key internal services**: None configured",
+      "**Internal package registry**: None configured",
+      "**Sensitive data locations & audiences**: CI secret names referenced in config (AWS_ACCESS_KEY_ID, AWS_SECRET_ACCESS_KEY, GETDATATOKEN, GITHUB_TOKEN, JENKINS_AUTH_TOKEN, JENKINS_EXECUTE_TOKEN, JENKINS_X_TOKEN) — values not present, but treat referencing files/configs as sensitive; share only with audiences cleared at the [named+specifics] bar",
+      "**Data retention / declassification**: None configured",
+      "**Sensitive remote targets**: any namespace/host/container with `prod` or `production` as a whole word/segment — includes `.jenkins/prod/jenkinsfile` and the `apps/*/webpack.config.prod.js` / `module-federation.config.prod.js` build targets in this repo",
+      "**Protected deployment namespaces / environments**: None configured — fall back to the Sensitive remote targets heuristic (see above; `.jenkins/prod/*` and `*.prod.js` build configs qualify)",
+      "**Protected IaC scopes**: IAM, RBAC, networking, quota, and node-pool resources; anything whose name or tag carries `prod` or `production` as a whole word or segment",
+      "### User-specific",
+      "**Primary use of Claude Code**: software development (React.js / TypeScript frontends, monorepo structure) on MOP projects at Morrison Express",
+      "**Trusted repo**: MorrisonExpress/mop-console-monorepo (this repo, private) and its origin remote — confidential material (not secrets/personal data) is fine here; content ported from outside this session's repo is not this repo's own work",
+      "**Org-specific CLIs**: nx, yarn (per package.json scripts: nx, pre:install, prepare, download-options, serve, graph, format, build, build-local, lint, test, stylelint, affected:*, docker:prepare, docker:build, docker:deploy, knip)",
+      "routine `yarn`/`nx` script runs and `npx` invocations under this repo's working tree are routine for this user"
+    ]
+  },
   "mcpServers": {
     "codex": {
       "command": "/bin/zsh",

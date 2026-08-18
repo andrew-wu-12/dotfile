@@ -150,7 +150,7 @@ serve_stop_current() {
 #
 # Same three gates as ctrl-g's trace_open_popup (VPN, MOP worktree, feature/
 # hotfix branch). Two-step selection, decoupled: step 1 picks WHICH branch to
-# deploy (the ticket's own branch, or uat/<parent> via trace_resolve_uat_branch
+# deploy (the ticket's own branch, or uat/<parent> via build_resolve_jira_parent_branch
 # — deduped to one line when they're identical, i.e. a hotfix with no parent
 # to resolve), step 2 picks WHICH job(s) to fire (dev/uat/one). Whichever
 # branch was picked in step 1 is passed as BRANCH to every job step 2
@@ -173,13 +173,13 @@ deploy_run() {
   fi
 
   branch=$(git -C "$wt" rev-parse --abbrev-ref HEAD 2>/dev/null)
-  parsed=$(trace_parse_branch "$branch") || {
+  parsed=$(build_parse_ticket_branch "$branch") || {
     echo "Not on a MOP feature/hotfix branch (current: $branch)."; sleep 1; return
   }
   ticket="${parsed%%$'\t'*}"
   is_hotfix="${parsed##*$'\t'}"
 
-  uat_branch=$(trace_resolve_uat_branch "$ticket" "$is_hotfix" "$branch")
+  uat_branch=$(build_resolve_jira_parent_branch "$ticket" "$is_hotfix" "$branch")
   [ -n "$uat_branch" ] || uat_branch="$branch"
 
   # Step 1: which branch to deploy. Dedupe: a hotfix's "uat branch" resolves

@@ -1,63 +1,41 @@
 #!/bin/bash
-# Vertical window picker with following extracfunctions:+ : an fzf popup listing every
-# tmux window across all sessions as a vertical stack of cards.
-#   enter   switch to the highlighted window (across sessions) and exit
+# Vertical window picker: an fzf popup listing every tmux window across all
+# sessions as a vertical stack of cards.
 #
-#   MOP yarn-serve control
-#   ctrl-s  set the highlighted window's worktree as the yarn-serve target
-#           (does NOT switch — "check out the window, decide separately
-#           whether to serve from it")
-#   ctrl-r  restart whatever is currently served
-#   ctrl-x  stop whatever is currently served
-#   ctrl-v  view the full serve log
+#   enter   Switch to the highlighted window (across sessions) and exit.
 #
-#   build/trace (any worktree with a .tmux-build.conf — see
-#   tmux-build-config.sh; not MOP-specific)
-#   ctrl-g  open a new tmux popup tracing this worktree's configured CI jobs
-#           with a live trace-build.sh-style progress bar, gated on VPN only
-#           when the resolved config asks for it — see
-#           tmux-build-trace-lib.sh. Exits this popup first (a tmux client
-#           only shows one popup at a time), then the trace popup opens a
-#           beat later.
+#   ctrl-s  Set the highlighted window's worktree as the yarn-serve target.
+#           Does not switch to it.
+#   ctrl-r  Restart whatever is currently served.
+#   ctrl-x  Stop whatever is currently served.
+#   ctrl-v  View the full serve log.
 #
-#   MOP jenkins deploy control (MOP-only, unlike ctrl-g above)
-#   ctrl-p  deploy the highlighted worktree's ticket: VPN/worktree/branch
-#           gated (its own MOP-specific check, separate from ctrl-g's
-#           config-driven one), then two decoupled fzf steps — 1) which
-#           branch (the ticket's own branch, or uat/<parent>, deduped to one
-#           line for a hotfix where they're the same), 2) which job(s)
-#           (dev/uat/one) — whichever branch you picked in step 1 is passed
-#           as BRANCH to every job step 2 fires, via tmux-deploy-lib.sh's
-#           deploy_trigger_job, then an inline trace_run over just the
-#           job(s) triggered — right here in this same popup pane (no popup
-#           swap, unlike ctrl-g), then back to the picker. See deploy_run()
-#           below. (ctrl-d was tried first but closes the popup/window
-#           instead of reaching fzf.)
-#   esc     cancel
+#   ctrl-g  Open a popup tracing this worktree's configured CI jobs with a
+#           live progress bar (any worktree with a .tmux-build.conf, not
+#           MOP-specific). Exits this popup first, then the trace popup
+#           opens a beat later.
 #
-# ctrl-s/ctrl-r/ctrl-x/ctrl-v/ctrl-p act and loop back into a refreshed
-# picker; enter/ctrl-g/esc are the only ways out (ctrl-g schedules the trace
-# popup and exits, rather than switching to a plain window, but it's still
-# an exit). This used to be two separate popups (`prefix w` for switching,
-# `prefix n` for serve control via tmux-serve-popup.sh) — merged here since
-# both start from "which window am I looking at," and serve-targeting only
-# makes sense for a worktree that already has one open. Shared serve helpers
-# live in tmux-serve-lib.sh (also sourced by worktree-done.sh); shared
-# build-trace helpers (also used by ctrl-p) live in tmux-build-trace-lib.sh;
-# shared Jenkins-trigger helpers live in tmux-deploy-lib.sh.
+#   ctrl-p  Deploy the highlighted worktree's ticket (MOP-only): pick a
+#           branch, then pick job(s) to fire, then trace them inline in
+#           this same pane. See deploy_run() below.
+#
+#   ctrl-l  Bust the ticket-status cache for the highlighted card and
+#           refresh the preview.
+#   esc     Cancel.
+#
+# ctrl-s/ctrl-r/ctrl-x/ctrl-v/ctrl-p/ctrl-l act and loop back into a
+# refreshed picker; enter/ctrl-g/esc are the only ways out. Shared serve
+# helpers live in tmux-serve-lib.sh; shared build-trace helpers live in
+# tmux-build-trace-lib.sh; shared Jenkins-trigger helpers live in
+# tmux-deploy-lib.sh.
 #
 # Each card is a multi-line fzf item (fzf --read0, fzf >= 0.44 required for
 # multi-line item rendering): a bold header line ("session │ window-name",
-# window-name already carrying any 🔴/🟢 marker from tmux-agent-notify.sh),
-# then optionally a dim ticket-title line (from @ticket_title, set by
-# worktree-ticket.sh) and/or a serve status/marker line. The header is
-# deliberately the LAST tab-delimited field (session, window_id, MOP
-# worktree path, build/trace worktree path, header) rather than the first
-# four: --with-nth/--delimiter split fields across the whole multi-line
-# record, not per physical line, so any body text appended after the header
-# (title, status lines) has to land after the last tab or it silently falls
-# outside --with-nth's display range. fzf's multi-line matching searches the
-# whole card as a side effect of this layout.
+# carrying any 🔴/🟢 marker from tmux-agent-notify.sh), then optionally a dim
+# ticket-title line (from @ticket_title) and/or a serve status/marker line.
+# The header is the LAST tab-delimited field (session, window_id, MOP
+# worktree path, build/trace worktree path, header) so that --with-nth only
+# ever displays the header plus any body text appended after it.
 #
 # Two separate worktree-path fields exist because ctrl-g/build-trace is
 # universal (any repo with a .tmux-build.conf) while ctrl-s/ctrl-p/preview
@@ -67,10 +45,9 @@
 #
 # The preview pane (right 60%) runs tmux-ticket-status.sh against the
 # highlighted card's MOP worktree path (field {3}, blank/placeholder for
-# non-MOP windows) — see PREVIEW_CMD below. tmux-ticket-status.sh caches its
-# report per worktree, so re-invoking it on every highlighted row is just a
-# cache read, not a live fetch. ctrl-l busts the cache for the highlighted
-# card and refreshes the preview in place — see the --bind below.
+# non-MOP windows) — see PREVIEW_CMD below. It caches its report per
+# worktree, so re-invoking it on every highlighted row is a cache read, not
+# a live fetch, unless ctrl-l busted it.
 #
 # The hidden serve window itself never appears in the list — it's plumbing,
 # not somewhere to jump to.
@@ -134,6 +111,8 @@ serve_switch_to() {  # $1 = worktree path to serve
     *) tmux send-keys -t "$SERVE_PANE" C-c ;;
   esac
 
+  tmux clear-history -t "$SERVE_PANE"
+  tmux send-keys -t "$SERVE_PANE" -l 'clear' \; send-keys -t "$SERVE_PANE" Enter
   tmux send-keys -t "$SERVE_PANE" "cd '$target' && yarn serve" Enter
   tmux set-option -w -t "$SERVE_WIN" @serve_target "$target"
 
@@ -148,25 +127,21 @@ serve_stop_current() {
 
 # --- ctrl-p: deploy ------------------------------------------------------
 #
-# Same three gates as ctrl-g's trace_open_popup (VPN, MOP worktree, feature/
-# hotfix branch). Two-step selection, decoupled: step 1 picks WHICH branch to
-# deploy (the ticket's own branch, or uat/<parent> via build_resolve_jira_parent_branch
-# — deduped to one line when they're identical, i.e. a hotfix with no parent
-# to resolve), step 2 picks WHICH job(s) to fire (dev/uat/one). Whichever
-# branch was picked in step 1 is passed as BRANCH to every job step 2
-# triggers — jobs no longer have a branch baked in, unlike the old single-step
-# version where "dev" always meant the ticket's own branch and "uat" always
-# meant uat/<parent>. Both resolved branches are computed unconditionally up
-# front (one extra Jira round-trip per invocation) since step 1 has to show
-# both options before step 2 even exists. Triggers on step 2's selection (no
-# extra confirm beyond that — same as ctrl-s/ctrl-r/ctrl-x), then runs
-# trace_run inline in this same popup pane over just the job(s) just
-# triggered — no popup swap like ctrl-g, since deploy_run returns control to
-# the picker's own while-loop afterward.
+# Gated on VPN, a resolved .tmux-build.conf, and a MOP feature/hotfix branch.
+# Step 1 picks the branch (the ticket's own branch, or uat/<parent>, deduped
+# to one line for a hotfix). Step 2 picks the job(s): "dev" fires
+# mop_console_monorepo_feature, "uat" fires mop_console_monorepo_epic_or_hotfix,
+# "one" fires both — all against the branch chosen in step 1. Progress is
+# then traced inline in this same pane before returning to the picker.
 deploy_run() {
   local wt="$1" branch parsed ticket is_hotfix uat_branch
   local branch_opts branch_choice job_choice
   local specs=()
+
+  build_config_load "$wt"
+  if [ -z "${BUILD_BACKEND:-}" ]; then
+    echo "No .tmux-build.conf found for this worktree."; sleep 1; return
+  fi
 
   if ! trace_vpn_connected; then
     echo "VPN required to trigger deploy."; sleep 1; return
@@ -220,18 +195,18 @@ uat branch: $uat_branch"
   TRACE_NOTIFY_SUBTITLE="$ticket · $branch_choice"
   case "$job_choice" in
     dev)
-      deploy_trigger_job mop_console_monorepo_dev BRANCH "$branch_choice" \
-        && specs+=("DEV|mop_console_monorepo_dev|$branch_choice|one-dev deploy")
+      deploy_trigger_job mop_console_monorepo_feature BRANCH "$branch_choice" \
+        && specs+=("FEAT|mop_console_monorepo_feature|$branch_choice|feature build")
       ;;
     uat)
-      deploy_trigger_job mop_console_monorepo_uat BRANCH "$branch_choice" \
-        && specs+=("UAT|mop_console_monorepo_uat|$branch_choice|one-uat deploy")
+      deploy_trigger_job mop_console_monorepo_epic_or_hotfix BRANCH "$branch_choice" \
+        && specs+=("EPIC|mop_console_monorepo_epic_or_hotfix|$branch_choice|epic/hotfix build")
       ;;
     one)
-      deploy_trigger_job mop_console_monorepo_dev BRANCH "$branch_choice" \
-        && specs+=("DEV|mop_console_monorepo_dev|$branch_choice|one-dev deploy")
-      deploy_trigger_job mop_console_monorepo_uat BRANCH "$branch_choice" \
-        && specs+=("UAT|mop_console_monorepo_uat|$branch_choice|one-uat deploy")
+      deploy_trigger_job mop_console_monorepo_feature BRANCH "$branch_choice" \
+        && specs+=("FEAT|mop_console_monorepo_feature|$branch_choice|feature build")
+      deploy_trigger_job mop_console_monorepo_epic_or_hotfix BRANCH "$branch_choice" \
+        && specs+=("EPIC|mop_console_monorepo_epic_or_hotfix|$branch_choice|epic/hotfix build")
       ;;
     *)
       return

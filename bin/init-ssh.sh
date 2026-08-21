@@ -299,5 +299,9 @@ function setup_ssh_key() {
 
 # Execute if run directly
 if [[ "${BASH_SOURCE[0]}" == "${0}" ]]; then
-    setup_ssh_key
+    if [ "${1:-}" = "--workspace" ]; then
+        setup_workspace_identity
+    else
+        setup_ssh_key
+    fi
 fi

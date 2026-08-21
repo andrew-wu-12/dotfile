@@ -2,8 +2,9 @@
 # init-workspace.sh — create .workspace.conf stubs for workspace directories
 #
 # Usage:
-#   init-workspace.sh                — interactive: prompt for work workspace path
-#   init-workspace.sh --isMOP <path> — non-interactive: write MOP config at <path>
+#   init-workspace.sh                        — interactive: prompt for workspace path (default ~/project)
+#   init-workspace.sh --default-path <path>  — interactive: prompt with a custom default path; no ~/personal auto-write
+#   init-workspace.sh --isMOP <path>         — non-interactive: write MOP config at <path>
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 # shellcheck source=/dev/null
@@ -11,6 +12,8 @@ source "$SCRIPT_DIR/init-lib.sh"
 
 MOP_MODE=0
 MOP_PATH=""
+DEFAULT_WS_PATH="$HOME/project"
+SKIP_PERSONAL=0
 
 case "${1:-}" in
     --isMOP)
@@ -21,10 +24,19 @@ case "${1:-}" in
             exit 1
         fi
         ;;
+    --default-path)
+        DEFAULT_WS_PATH="${2:-}"
+        if [ -z "$DEFAULT_WS_PATH" ]; then
+            echo "init-workspace.sh --default-path: path argument required"
+            exit 1
+        fi
+        DEFAULT_WS_PATH="${DEFAULT_WS_PATH/#\~/$HOME}"
+        SKIP_PERSONAL=1
+        ;;
     "")
         ;;
     *)
-        echo "Usage: init-workspace.sh [--isMOP <path>]"
+        echo "Usage: init-workspace.sh [--isMOP <path> | --default-path <path>]"
         exit 1
         ;;
 esac
@@ -63,21 +75,23 @@ echo ""
 echo "=== Workspace 設定 ==="
 echo ""
 
-printf "工作 Workspace 路徑 [%s/project]: " "$HOME"
+printf "工作 Workspace 路徑 [%s]: " "${DEFAULT_WS_PATH/#$HOME/\~}"
 read -r ws_input </dev/tty
 if [ -z "$ws_input" ]; then
-    ws_path="$HOME/project"
+    ws_path="$DEFAULT_WS_PATH"
 else
     ws_path="${ws_input/#\~/$HOME}"
 fi
 
 write_stub "$ws_path" general
 
-personal_path="$HOME/personal"
-if [ -d "$personal_path" ]; then
-    write_stub "$personal_path" general
-else
-    echo "(~/personal 目錄不存在，跳過個人 workspace 設定)"
+if [ "$SKIP_PERSONAL" -eq 0 ]; then
+    personal_path="$HOME/personal"
+    if [ -d "$personal_path" ]; then
+        write_stub "$personal_path" general
+    else
+        echo "(~/personal 目錄不存在，跳過個人 workspace 設定)"
+    fi
 fi
 
 echo ""

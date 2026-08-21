@@ -6,8 +6,6 @@ source "$SCRIPT_DIR/init-lib.sh"
 
 # Ordered step table as three parallel indexed arrays (kept index-aligned so this
 # runs under macOS's stock Bash 3.2 — nothing here needs a newer Bash).
-# STEP_KEYS[i] is the detect_status key, STEP_LABELS[i] its Traditional Chinese
-# label, STEP_SCRIPTS[i] the sub-script. Order mirrors the safe install sequence.
 STEP_KEYS=(brew required omz base recommend-cli starship opencode nvim tmux wezterm vscode claude check-paths workspace credentials ssh gh clone)
 STEP_LABELS=(
     "Homebrew"
@@ -50,8 +48,16 @@ STEP_SCRIPTS=(
     "init-clone.sh"
 )
 
-# Core steps for the minimal install (skips the optional editor/terminal/CLI tools).
-MINIMAL_KEYS=(brew required omz base check-paths workspace credentials ssh gh clone)
+# Foundation steps auto-prepended silently to every bundle.
+FOUNDATION_KEYS=(brew required omz base)
+
+# Bundle labels (1-indexed, parallel to bundle runner functions).
+BUNDLE_LABELS=(
+    "最小環境設定（VS Code）"
+    "個人環境設定（推薦工具 + 終端機）"
+    "最小專案初始化（路徑、金鑰、憑證、複製儲存庫）"
+    "個人工作區初始化（工作區設定、SSH、GitHub 驗證）"
+)
 
 # Steps that must run every time regardless of detect_status. Restowing is
 # idempotent and cheap, and skipping it is how ~/bin silently drifts from the repo
@@ -66,8 +72,11 @@ function is_always_run() {
     return 1
 }
 
-function run_step() {
+# run_script <script_name> [args...]: runs a script from SCRIPT_DIR with optional
+# args, handling chmod and exit-code reporting.
+function run_script() {
     local script_name="$1"
+    shift
     local script_path="$SCRIPT_DIR/$script_name"
 
     echo ""
@@ -78,7 +87,7 @@ function run_step() {
         chmod +x "$script_path"
     fi
 
-    "$script_path"
+    "$script_path" "$@"
     local result=$?
 
     if [ $result -ne 0 ]; then
@@ -88,6 +97,10 @@ function run_step() {
     fi
 
     return $result
+}
+
+function run_step() {
+    run_script "$1"
 }
 
 # Load MOP_*_PATH and token exports from ~/.zshrc into this shell so that steps
@@ -107,11 +120,10 @@ function load_env_vars() {
         fi
     done < <(grep -E "^export MOP[A-Z_]*PATH=" "$HOME/.zshrc")
 
-    while IFS= read -r line; do
-        if [[ $line =~ ^export[[:space:]]+(JENKINS_TOKEN|JIRA_TOKEN|GETDATATOKEN)= ]]; then
-            eval "$line"
-        fi
-    done < <(grep -E "^export (JENKINS_TOKEN|JIRA_TOKEN|GETDATATOKEN)=" "$HOME/.zshrc")
+    local _token
+    _token=$(cred_find "jenkins.morrison.express") && export JENKINS_TOKEN="$_token"
+    _token=$(cred_find "morrisonexpress.atlassian.net") && export JIRA_TOKEN="$_token"
+    _token=$(cred_find "getdata.morrison.express") && export GETDATATOKEN="$_token"
 }
 
 # Returns 0 when the component for <key> is fully installed/configured.
@@ -222,15 +234,49 @@ function status_tag() {
     fi
 }
 
+# Returns 0 when all meaningful steps in the given bundle are installed.
+function bundle_installed() {
+    local key
+    case "$1" in
+        1)
+            detect_status vscode || return 1
+            ;;
+        2)
+            for key in recommend-cli tmux nvim starship wezterm; do
+                detect_status "$key" || return 1
+            done
+            ;;
+        3)
+            for key in check-paths ssh credentials gh clone; do
+                detect_status "$key" || return 1
+            done
+            ;;
+        4)
+            gh auth status &>/dev/null || return 1
+            ;;
+    esac
+    return 0
+}
+
+function bundle_tag() {
+    if bundle_installed "$1"; then
+        echo "✓ 已完成"
+    else
+        echo "未完成"
+    fi
+}
+
 function print_preflight_summary() {
     echo ""
     echo "=== 初始化總覽 ==="
     echo ""
-    echo "必要套件：jq、gh、curl、git、stow、nvm"
-    echo "可選套件：推薦 CLI 工具、Starship、opencode、Nvim、Tmux、WezTerm"
-    echo "共用設定：zsh 與 ~/bin 會固定使用 stow 連結"
-    echo "後續步驟會詢問專案路徑、憑證、SSH 設定與 GitHub 驗證"
-    echo "全新 Mac 小提示：通常保留 ~/project 底下的預設專案路徑即可"
+    echo "提供 4 個安裝組合，每組皆會自動確認基礎環境（Homebrew、必要套件、Oh My Zsh、shell 設定）："
+    echo "  1. 最小環境設定：VS Code"
+    echo "  2. 個人環境設定：推薦 CLI 工具 + 終端機工具鏈（Tmux、Nvim、Starship、WezTerm）"
+    echo "  3. 最小專案初始化：專案路徑、SSH 金鑰、憑證、GitHub CLI、複製 repo"
+    echo "  4. 個人工作區初始化：Workspace 設定、工作區 SSH 身分、GitHub CLI 驗證"
+    echo ""
+    echo "Claude Code / opencode 請選擇「進階 / 個別步驟」安裝。"
     echo ""
 }
 
@@ -247,49 +293,108 @@ function run_step_by_key() {
     done
 }
 
-function run_minimal() {
+function run_bundle_foundation() {
     echo ""
-    echo "=== 精簡安裝 ==="
-    echo "只安裝核心項目（必要套件、shell 基礎、專案路徑/憑證/SSH/GitHub/clone）。已安裝的會跳過。"
+    echo "--- 確認基礎環境 ---"
     local key
-    for key in "${MINIMAL_KEYS[@]}"; do
+    for key in "${FOUNDATION_KEYS[@]}"; do
         run_step_by_key "$key"
     done
 }
 
-function run_full_guided() {
+function run_bundle_1() {
     echo ""
-    echo "=== 完整引導安裝 ==="
-    echo "已安裝的項目會自動跳過。"
-    local i
-    for ((i = 0; i < ${#STEP_KEYS[@]}; i++)); do
-        if ! is_always_run "${STEP_KEYS[i]}" && detect_status "${STEP_KEYS[i]}"; then
-            echo "✓ 跳過（已安裝）：${STEP_LABELS[i]}"
+    echo "=== 最小環境設定（VS Code）==="
+    run_bundle_foundation
+    run_step_by_key vscode
+}
+
+function run_bundle_2() {
+    echo ""
+    echo "=== 個人環境設定（推薦工具 + 終端機）==="
+    run_bundle_foundation
+    local key
+    for key in recommend-cli tmux nvim starship wezterm; do
+        run_step_by_key "$key"
+    done
+}
+
+function run_bundle_3() {
+    echo ""
+    echo "=== 最小專案初始化 ==="
+    run_bundle_foundation
+    local key
+    for key in check-paths ssh credentials gh clone; do
+        run_step_by_key "$key"
+    done
+}
+
+function run_bundle_4() {
+    echo ""
+    echo "=== 個人工作區初始化 ==="
+    run_bundle_foundation
+
+    # workspace: prompt with ~/personal as default; no ~/personal auto-write
+    run_script "init-workspace.sh" --default-path ~/personal
+
+    # ssh: workspace-scoped identity only (not full global key setup)
+    run_script "init-ssh.sh" --workspace
+
+    # gh: skip if already authenticated
+    if gh auth status &>/dev/null; then
+        echo "✓ 跳過（已驗證）：GitHub CLI 驗證"
+    else
+        run_step "init-gh.sh"
+    fi
+}
+
+function show_advanced_steps() {
+    local choice i step_count=${#STEP_KEYS[@]}
+    local back_idx=$((step_count + 1))
+
+    while true; do
+        echo ""
+        echo "=== 進階：個別步驟 ==="
+        echo "選擇步驟後會直接執行（忽略已安裝狀態）。"
+        echo ""
+        for ((i = 0; i < step_count; i++)); do
+            printf "%2d) %-40s %s\n" "$((i + 1))" "${STEP_LABELS[i]}" "$(status_tag "${STEP_KEYS[i]}")"
+        done
+        echo ""
+        printf "%2d) %s\n" "$back_idx" "返回上一層"
+        echo ""
+        read -r -p "請輸入選項：" choice </dev/tty || break
+
+        if [[ -z "$choice" || "$choice" == *[!0-9]* ]]; then
+            echo "⚠️  無效的選項：$choice"
+            continue
+        fi
+
+        if (( choice == back_idx )); then
+            break
+        elif (( choice >= 1 && choice <= step_count )); then
+            run_step "${STEP_SCRIPTS[choice-1]}"
         else
-            run_step "${STEP_SCRIPTS[i]}"
+            echo "⚠️  無效的選項：$choice"
         fi
     done
 }
 
 function show_menu_loop() {
-    local choice i minimal_idx full_idx exit_idx
-    local step_count=${#STEP_KEYS[@]}
-    minimal_idx=1
-    full_idx=$((step_count + 2))
-    exit_idx=$((step_count + 3))
+    local choice i bundle_count=${#BUNDLE_LABELS[@]}
+    local advanced_idx=$((bundle_count + 1))
+    local exit_idx=$((bundle_count + 2))
 
     while true; do
         echo ""
         echo "=== 初始化選單 ==="
-        echo "請選擇要執行的項目（會即時偵測安裝狀態）。"
+        echo "請選擇安裝組合："
         echo ""
-        printf "%2d) %s\n" "$minimal_idx" "精簡安裝（只安裝核心項目）"
-        echo ""
-        for ((i = 0; i < step_count; i++)); do
-            printf "%2d) %-36s %s\n" "$((i + 2))" "${STEP_LABELS[i]}" "$(status_tag "${STEP_KEYS[i]}")"
+        for ((i = 0; i < bundle_count; i++)); do
+            printf "%2d) %-52s %s\n" "$((i + 1))" "${BUNDLE_LABELS[i]}" "$(bundle_tag "$((i + 1))")"
         done
         echo ""
-        printf "%2d) %s\n" "$full_idx" "完整引導安裝（依序執行未完成項目）"
+        printf "%2d) %s\n" "$advanced_idx" "進階 / 個別步驟"
         printf "%2d) %s\n" "$exit_idx" "離開"
         echo ""
         read -r -p "請輸入選項：" choice </dev/tty || break
@@ -299,17 +404,15 @@ function show_menu_loop() {
             continue
         fi
 
-        if (( choice == exit_idx )); then
-            break
-        elif (( choice == minimal_idx )); then
-            run_minimal
-        elif (( choice == full_idx )); then
-            run_full_guided
-        elif (( choice >= 2 && choice <= step_count + 1 )); then
-            run_step "${STEP_SCRIPTS[choice-2]}"
-        else
-            echo "⚠️  無效的選項：$choice"
-        fi
+        case "$choice" in
+            1) run_bundle_1 ;;
+            2) run_bundle_2 ;;
+            3) run_bundle_3 ;;
+            4) run_bundle_4 ;;
+            "$advanced_idx") show_advanced_steps ;;
+            "$exit_idx") break ;;
+            *) echo "⚠️  無效的選項：$choice" ;;
+        esac
     done
 }
 

@@ -1,0 +1,90 @@
+{
+  "explorer.confirmDelete": false,
+  "editor.renderWhitespace": "all",
+  "git.enableSmartCommit": true,
+  "editor.minimap.enabled": false,
+  "files.associations": {
+    "*.js": "javascriptreact"
+  },
+  "[json]": {
+    "editor.defaultFormatter": "esbenp.prettier-vscode"
+  },
+  "diffEditor.ignoreTrimWhitespace": false,
+  "[javascript]": {
+    "editor.defaultFormatter": "dbaeumer.vscode-eslint"
+  },
+  "[javascriptreact]": {
+    "editor.defaultFormatter": "dbaeumer.vscode-eslint"
+  },
+  "prettier.singleQuote": true,
+  "prettier.semi": false,
+  "prettier.jsxSingleQuote": true,
+  "json.schemas": [],
+  "prettier.useEditorConfig": false,
+  "json.format.enable": false,
+  "eslint.alwaysShowStatus": true,
+  "eslint.run": "onSave",
+  "editor.codeActionsOnSave": {
+    "source.fixAll.eslint": true,
+    "source.fixAll.stylelint": true
+  },
+  "stylelint.validate": ["css", "scss"],
+  "liveServer.settings.donotShowInfoMsg": true,
+  "[scss]": {
+    "editor.defaultFormatter": "esbenp.prettier-vscode"
+  },
+  // "javascript.updateImportsOnFileMove.enabled": "always",
+  "workbench.editorAssociations": {
+    "*.ipynb": "jupyter.notebook.ipynb"
+  },
+  "launch": {
+    "configurations": [],
+    "compounds": []
+  },
+  "settingsSync.ignoredSettings": [],
+  "javascript.updateImportsOnFileMove.enabled": "never",
+  "explorer.confirmDragAndDrop": false,
+  "workbench.startupEditor": "newUntitledFile",
+  "[html]": {
+    // "editor.defaultFormatter": "esbenp.prettier-vscode"
+  },
+  "eslint.format.enable": true,
+  "editor.defaultFormatter": "dbaeumer.vscode-eslint",
+  "eslint.codeAction.showDocumentation": {
+    "enable": true
+  },
+  "terminal.integrated.defaultProfile.linux": "",
+  "versionlens.dotnet.nuget.sources": [],
+  "settingsSync.ignoredExtensions": [],
+  "editor.tokenColorCustomizations": {
+    "textMateRules": [
+      {
+        "scope": [
+          "comment",
+          "comment.block.documentation",
+          "comment.block.documentation.js",
+          "comment.line.double-slash.js",
+          "storage.type.class.jsdoc",
+          "entity.name.type.instance.jsdoc",
+          "variable.other.jsdoc",
+          "punctuation.definition.comment",
+          "punctuation.definition.comment.begin.documentation",
+          "punctuation.definition.comment.end.documentation"
+        ],
+        "settings": {
+          "fontStyle": "italic",
+          "foreground": "#229977"
+        }
+      }
+    ]
+  },
+  "[python]": {
+    "editor.defaultFormatter": "ms-python.python"
+  },
+  "[jsonc]": {
+    "editor.defaultFormatter": "esbenp.prettier-vscode"
+  },
+  "liveServer.settings.port": 3000,
+  "git.confirmSync": false,
+  "window.zoomLevel": 1
+}

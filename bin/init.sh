@@ -8,7 +8,7 @@ source "$SCRIPT_DIR/init-lib.sh"
 # runs under macOS's stock Bash 3.2 — nothing here needs a newer Bash).
 # STEP_KEYS[i] is the detect_status key, STEP_LABELS[i] its Traditional Chinese
 # label, STEP_SCRIPTS[i] the sub-script. Order mirrors the safe install sequence.
-STEP_KEYS=(brew required omz base recommend-cli starship opencode nvim tmux wezterm claude check-paths workspace credentials ssh gh clone)
+STEP_KEYS=(brew required omz base recommend-cli starship opencode nvim tmux wezterm vscode claude check-paths workspace credentials ssh gh clone)
 STEP_LABELS=(
     "Homebrew"
     "必要套件（jq、gh、curl、git、stow、nvm）"
@@ -20,6 +20,7 @@ STEP_LABELS=(
     "Nvim 編輯器"
     "Tmux"
     "WezTerm"
+    "VS Code"
     "Claude Code"
     "專案路徑設定"
     "Workspace 設定（.workspace.conf）"
@@ -39,6 +40,7 @@ STEP_SCRIPTS=(
     "init-nvim.sh"
     "init-tmux.sh"
     "init-wezterm.sh"
+    "init-vscode.sh"
     "init-claude.sh"
     "init-check-paths.sh"
     "init-workspace.sh"
@@ -161,6 +163,17 @@ function detect_status() {
                 pacman) pacman -Qi wezterm &>/dev/null || return 1 ;;
             esac
             [ -L "$HOME/.wezterm.lua" ] || return 1
+            ;;
+        vscode)
+            command -v code &>/dev/null || return 1
+            case "$(detect_pkg_manager)" in
+                brew)
+                    [ -L "$HOME/Library/Application Support/Code/User/settings.json" ] || return 1
+                    ;;
+                pacman)
+                    [ -L "$HOME/.config/Code/User/settings.json" ] || return 1
+                    ;;
+            esac
             ;;
         claude)
             command -v claude &>/dev/null && [ -L "$HOME/.claude/settings.json" ] || return 1

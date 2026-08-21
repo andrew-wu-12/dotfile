@@ -1,5 +1,7 @@
 #!/bin/bash
 
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+
 #function handle_git_clone: clone project to path defined in .zshrc
 function handle_git_clone() {
     echo ""
@@ -85,6 +87,9 @@ function handle_git_clone() {
     done
     
     echo "✓ Git 儲存庫複製完成"
+
+    local worktree_mop="${WORKTREE_ROOT:-$HOME/project/worktrees}/mop-console-monorepo"
+    "$SCRIPT_DIR/init-workspace.sh" --isMOP "$worktree_mop"
 }
 
 # Execute if run directly

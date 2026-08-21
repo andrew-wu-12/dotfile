@@ -8,7 +8,7 @@ source "$SCRIPT_DIR/init-lib.sh"
 # runs under macOS's stock Bash 3.2 — nothing here needs a newer Bash).
 # STEP_KEYS[i] is the detect_status key, STEP_LABELS[i] its Traditional Chinese
 # label, STEP_SCRIPTS[i] the sub-script. Order mirrors the safe install sequence.
-STEP_KEYS=(brew required omz base recommend-cli starship opencode nvim tmux wezterm claude check-paths credentials ssh gh clone)
+STEP_KEYS=(brew required omz base recommend-cli starship opencode nvim tmux wezterm claude check-paths workspace credentials ssh gh clone)
 STEP_LABELS=(
     "Homebrew"
     "必要套件（jq、gh、curl、git、stow、nvm）"
@@ -22,6 +22,7 @@ STEP_LABELS=(
     "WezTerm"
     "Claude Code"
     "專案路徑設定"
+    "Workspace 設定（.workspace.conf）"
     "憑證（Keychain）"
     "SSH 金鑰"
     "GitHub CLI 驗證"
@@ -40,6 +41,7 @@ STEP_SCRIPTS=(
     "init-wezterm.sh"
     "init-claude.sh"
     "init-check-paths.sh"
+    "init-workspace.sh"
     "init-credentials.sh"
     "init-ssh.sh"
     "init-gh.sh"
@@ -47,7 +49,7 @@ STEP_SCRIPTS=(
 )
 
 # Core steps for the minimal install (skips the optional editor/terminal/CLI tools).
-MINIMAL_KEYS=(brew required omz base check-paths credentials ssh gh clone)
+MINIMAL_KEYS=(brew required omz base check-paths workspace credentials ssh gh clone)
 
 # Steps that must run every time regardless of detect_status. Restowing is
 # idempotent and cheap, and skipping it is how ~/bin silently drifts from the repo
@@ -168,6 +170,9 @@ function detect_status() {
             for var in MOP_CONFIGURATION_PATH MOP_CONSOLE_PATH MOP_MONOREPO_PATH MOP_EPOD_PATH; do
                 grep -q "^export $var=" "$HOME/.zshrc" 2>/dev/null || return 1
             done
+            ;;
+        workspace)
+            [ -f "$HOME/project/.workspace.conf" ] || return 1
             ;;
         credentials)
             local svc

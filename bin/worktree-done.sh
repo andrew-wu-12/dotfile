@@ -57,9 +57,9 @@ tmux list-windows -a -F '#{window_id} #{window_name}' 2>/dev/null \
         [[ "$wname" == "$WIN_NAME" || "$wname" == *" $WIN_NAME" ]] && tmux kill-window -t "$wid"
       done
 
-# If the single MOP `yarn serve` window (see tmux-serve-lib.sh) is currently
-# targeting this worktree, stop it and clear the target first — otherwise
-# `git worktree remove` fights a running process whose cwd is inside $ROOT.
+# If the dev server window (see tmux-serve-lib.sh) is currently targeting
+# this worktree, stop it and clear the target first — otherwise `git worktree
+# remove` fights a running process whose cwd is inside $ROOT.
 serve_stop_if_target "$ROOT"
 
 # git worktree remove must run from outside the tree being removed. common_dir

@@ -15,6 +15,7 @@
 BUILD_SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]:-$0}")" && pwd)"
 
 BUILD_CONFIG_VARS="BUILD_BACKEND BUILD_VPN_CHECK BUILD_CRED_NAME BUILD_JENKINS_URL BUILD_TICKET_LOOKUP BUILD_JOBS"
+WORKSPACE_CONFIG_VARS="WORKSPACE_PREVIEW_CMD WORKSPACE_SERVE_CMD WORKSPACE_SERVE_LABEL WORKSPACE_BUILD_CONF WORKSPACE_SERVE_PORT NOTE_PATH"
 
 # Clears every BUILD_* variable a previous build_config_load call may have
 # set — needed because tmux-window-picker.sh is one long-lived process that
@@ -24,6 +25,40 @@ BUILD_CONFIG_VARS="BUILD_BACKEND BUILD_VPN_CHECK BUILD_CRED_NAME BUILD_JENKINS_U
 build_config_reset() {
   local v
   for v in $BUILD_CONFIG_VARS; do unset "$v"; done
+}
+
+workspace_config_reset() {
+  local v
+  for v in $WORKSPACE_CONFIG_VARS; do unset "$v"; done
+}
+
+# Sources every ".workspace.conf" found from $HOME down to path $1
+# (inclusive), outer to inner, setting WORKSPACE_* vars. Leaves them all
+# unset (via workspace_config_reset) if no config exists in the ancestry.
+workspace_config_load() {
+  local target="$1" dir dirs=""
+
+  workspace_config_reset
+
+  target=$(cd "$target" 2>/dev/null && pwd) || return 1
+
+  dir="$target"
+  while :; do
+    dirs="$dir
+$dirs"
+    [ "$dir" = "$HOME" ] && break
+    [ "$dir" = "/" ] && break
+    dir=$(dirname "$dir")
+  done
+
+  while IFS= read -r dir; do
+    [ -n "$dir" ] || continue
+    [ -f "$dir/.workspace.conf" ] || continue
+    # shellcheck source=/dev/null
+    source "$dir/.workspace.conf"
+  done <<EOF
+$dirs
+EOF
 }
 
 # Sources every ".tmux-build.conf" found from $HOME down to worktree path $1

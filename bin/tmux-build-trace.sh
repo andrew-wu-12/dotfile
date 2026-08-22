@@ -24,8 +24,6 @@ SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]:-$0}")" && pwd)"
 source "$SCRIPT_DIR/init-lib.sh"
 # shellcheck source=tmux-build-trace-lib.sh
 source "$SCRIPT_DIR/tmux-build-trace-lib.sh"
-# shellcheck source=tmux-build-backend-jenkins.sh
-source "$SCRIPT_DIR/tmux-build-backend-jenkins.sh"
 
 build_config_load "$WT"
 
@@ -39,12 +37,24 @@ if [ -z "${BUILD_JOBS:-}" ]; then
   exec "${SHELL:-zsh}"
 fi
 
+BACKEND_MODULE="$SCRIPT_DIR/tmux-build-backend-${BUILD_BACKEND}.sh"
+if [ ! -f "$BACKEND_MODULE" ]; then
+  echo "Error: no backend module for BUILD_BACKEND=$BUILD_BACKEND ($BACKEND_MODULE)"
+  exec "${SHELL:-zsh}"
+fi
+# shellcheck source=/dev/null
+source "$BACKEND_MODULE"
+
 BRANCH=$(git -C "$WT" rev-parse --abbrev-ref HEAD 2>/dev/null)
 
-if [ "$BUILD_BACKEND" = "jenkins" ]; then
-  JENKINS_TOKEN=$(cred_find "${BUILD_CRED_NAME:-jenkins.morrison.express}")
-  if [ -z "$JENKINS_TOKEN" ]; then
-    echo "Error: no credential found for ${BUILD_CRED_NAME:-jenkins.morrison.express}"
+# Each backend module may define "${BUILD_BACKEND}_ensure_auth" to fetch
+# whatever credential it needs (e.g. jenkins_ensure_auth sets $JENKINS_TOKEN,
+# forgejo_ensure_auth sets $FORGEJO_TOKEN) and return nonzero if missing.
+# Backends that need no auth (a public CI, say) just don't define one.
+AUTH_FN="${BUILD_BACKEND}_ensure_auth"
+if command -v "$AUTH_FN" >/dev/null 2>&1; then
+  if ! "$AUTH_FN"; then
+    echo "Error: no credential found for ${BUILD_CRED_NAME:-$BUILD_BACKEND}"
     exec "${SHELL:-zsh}"
   fi
 fi

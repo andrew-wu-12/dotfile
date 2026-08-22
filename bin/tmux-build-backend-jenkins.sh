@@ -1,8 +1,13 @@
 # Jenkins backend for the generic build/trace engine (tmux-build-trace-lib.sh).
 # Dispatched by name (trace_backend_find_build/poll_build call
 # "${BUILD_BACKEND}_find_build"/"_poll_build") when BUILD_BACKEND=jenkins.
-# Requires BUILD_JENKINS_URL (from config) and $JENKINS_TOKEN (fetched by the
-# caller via cred_find "$BUILD_CRED_NAME").
+# Requires BUILD_JENKINS_URL (from config) and $JENKINS_TOKEN (fetched by
+# jenkins_ensure_auth, below).
+
+jenkins_ensure_auth() {
+  JENKINS_TOKEN=$(cred_find "${BUILD_CRED_NAME:-jenkins.morrison.express}")
+  [ -n "$JENKINS_TOKEN" ]
+}
 
 # Latest build in Jenkins job $1 matching BRANCH param $2, as compact JSON
 # {number,url,result,timestamp,estimatedDuration,duration} (or empty).

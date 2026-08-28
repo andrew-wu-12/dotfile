@@ -33,16 +33,22 @@ WORKTREE_ROOT="${WORKTREE_ROOT:-$HOME/project/worktrees}"
 
 # -n/--new-window forwards straight to tmux-dev-layout.sh: open the dev layout
 # in a new tmux window instead of the default of overriding the current one.
+# --no-pr skips gh pr create even for new branches.
 DEV_LAYOUT_FLAGS=()
-while [[ "${1:-}" == -n || "${1:-}" == --new-window ]]; do
-    DEV_LAYOUT_FLAGS=(-n)
+SKIP_PR=0
+while [[ "${1:-}" == -n || "${1:-}" == --new-window || "${1:-}" == --no-pr ]]; do
+    case "${1:-}" in
+        -n|--new-window) DEV_LAYOUT_FLAGS=(-n) ;;
+        --no-pr) SKIP_PR=1 ;;
+    esac
     shift
 done
 
-# Ensure a branch exists and has a draft PR, without checking it out anywhere.
-# The branch is created one empty commit ahead of its base (so gh has a diff to
-# open the PR against), pushed, and a draft PR is opened. If the branch already
-# exists locally or on origin, it is reused and no PR is created.
+# Ensure a branch exists and optionally has a draft PR, without checking it out
+# anywhere. The branch is created one empty commit ahead of its base (so gh has
+# a diff to open the PR against), pushed, and a draft PR is opened unless
+# $SKIP_PR is set. If the branch already exists locally or on origin, it is
+# reused and no PR is created.
 #   $1 branch data (from pr_get_params)  $2 base ref (e.g. origin/main)  $3 pr base branch
 function wt_ensure_branch() {
     local BRANCH_DATA="$1" BASE_REF="$2" PR_BASE="$3"
@@ -66,6 +72,7 @@ function wt_ensure_branch() {
     NEW_SHA=$(git commit-tree "$TREE" -p "$BASE_SHA" -m "Initial draft for branch $NAME") || return 1
     git branch "$NAME" "$NEW_SHA"
     git push -u origin "$NAME"
+    [[ "$SKIP_PR" -eq 1 ]] && return 0
     gh pr create -a @me -B "$PR_BASE" -H "$NAME" -t "$TITLE" -b "$CONTENT" -d
 }
 
@@ -109,7 +116,7 @@ function wt_ensure_system_options() {
 
 TICKET_NUMBER="${1:-}"
 if [[ -z "$TICKET_NUMBER" ]]; then
-    echo "Usage: mwt [-n|--new-window] <MOP-XXXX>"
+    echo "Usage: mwt [-n|--new-window] [--no-pr] <MOP-XXXX>"
     exit 1
 fi
 

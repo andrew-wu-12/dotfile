@@ -126,7 +126,8 @@ serve_stop_current() {
 #
 # Gated on VPN, a resolved .tmux-build.conf, and a MOP feature/hotfix branch.
 # Step 1 picks the branch (ticket's own, or uat/<parent>). Step 2 picks the
-# job(s): dev/uat/one — all against the branch chosen in step 1.
+# job(s): dev fires _feature, uat fires _epic_or_hotfix, one fires both
+# _dev and _uat — all against the branch chosen in step 1.
 deploy_run() {
   local wt="$1" branch parsed ticket is_hotfix uat_branch
   local branch_opts branch_choice job_choice
@@ -189,10 +190,10 @@ uat branch: $uat_branch"
         && specs+=("EPIC|mop_console_monorepo_epic_or_hotfix|$branch_choice|epic/hotfix build")
       ;;
     one)
-      deploy_trigger_job mop_console_monorepo_feature BRANCH "$branch_choice" \
-        && specs+=("FEAT|mop_console_monorepo_feature|$branch_choice|feature build")
-      deploy_trigger_job mop_console_monorepo_epic_or_hotfix BRANCH "$branch_choice" \
-        && specs+=("EPIC|mop_console_monorepo_epic_or_hotfix|$branch_choice|epic/hotfix build")
+      deploy_trigger_job mop_console_monorepo_dev BRANCH "$branch_choice" \
+        && specs+=("DEV|mop_console_monorepo_dev|$branch_choice|dev build")
+      deploy_trigger_job mop_console_monorepo_uat BRANCH "$branch_choice" \
+        && specs+=("UAT|mop_console_monorepo_uat|$branch_choice|uat build")
       ;;
     *)
       return

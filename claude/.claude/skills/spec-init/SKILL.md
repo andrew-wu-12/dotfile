@@ -82,23 +82,31 @@ found." Support each finding with `path:line` evidence only — no raw grep dump
 or file contents. **NO GUESSING** applies to the subagent too: if the ticket
 does not state something, record it as unstated. Never infer it.
 
-### 3. Generate the consolidated spec
+### 3. Interview the user on gaps
+
+Take step 2's "missing details" findings. Run `doc-spec-interview` on them
+before you write anything. An answered gap becomes a Decision Log row
+(`Source = dev`), not an Open Question. A deferred gap goes to Open
+Questions as usual.
+
+### 4. Generate the consolidated spec
 
 Write the spec body using `doc-spec-body`'s conventions — language, the
 field/API/test-scenario formats, business-level terms only, and the
 decision-log boundary.
 
-Use only concrete details from the ticket, the prototype, and the codebase. **Do
-not invent** fields, APIs, or behaviors. If the ticket does not state something,
-add it to Open Questions instead of guessing.
+Use only concrete details from the ticket, the prototype, the codebase, and
+step 3's interview. **Do not invent** fields, APIs, or behaviors. If a gap
+was not resolved in step 3, add it to Open Questions instead of guessing.
 
-### 4. Assemble Open Questions (private)
+### 5. Assemble Open Questions (private)
 
-Every gap from step 2 becomes a checkbox with its `path:line` evidence. This
-list stays private. You curate it before it reaches the PM — that happens in
-the `/spec-post` step. Keep each question specific and quotable.
+Every gap from step 2 that step 3 did not resolve becomes a checkbox with
+index and its `path:line` evidence. This list stays private. You curate it
+before it reaches the PM — that happens in the `/spec-post` step. Keep each
+question specific and quotable.
 
-### 5. Write the note, then snapshot
+### 6. Write the note, then snapshot
 
 Write `specs/MOP-XXXX.md` using `doc-spec-schema`'s template, then:
 
@@ -109,7 +117,7 @@ Write `specs/MOP-XXXX.md` using `doc-spec-schema`'s template, then:
 Run the snapshot **last**. Run it only after you write the note, so
 `round-01.md` matches the end-of-round-1 state.
 
-### 6. Report
+### 7. Report
 
 List the following in English:
 - Open Questions list

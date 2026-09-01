@@ -69,7 +69,15 @@ conflict and neither has clear recency or authority, **do not guess**. Add the
 conflict to Open Questions and flag it to the user instead of silently
 picking one.
 
-### 5. Rewrite to current truth
+### 5. Interview the user on contradictions
+
+Take step 4's unresolved contradictions, plus every still-unresolved Open
+Question from a prior round. Run `doc-spec-interview` on them before the
+rewrite. An answered item becomes a Decision Log row (`Source = dev`), not
+an Open Question. A deferred item goes to Open Questions, or stays there if
+it was already there.
+
+### 6. Rewrite to current truth
 
 - Rewrite the `規格` sections using `doc-spec-body`'s conventions (language,
   field/API/test-scenario formats, business-level terms only, decision-log
@@ -85,7 +93,7 @@ picking one.
 - Update Open Questions: check off answered ones, add newly surfaced ones.
 - Bump `round` in frontmatter.
 
-### 6. Snapshot the round
+### 7. Snapshot the round
 
 ```bash
 ~/bin/spec-snapshot.sh MOP-XXXX   # creates round-NN
@@ -95,7 +103,7 @@ Run this **last**, after the rewrite, so `round-NN.md` matches the
 end-of-round-N state. This lets `/spec-drift` diff round-(N-1) against round-N
 for exactly this round's change.
 
-### 7. Report what changed
+### 8. Report what changed
 
 List the following in English:
 - New decisions with sources

@@ -6,7 +6,7 @@ source "$SCRIPT_DIR/init-lib.sh"
 
 # Ordered step table as three parallel indexed arrays (kept index-aligned so this
 # runs under macOS's stock Bash 3.2 — nothing here needs a newer Bash).
-STEP_KEYS=(brew required omz base recommend-cli starship opencode nvim tmux wezterm vscode claude check-paths workspace credentials ssh gh clone)
+STEP_KEYS=(brew required omz base recommend-cli starship nvim tmux wezterm vscode claude check-paths workspace credentials ssh gh clone)
 STEP_LABELS=(
     "Homebrew"
     "必要套件（jq、gh、curl、git、stow、nvm）"
@@ -14,7 +14,6 @@ STEP_LABELS=(
     "基礎設定（stow zsh + bin）"
     "推薦 CLI 工具（zoxide、rg、eza、lazygit、terminal-notifier、fzf）"
     "Starship 提示主題"
-    "opencode"
     "Nvim 編輯器"
     "Tmux"
     "WezTerm"
@@ -34,7 +33,6 @@ STEP_SCRIPTS=(
     "init-base.sh"
     "init-recommend-cli-tools.sh"
     "init-starship.sh"
-    "init-opencode.sh"
     "init-nvim.sh"
     "init-tmux.sh"
     "init-wezterm.sh"
@@ -159,9 +157,6 @@ function detect_status() {
         starship)
             command -v starship &>/dev/null && [ -L "$HOME/.config/starship.toml" ] || return 1
             ;;
-        opencode)
-            command -v opencode &>/dev/null && [ -L "$HOME/.opencode" ] || return 1
-            ;;
         nvim)
             command -v nvim &>/dev/null && [ -L "$HOME/.config/nvim" ] || return 1
             ;;
@@ -276,7 +271,7 @@ function print_preflight_summary() {
     echo "  3. 最小專案初始化：專案路徑、SSH 金鑰、憑證、GitHub CLI、複製 repo"
     echo "  4. 個人工作區初始化：Workspace 設定、工作區 SSH 身分、GitHub CLI 驗證"
     echo ""
-    echo "Claude Code / opencode 請選擇「進階 / 個別步驟」安裝。"
+    echo "Claude Code 請選擇「進階 / 個別步驟」安裝。"
     echo ""
 }
 

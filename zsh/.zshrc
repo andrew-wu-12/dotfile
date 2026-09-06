@@ -208,10 +208,6 @@ export WORKTREE_ROOT="$HOME/project/worktrees"
 # growing its own multi-GB .nx/cache. Overrides nx's default <root>/.nx/cache.
 export NX_CACHE_DIRECTORY="$HOME/.cache/nx-mop"
 
-# opencode
-export SKILL_PATH="$HOME/.opencode/skills"
-export PATH="$HOME/.opencode/bin:$PATH"
-export MCP_PATH="$HOME/dotfile-mcp-server"
 export PATH="$HOME/.local/bin:$PATH"
 
 # Homebrew (macOS) or pacman (Arch) -installed zsh plugins. Guarded, so a

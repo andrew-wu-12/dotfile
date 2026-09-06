@@ -19,7 +19,6 @@ Each top-level directory is a Stow package. Running `stow <pkg>` from the repo r
 | `starship/` | `$HOME` | `.config/starship.toml` |
 | `tmux/` | `$HOME` | `.tmux.conf` |
 | `wezterm/` | `$HOME` | `.wezterm.lua` |
-| `opencode/` | `$HOME` | `.opencode/` |
 
 All stowing goes through `stow_pkg` in `bin/init-lib.sh`, never `stow` directly. It dry-runs first, and if a real (non-symlink) file already occupies a target it lists the conflicts and asks whether to keep them. Keeping skips that package entirely; declining backs the files up to `<name>.bak.<timestamp>` and links the repo version. `--adopt` is deliberately **not** used anywhere — the repo is always the source of truth and is never written to by an init script.
 
@@ -34,7 +33,7 @@ chmod +x *.sh
 source ~/.zshrc
 ```
 
-`init.sh` orchestrates a sequence of `init-*.sh` sub-scripts. Optional tools (Starship, opencode, Nvim, Tmux, WezTerm, recommended CLI tools) are each prompted individually — pressing Enter skips.
+`init.sh` orchestrates a sequence of `init-*.sh` sub-scripts. Optional tools (Starship, Nvim, Tmux, WezTerm, recommended CLI tools) are each prompted individually — pressing Enter skips.
 
 On a fresh Mac the first step is `init-brew.sh`, which installs Homebrew (confirming first, since it needs `sudo` and pulls in Xcode Command Line Tools). Every other step depends on it. On Arch, pacman ships with the base system, so there is no equivalent bootstrap step — `init-brew.sh` is macOS-only and `detect_status brew` just confirms pacman is present.
 
@@ -52,7 +51,7 @@ macOS is via Homebrew; Arch Linux is via pacman for official-repo packages and a
 - `pkg_install <brew_name> [pacman_name] [cask|aur]` — installs a package by name. `pacman_name` defaults to `brew_name` (most packages here share a name across both, e.g. `starship`, `ripgrep`), pass it explicitly when they diverge (e.g. `pkg_install nvim neovim`). The `cask` modifier means `brew install --cask` on macOS and is a no-op on Arch (GUI apps are just regular packages there); `aur` means "not in Arch's official repos, install via `yay`" and is a no-op on macOS.
 - `zsh_plugin_file <plugin>` — resolves the share-dir path for a zsh plugin (`/opt/homebrew/share/...` vs `/usr/share/...`); `.zshrc` guards its own `source` lines for both paths directly rather than calling into `init-lib.sh`, since it isn't sourced from a setup script.
 
-Known package-name divergences, encoded at each call site rather than in a shared table (there are only three): `nvim`→`neovim` (`init-nvim.sh`), `opencode`→`opencode-bin` via AUR (`init-opencode.sh`, official-maintainer package), `wezterm` cask vs. the `extra`-repo package of the same name (`init-wezterm.sh`).
+Known package-name divergences, encoded at each call site rather than in a shared table (there are only two): `nvim`→`neovim` (`init-nvim.sh`), `wezterm` cask vs. the `extra`-repo package of the same name (`init-wezterm.sh`).
 
 **Not yet ported to Arch** — these remain macOS-only and are out of scope for the package-manager abstraction: `osascript` desktop notifications, and `tmux-agent-notify.sh`'s frontmost-app detection (`lsappinfo`/LaunchServices bundle IDs — see [Notifications](#parallel-ticket-workspaces-git-worktrees)). Each needs its own Linux-side redesign (`notify-send`, and an X11/Wayland-specific focus-detection story, respectively) rather than a mechanical swap.
 
@@ -111,13 +110,10 @@ All scripts are symlinked to `~/bin/` and have aliases in `.zshrc`:
 | `JENKINS_TOKEN` | Read from Keychain at shell start |
 | `JIRA_TOKEN` | Read from Keychain at shell start |
 | `GETDATATOKEN` | Read from Keychain at shell start |
-| `SKILL_PATH` | `~/.opencode/skills` (for opencode agent skills) |
-| `MCP_PATH` | `~/dotfile-mcp-server` (local MCP server for opencode) |
 
 ## Tmux Shortcuts
 
 `prefix` is `Ctrl-B`. Notable bindings:
-- `prefix Ctrl-O` — opens opencode in a popup (90% of terminal)
 - `prefix Ctrl-G` — opens lazygit in a popup
 - `prefix Ctrl-E` — opens nvim in a popup, same path as the current pane
 - `prefix w` — vertical window "tab" picker and MOP `yarn serve` control (fzf popup, all sessions); `tmux-window-picker.sh`, replaces native choose-tree. Highlighting a MOP worktree card shows its ticket dev-status report (`tmux-ticket-status.sh`) in a preview pane.
@@ -144,10 +140,6 @@ Invariants the scripts guarantee:
 **Notifications.** `tmux-agent-notify.sh` is registered globally as Claude Code `Notification` / `Stop` / `UserPromptSubmit` hooks in `claude/.claude/settings.json`, but **self-guards** to act only when the agent's cwd is under `$WORKTREE_ROOT` — this now covers workspaces from both `mwt` and `wt`. It renames the agent's window `🔴 …` (needs input) / `🟢 …` (turn done) and clears the marker on the next prompt, plus fires a macOS notification — **suppressed when you are already looking at that window**, so you are only pinged about tickets elsewhere. "Looking at it" requires all three of window active, session attached, *and* the terminal app frontmost: tmux cannot see that you alt-tabbed to a browser (the window stays active), so the frontmost check — `lsappinfo`, walking the tmux client's process tree up to the terminal GUI — is what keeps the popup from being suppressed exactly when you are away from the machine. The hook **must stay silent on stdout**: Claude Code injects a `Stop`/`UserPromptSubmit` hook's stdout back into the conversation as context. Hook changes take effect only in the *next* `claude` launched.
 
 **Ticket titles.** `worktree-ticket.sh` tags each mwt window with the ticket's JIRA summary as the `@ticket_title` window user option, so `tmux-window-picker.sh` can show it on the window's card without a live JIRA call. `tmux-resurrect`'s default state capture doesn't include custom window options, so a full tmux-server restart (terminal quit + `@continuum-restore`, or a manual `prefix Ctrl-R`) loses it — the window *name* survives (resurrect-native), the title doesn't. Worked around by having `worktree-ticket.sh` also write the title to a sibling file, `$WORKTREE_ROOT/<repo>/<ticket>.title` (next to, not inside, the worktree dir, so it never shows up in that worktree's own `git status`), and `@resurrect-hook-post-restore-all` (`tmux-restore-ticket-titles.sh`) re-applies `@ticket_title` from that file to every worktree window once a restore finishes. `wtd` deletes the sibling file on teardown so it doesn't outlive the worktree.
-
-## opencode Config
-
-`opencode/.opencode/opencode.json` sets the model to `github-copilot/gpt-4o` and loads a local MCP server (`dotfile-mcp-server`) and the `opencode-agent-skills` plugin.
 
 ## Modifying This Repo
 

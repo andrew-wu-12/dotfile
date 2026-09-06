@@ -34,7 +34,7 @@ function ensure_brew() {
 # Package manager abstraction -------------------------------------------------
 #
 # macOS uses Homebrew; Arch Linux uses pacman for anything in the official
-# repos and an AUR helper (yay) for everything else (e.g. wezterm, opencode).
+# repos and an AUR helper (yay) for everything else (e.g. wezterm).
 # Callers install by the same package name on both platforms — that holds for
 # everything this repo currently installs, so there is no per-platform name
 # table yet; add one if a future package's name actually diverges.

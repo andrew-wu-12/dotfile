@@ -169,7 +169,6 @@ gbc
 
    - Recommended CLI Tools：`zoxide`、`ripgrep`、`eza`
    - `starship` - Shell Prompt
-   - `opencode` - CLI 與設定檔
    - `nvim` - 編輯器與設定檔
    - `tmux` - Terminal Multiplexer 與設定檔
    - `wezterm` - 終端機設定檔

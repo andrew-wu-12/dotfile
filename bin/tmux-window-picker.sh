@@ -1,8 +1,21 @@
 #!/bin/bash
 # Vertical window picker: an fzf popup listing every tmux window across all
-# sessions as a vertical stack of cards.
+# sessions as a vertical stack of cards. Absorbs the old tmux-jira-picker.sh
+# (formerly `prefix j`) as a second, toggleable row set.
 #
-#   enter   Switch to the highlighted window (across sessions) and exit.
+# Two modes:
+#   active  (default) Today's window list only — one card per live tmux
+#           window across all sessions. No JIRA call.
+#   all     Adds a card per JIRA ticket assigned to you that has no worktree
+#           yet (tickets that already have a worktree show up as window
+#           cards above, in "active"). Cached 5 min at
+#           /tmp/tmux-jira-picker.cache; only fetched when this mode is
+#           entered, never on plain open.
+#
+#   tab     Toggle active/all.
+#   enter   On a window card: switch to it (across sessions) and exit.
+#           On a ticket card (no worktree yet): create the worktree + window
+#           via worktree-ticket.sh -n and exit.
 #
 #   ctrl-s  Set the highlighted window's workspace as the dev-server target.
 #           Requires WORKSPACE_SERVE_CMD in the window's .workspace.conf.
@@ -19,12 +32,15 @@
 #
 #   ctrl-n  Open NOTE_PATH for this workspace in an nvim popup.
 #
-#   ctrl-l  Bust the ticket-status preview cache for the highlighted card.
+#   ctrl-b  Open the highlighted ticket in the JIRA browser (ticket cards
+#           only; no-op on window cards).
+#   ctrl-l  Bust the ticket-status preview cache for the highlighted card,
+#           and force the next JIRA ticket-list fetch to skip its cache.
 #   esc     Cancel.
 #
-# ctrl-s/ctrl-r/ctrl-x/ctrl-v/ctrl-p/ctrl-n/ctrl-l loop back into a
-# refreshed picker; enter/ctrl-g/esc are the only ways out. Shared serve
-# helpers live in tmux-serve-lib.sh; shared build-trace helpers live in
+# ctrl-s/ctrl-r/ctrl-x/ctrl-v/ctrl-p/ctrl-n/tab loop back into a refreshed
+# picker; enter/ctrl-g/esc are the only ways out. Shared serve helpers live
+# in tmux-serve-lib.sh; shared build-trace helpers live in
 # tmux-build-trace-lib.sh (which also sources tmux-build-config.sh, making
 # workspace_config_load available here); shared Jenkins-trigger helpers live
 # in tmux-deploy-lib.sh.
@@ -32,18 +48,20 @@
 # Each card is a multi-line fzf item (fzf --read0, fzf >= 0.44 required for
 # multi-line item rendering): a bold header line carrying any 🔴/🟢 marker,
 # then optionally a dim ticket-title line and/or a serve status/marker line.
-# Tab-delimited fields (header is the last, displayed via --with-nth=7):
-#   {1} session name
-#   {2} window id
-#   {3} workspace path  — git toplevel when WORKSPACE_SERVE_CMD or
-#                         WORKSPACE_PREVIEW_CMD is set; empty otherwise
-#   {4} build path      — git toplevel when WORKSPACE_BUILD_CONF=1; empty otherwise
-#   {5} preview cmd     — WORKSPACE_PREVIEW_CMD (absolute path); empty if none
-#   {6} note path       — NOTE_PATH; empty if none
-#   {7} display header  — bold "session │ window-name"
+# Tab-delimited fields (header is field 7, displayed via --with-nth=7):
+#   {1} session name          — empty on a ticket card
+#   {2} window id             — empty on a ticket card
+#   {3} workspace path        — git toplevel when WORKSPACE_SERVE_CMD or
+#                                WORKSPACE_PREVIEW_CMD is set; empty otherwise
+#   {4} build path            — git toplevel when WORKSPACE_BUILD_CONF=1; empty otherwise
+#   {5} preview cmd           — WORKSPACE_PREVIEW_CMD (absolute path); empty if none
+#   {6} note path              — NOTE_PATH; empty if none
+#   {7} display header         — bold "session │ window-name", or a ticket line
+#   {8} ticket key              — set only on a ticket card (no worktree yet)
 #
 # The preview pane (right 60%) calls {5} with {3} as argument when both are
-# set, else shows "(no preview configured)".
+# set; shows a placeholder for a ticket card with no worktree; else shows
+# "(no preview configured)".
 
 set -u
 
@@ -66,12 +84,103 @@ mocha="--color=bg+:#313244,bg:#1e1e2e,spinner:#f5e0dc,hl:#f38ba8,fg:#cdd6f4,\
 header:#f5e0dc,info:#cba6f7,pointer:#f5e0dc,marker:#b4befe,fg+:#cdd6f4,\
 prompt:#cba6f7,hl+:#f38ba8,border:#585b70"
 
-# {5} = preview cmd, {3} = workspace path. Calls the workspace's configured
-# preview script with the workspace path as its argument.
-PREVIEW_CMD='p={5}; wt={3}; if [ -n "$p" ] && [ -n "$wt" ]; then "$p" "$wt"; else printf "(no preview configured)\n"; fi'
+# --- JIRA ticket list (absorbed from tmux-jira-picker.sh) -----------------
 
-# ctrl-l busts the ticket-status cache (tmux-ticket-status.sh-specific).
-RELOAD_BIND='ctrl-l:execute-silent(~/bin/tmux-ticket-status.sh --reload {3} 2>/dev/null)+refresh-preview'
+CACHE_FILE="/tmp/tmux-jira-picker.cache"
+BOARD_CACHE="/tmp/tmux-jira-picker-board.cache"
+CACHE_TTL=300       # 5 minutes
+BOARD_TTL=86400     # 24 hours
+JIRA_BASE="https://morrisonexpress.atlassian.net"
+JIRA_JQL='assignee = currentUser() AND status IN ("Backlog","Develop","In Progress","DESIGN","SA SIGNOFF","Designing","Approved","Auto Testing","Designed","DEV","DEV VERIFIED","To Do","UAT","UAT VERIFIED","Verified") ORDER BY status ASC, Rank ASC'
+WORKTREE_ROOT="${WORKTREE_ROOT:-$HOME/project/worktrees}"
+MOP_REPO="mop-console-monorepo"
+
+get_jira_token() {
+  local tok
+  tok=$(security find-generic-password -a "$USER" -s "morrisonexpress.atlassian.net" -w 2>/dev/null)
+  if [ -z "$tok" ]; then
+    tok=$(zsh -c 'source ~/.zshrc >/dev/null 2>&1; printf "%s" "$JIRA_TOKEN"' 2>/dev/null)
+  fi
+  printf '%s' "$tok"
+}
+
+# Resolve the numeric board ID for the MOP project; cache for 24h.
+get_board_id() {
+  local now mod age board_id
+  if [ -f "$BOARD_CACHE" ]; then
+    now=$(date +%s)
+    mod=$(stat -f %m "$BOARD_CACHE" 2>/dev/null || echo 0)
+    age=$(( now - mod ))
+    if [ "$age" -lt "$BOARD_TTL" ]; then
+      cat "$BOARD_CACHE"
+      return
+    fi
+  fi
+  local token
+  token=$(get_jira_token)
+  board_id=$(/usr/bin/curl -s -u "$token" -X GET \
+    -H "Accept: application/json" \
+    "$JIRA_BASE/rest/agile/1.0/board?projectKeyOrId=MOP&maxResults=1" \
+  | jq -r '.values[0].id' 2>/dev/null)
+  if [ -z "$board_id" ] || [ "$board_id" = "null" ]; then
+    return 1
+  fi
+  printf '%s' "$board_id" > "$BOARD_CACHE"
+  printf '%s' "$board_id"
+}
+
+fetch_jira_raw() {
+  local token board_id
+  token=$(get_jira_token)
+  [ -z "$token" ] && return 1
+  board_id=$(get_board_id)
+  [ -z "$board_id" ] && return 1
+  /usr/bin/curl -s -u "$token" -X GET \
+    -H "Accept: application/json" \
+    -G \
+    --data-urlencode "jql=$JIRA_JQL" \
+    --data-urlencode "fields=summary,status" \
+    --data-urlencode "maxResults=100" \
+    "$JIRA_BASE/rest/agile/1.0/board/$board_id/issue" \
+  | jq -r '.issues[] | [.key, .fields.status.name, .fields.summary] | @tsv'
+}
+
+# Appends one record per ticket assigned to the user that has no worktree
+# yet (tickets that already have one show up as window cards instead).
+build_ticket_rows() {
+  local raw now mod age
+  if [ -f "$CACHE_FILE" ]; then
+    now=$(date +%s)
+    mod=$(stat -f %m "$CACHE_FILE" 2>/dev/null || echo 0)
+    age=$(( now - mod ))
+    [ "$age" -lt "$CACHE_TTL" ] && raw=$(cat "$CACHE_FILE")
+  fi
+
+  if [ -z "${raw:-}" ]; then
+    raw=$(fetch_jira_raw 2>/dev/null)
+    [ -z "$raw" ] && return
+    printf '%s\n' "$raw" > "$CACHE_FILE"
+  fi
+
+  printf '%s\n' "$raw" | while IFS="$TAB" read -r ticket status summary; do
+    [ -z "$ticket" ] && continue
+    [ -d "$WORKTREE_ROOT/$MOP_REPO/$ticket" ] && continue  # already a window card
+    summary=$(printf '%s' "$summary" | tr '\t' ' ')
+    status_padded=$(printf '%-14s' "$status")
+    header="${BOLD}${ticket}${RESET}  ${DIM}[${status_padded}]${RESET}  ${summary}"
+    printf '%s\0' "${TAB}${TAB}${TAB}${TAB}${TAB}${TAB}${header}${TAB}${ticket}" >> "$list_file"
+  done
+}
+
+# {5} = preview cmd, {3} = workspace path, {8} = ticket key (no-worktree card).
+PREVIEW_CMD='ws={3}; p={5}; tk={8}; if [ -n "$tk" ] && [ -z "$ws" ]; then printf "(no worktree yet — press enter to create)\n"; elif [ -n "$p" ] && [ -n "$ws" ]; then "$p" "$ws"; else printf "(no preview configured)\n"; fi'
+
+# ctrl-l busts the ticket-status preview cache and the JIRA ticket-list cache.
+RELOAD_BIND="ctrl-l:execute-silent(rm -f $CACHE_FILE)+execute-silent(~/bin/tmux-ticket-status.sh --reload {3} 2>/dev/null)+refresh-preview"
+
+# ctrl-b opens the highlighted ticket card in the JIRA browser; no-op on a
+# window card (empty {8}).
+CTRL_B_BIND="ctrl-b:execute-silent(t={8}; [ -n \"\$t\" ] && open \"$JIRA_BASE/browse/\$t\")"
 
 SERVE_INFO=$(serve_find_window)
 SERVE_WIN=$(printf '%s' "$SERVE_INFO" | cut -d' ' -f2)
@@ -222,12 +331,7 @@ uat branch: $uat_branch"
 # For every pane, workspace_config_load walks up from the pane path to $HOME
 # looking for a .workspace.conf. This is cheap (a few stat calls per pane) and
 # works for worktrees and plain checkouts alike.
-build_list() {
-  serve_compute_status
-  CUR_TARGET=$(serve_current_target "$SERVE_WIN")
-  CUR_PORT=$([ -n "$SERVE_WIN" ] && tmux show-option -w -t "$SERVE_WIN" -v @serve_port 2>/dev/null || true)
-  : > "$list_file"
-
+build_window_rows() {
   tmux list-windows -a \
     -F "#{session_name}${TAB}#{window_id}${TAB}#{session_name} │ #{window_name}${TAB}#{@ticket_title}${TAB}#{pane_current_path}" \
     | while IFS="$TAB" read -r sess winid header title panepath; do
@@ -280,19 +384,36 @@ EOF
           fi
         fi
 
-        printf '%s\0' "$record" >> "$list_file"
+        printf '%s\0' "${record}${TAB}" >> "$list_file"
       done
+}
+
+build_list() {
+  serve_compute_status
+  CUR_TARGET=$(serve_current_target "$SERVE_WIN")
+  CUR_PORT=$([ -n "$SERVE_WIN" ] && tmux show-option -w -t "$SERVE_WIN" -v @serve_port 2>/dev/null || true)
+  : > "$list_file"
+
+  build_window_rows
+  [ "$MODE" = "all" ] && build_ticket_rows
 }
 
 # --- main loop -------------------------------------------------------------
 #
-# enter/esc exit; ctrl-s/ctrl-r/ctrl-x/ctrl-v/ctrl-n act and loop back into a
-# refreshed picker.
+# enter/ctrl-g/esc exit; ctrl-s/ctrl-r/ctrl-x/ctrl-v/ctrl-p/ctrl-n/tab act
+# and loop back into a refreshed picker.
+MODE="active"
 while true; do
   build_list
   [ -s "$list_file" ] || exit 0
 
-  HEADER=$(printf 'ctrl-s:serve  ctrl-r:restart  ctrl-x:stop  ctrl-g:trace build  ctrl-p:deploy\nctrl-v:view log  ctrl-n:notes  ctrl-l:reload preview')
+  if [ "$MODE" = "active" ]; then
+    HEADER=$(printf 'tab:all tickets  ctrl-s:serve  ctrl-r:restart  ctrl-x:stop  ctrl-g:trace build  ctrl-p:deploy\nctrl-v:view log  ctrl-n:notes  ctrl-l:reload preview')
+    PROMPT='window ❯ '
+  else
+    HEADER=$(printf 'tab:active only  ctrl-b:browser  ctrl-l:reload tickets  ctrl-s:serve  ctrl-r:restart  ctrl-x:stop\nctrl-g:trace build  ctrl-p:deploy  ctrl-v:view log  ctrl-n:notes')
+    PROMPT='all ❯ '
+  fi
 
   result=$(fzf \
     --read0 \
@@ -305,10 +426,11 @@ while true; do
     --margin=0 \
     --header="$HEADER" \
     --header-first \
-    --prompt='window ❯ ' \
+    --prompt="$PROMPT" \
     --pointer='▶' \
-    --expect=ctrl-s,ctrl-r,ctrl-x,ctrl-v,ctrl-g,ctrl-p,ctrl-n \
+    --expect=ctrl-s,ctrl-r,ctrl-x,ctrl-v,ctrl-g,ctrl-p,ctrl-n,tab \
     --bind="$RELOAD_BIND" \
+    --bind="$CTRL_B_BIND" \
     --preview="$PREVIEW_CMD" \
     --preview-window=right:60%:wrap \
     $mocha < "$list_file") || exit 0
@@ -322,8 +444,13 @@ while true; do
   ws_path=$(printf '%s' "$first_line" | cut -d"$TAB" -f3)
   build_wt_path=$(printf '%s' "$first_line" | cut -d"$TAB" -f4)
   note_path=$(printf '%s' "$first_line" | cut -d"$TAB" -f6)
+  ticket=$(printf '%s' "$first_line" | cut -d"$TAB" -f8)
 
   case "$KEY" in
+    tab)
+      [ "$MODE" = "active" ] && MODE="all" || MODE="active"
+      continue
+      ;;
     ctrl-s)
       if [ -z "$ws_path" ]; then
         echo "No WORKSPACE_SERVE_CMD configured for this window."; sleep 1; continue
@@ -371,6 +498,11 @@ while true; do
       continue
       ;;
   esac
+
+  if [ -n "$ticket" ] && [ -z "$winid" ]; then
+    zsh ~/bin/worktree-ticket.sh -n "$ticket"
+    exit 0
+  fi
 
   [ -z "$winid" ] && continue
   tmux switch-client -t "$sess"

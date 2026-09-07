@@ -426,6 +426,49 @@ tbs
 
 ---
 
+## Git Worktree 工作流程範例
+
+簡要範例：如何用 git worktree 為不同任務建立獨立工作區，並搭配 tmux session 分組。完整機制詳見 `CLAUDE.md`。
+
+### 1. 從零開始建立一個新的 MOP worktree
+
+```bash
+mwt MOP-12345          # 或 mwt -n MOP-12345（開新視窗而非覆蓋目前視窗）
+```
+
+會自動：查詢 JIRA 票券 → 建立 `uat/<parent>` + `feature/MOP-12345` 分支（不動主專案 HEAD、不 stash）→ 在 `$WORKTREE_ROOT/mop-console-monorepo/MOP-12345` 建立 worktree → clone `node_modules`（APFS clonefile）→ 安裝 git hooks → 開啟草稿 PR → 呼叫 `tmux-dev-layout.sh` 開啟開發視窗。
+
+### 2. 設定多個專案共用同一個 tmux session
+
+例如想讓 `mop-console-monorepo` 與 `mop_configuration_files` 共用同一個 `mop` session，而不是各自獨立一個 session：
+
+```bash
+echo 'SESSION_GROUP=mop' >> "$MOP_MONOREPO_PATH/.workspace.conf"
+echo 'SESSION_GROUP=mop' >> "$MOP_CONFIGURATION_PATH/.workspace.conf"
+```
+
+- `SESSION_GROUP`是加在既有的 `.workspace.conf` 裡（跟 `WORKSPACE_SERVE_CMD` 等設定同一個檔案），不是另開新檔，所以已經有 `.workspace.conf` 的專案（例如 `mop-console-monorepo`）只需要多加一行。可以直接 commit 進專案（每個 worktree 都會自動套用），也可以放在 `$WORKTREE_ROOT/<repo>/.workspace.conf`（不進版控、僅本機生效，做法同 `.tmux-build.conf`）。
+- 不需要重新執行任何腳本 —— `tmux-dev-layout.sh` 每次開啟/切換視窗時都會即時重新解析 `SESSION_GROUP`。
+- 沒有設定這個檔案的專案（例如 `dotfile`）維持原本行為：以專案名稱作為專屬 session。
+
+### 3. 從零開始為自訂（非 MOP）專案建立 worktree
+
+```bash
+cd ~/some/other/repo        # 目前所在目錄必須在目標專案內
+wt my-feature-branch        # 或 wt -n my-feature-branch
+```
+
+不涉及票券系統：若分支不存在則從專案預設分支建立 `my-feature-branch`（純 `git branch`，不 checkout、不 push、不開 PR）→ 在 `$WORKTREE_ROOT/<repo-name>/my-feature-branch` 建立 worktree → 若有 `node_modules` 則 clone、安裝 hooks（與 `mwt` 共用 `worktree-lib.sh`）→ `tmux-dev-layout.sh` 開啟視窗，落在 `<repo-name>` 專屬 session（除非依上一步設定了 `SESSION_GROUP`）。
+
+可選的專案設定檔（放在專案根目錄或 `$WORKTREE_ROOT/<repo-name>/`）：
+
+- `.workspace.conf` — 設定 `WORKSPACE_SERVE_CMD` / `WORKSPACE_PREVIEW_CMD`，讓 `prefix+w` 可以啟停開發伺服器並顯示預覽。
+- `.tmux-build.conf` — 設定 `BUILD_BACKEND` 等，讓 `prefix+w` 的 `ctrl-g` 可以即時追蹤 CI 建置。
+
+用 `wtd`（在 worktree 內執行）可以拆掉任何 `mwt` 或 `wt` 建立的 worktree。
+
+---
+
 ## 安裝與使用
 
 ### 快速開始

@@ -6,20 +6,22 @@
 #   |         (~3/4 h)          | (~1/4 w) |
 #   +---------------------------+----------+
 #
-# One shared template applied at the current repo's root. Idempotent by
-# window name (the repo dir): re-running just re-selects the repo's window.
-# Bootstraps tmux if invoked from a bare terminal.
+# Idempotent by window name (the repo dir): re-running re-selects the
+# window. Bootstraps tmux if invoked from a bare terminal.
 #
-# Default: rebuilds the layout onto the CURRENT window (killing its other
-# panes and renaming it) rather than spawning a new tab. Pass -n/--new-window
-# to open the layout in a new window instead, the old behavior. Either way, if
-# a window matching this repo/branch already exists, it's just selected — the
-# current window is never overridden with a duplicate.
+# Default rebuilds the layout on the current window in place. -n/--new-window
+# opens a new window instead. Either way, a matching existing window is
+# selected, never duplicated.
 #
-# If $TICKET_TITLE is set (worktree-ticket.sh exports it for mwt tickets),
-# it's stashed as the @ticket_title window user option so
-# tmux-window-picker.sh can show it on the window's card without a live JIRA
-# call. Left unset for wt/plain dev windows.
+# $TICKET_TITLE (worktree-ticket.sh, mwt only) is stashed as the
+# @ticket_title window user option for tmux-window-picker.sh's card body.
+#
+# Session is resolved per repo, not the currently attached session:
+# SESSION_GROUP from .workspace.conf, walked $HOME down to the repo root
+# (outer to inner — same file tmux-window-picker.sh reads WORKSPACE_* from).
+# No SESSION_GROUP anywhere in the ancestry falls back to the repo name as
+# its own session. A target session other than the one attached switches
+# sessions instead of overriding the current window.
 
 set -eu
 
@@ -37,23 +39,43 @@ repo_root=$(git rev-parse --show-toplevel 2>/dev/null) || {
 }
 repo_name=${repo_root:t}
 
-# Window name is universally "<branch>(<repo>)". The repo name comes from the
-# parent of the shared git common dir, so it is the real project name even from
-# inside a linked worktree (where repo_root's basename is just the ticket).
+# Window name: "<branch>(<repo>)". Repo name comes from the parent of the
+# shared git common dir, so it's the real project name even inside a linked
+# worktree (repo_root's own basename is just the ticket there).
 branch_name=$(git rev-parse --abbrev-ref HEAD 2>/dev/null)
 common_dir=$(git rev-parse --git-common-dir 2>/dev/null)
 case "$common_dir" in /*) ;; *) common_dir="$repo_root/$common_dir" ;; esac
 main_repo=${common_dir:h:t}
 win_name="${branch_name}(${main_repo})"
 
-# Given the pane id of the (already-created) nvim pane, carve out the claude
-# column and the command pane, launch the tools, and focus nvim.
+# Sets $SESSION_GROUP by sourcing every ".workspace.conf" from $HOME down to
+# path $1, outer to inner. Unset if none exists, or none set it.
+resolve_session_group() {  # $1 = repo root
+  local target=$1 dir dirs
+  unset SESSION_GROUP
+  target=$(cd "$target" 2>/dev/null && pwd) || return 1
+  dirs=()
+  dir=$target
+  while true; do
+    dirs=("$dir" $dirs)
+    [[ "$dir" == "$HOME" ]] && break
+    [[ "$dir" == "/" ]] && break
+    dir=${dir:h}
+  done
+  for dir in $dirs; do
+    [[ -f "$dir/.workspace.conf" ]] && source "$dir/.workspace.conf"
+  done
+}
+
+resolve_session_group "$repo_root"
+session_target="${SESSION_GROUP:-$main_repo}"
+
+# Splits the claude pane off nvim pane $1, launches both tools, focuses nvim.
 layout_panes() {  # nvim_pane_id
   local p_nvim=$1 p_claude
   p_claude=$(tmux split-window -h -l 25% -t "$p_nvim" -c "$repo_root" -P -F '#{pane_id}')
 
-  # Label each pane border with the repo name. pane-border-status is a
-  # window-local option so other windows keep their default (off) look.
+  # pane-border-status is window-local: only this window shows pane titles.
   local win; win=$(tmux display-message -p -t "$p_nvim" '#{window_id}')
   tmux set-option -w -t "$win" pane-border-status top
   tmux set-option -w -t "$win" pane-border-format ' #{pane_title} '
@@ -71,18 +93,27 @@ build_window() {  # session
   layout_panes "$p_nvim"
 }
 
-# Default path: rebuild the layout on the window currently in view instead of
-# opening a new one. Kills every pane but the one this script itself is
-# running in, renames the window, and hands that pane to layout_panes.
+# Ensures session $1 exists and has this repo's window (creating either as
+# needed). Prints the window id.
+ensure_session_and_window() {  # $1 = target session
+  local target=$1 win_id
+  if tmux has-session -t "=$target" 2>/dev/null; then
+    win_id=$(window_id_for "$target" "$win_name")
+    [[ -n "$win_id" ]] || { build_window "$target"; win_id=$(window_id_for "$target" "$win_name"); }
+  else
+    tmux new-session -d -s "$target" -n "$win_name" -c "$repo_root"
+    win_id=$(window_id_for "$target" "$win_name")
+    layout_panes "$(tmux list-panes -t "$win_id" -F '#{pane_id}' | head -1)"
+  fi
+  print -r -- "$win_id"
+}
+
+# Rebuilds the layout on the window currently in view: kills every pane but
+# this script's own, renames the window, hands that pane to layout_panes.
 #
-# The current pane can't be respawn-killed like a normal reset — this script's
-# own process is running in it, and killing it here would kill the script
-# mid-flight (respawn-pane -k was tried and does exactly that: the pane's
-# process dies before rename-window/layout_panes ever run). Instead, `cd` and
-# `nvim` are queued via send-keys: the pty just buffers those keystrokes while
-# this script owns the foreground, and its own shell picks them up the moment
-# the script exits and stdin is read again — the same type-ahead-after-a-
-# command-exits behavior a plain terminal gives you.
+# Can't respawn-kill the current pane (it would kill this script mid-flight).
+# `cd`/`nvim` are queued via send-keys instead — the shell picks them up once
+# the script exits and reads stdin again.
 override_window() {
   local cur_win cur_pane
   cur_win=$(tmux display-message -p '#{window_id}')
@@ -96,9 +127,8 @@ override_window() {
   print -r -- "$cur_win"
 }
 
-# Echo the id of the window for $2 in session $1. Matches the canonical name
-# exactly or with a leading notification marker (tmux-agent-notify.sh renames windows
-# to "<marker><canonical>"), so a flagged window is reused, not duplicated.
+# Echoes the window id for name $2 in session $1. Matches exactly or with a
+# leading notification marker (tmux-agent-notify.sh's "<marker><name>").
 window_id_for() {  # session, window_name
   tmux list-windows -t "$1" -F '#{window_id} #{window_name}' 2>/dev/null \
     | while IFS=' ' read -r id name; do
@@ -107,41 +137,37 @@ window_id_for() {  # session, window_name
   return 0  # "no match" is not an error; without this `set -e` aborts the caller
 }
 
-# Stash $TICKET_TITLE (if set) as a window user option, for
-# tmux-window-picker.sh's card body. No-op for wt/plain dev windows.
+# Stashes $TICKET_TITLE (if set) as a window user option.
 tag_ticket_title() {  # window_id
   [[ -n "${TICKET_TITLE:-}" && -n "${1:-}" ]] || return 0
   tmux set-option -w -t "$1" @ticket_title "$TICKET_TITLE"
 }
 
 if [[ -n ${TMUX:-} ]]; then
-  # Already inside tmux: add/select the window in the current session.
-  session=$(tmux display-message -p '#S')
-  win_id=$(window_id_for "$session" "$win_name")
-  if [[ -n "$win_id" ]]; then
+  cur_session=$(tmux display-message -p '#S')
+  if [[ "$cur_session" == "$session_target" ]]; then
+    # Same session: reuse, build, or override the window in place.
+    win_id=$(window_id_for "$cur_session" "$win_name")
+    if [[ -n "$win_id" ]]; then
+      tmux select-window -t "$win_id"
+    elif [[ "$NEW_WINDOW" == 1 ]]; then
+      build_window "$cur_session"
+      win_id=$(window_id_for "$cur_session" "$win_name")
+    else
+      win_id=$(override_window)
+    fi
+    tag_ticket_title "$win_id"
+  else
+    # Different session: switch to (creating if needed) the target session.
+    win_id=$(ensure_session_and_window "$session_target")
+    tag_ticket_title "$win_id"
+    tmux switch-client -t "$session_target"
     tmux select-window -t "$win_id"
-  elif [[ "$NEW_WINDOW" == 1 ]]; then
-    build_window "$session"
-    win_id=$(window_id_for "$session" "$win_name")
-  else
-    win_id=$(override_window)
   fi
-  tag_ticket_title "$win_id"
 else
-  # Bare terminal: attach to the most-recently-used session if a server is
-  # running, otherwise start a fresh 'main' session.
-  if tmux list-sessions >/dev/null 2>&1; then
-    session=$(tmux list-sessions -F '#{session_last_attached} #{session_name}' \
-      | sort -rn | head -1 | cut -d' ' -f2-)
-    win_id=$(window_id_for "$session" "$win_name")
-    [[ -n "$win_id" ]] || { build_window "$session"; win_id=$(window_id_for "$session" "$win_name"); }
-  else
-    session=main
-    tmux new-session -d -s "$session" -n "$win_name" -c "$repo_root"
-    win_id=$(window_id_for "$session" "$win_name")
-    layout_panes "$(tmux list-panes -t "$win_id" -F '#{pane_id}' | head -1)"
-  fi
+  # Bare terminal: attach to the repo's target session, creating it if needed.
+  win_id=$(ensure_session_and_window "$session_target")
   tag_ticket_title "$win_id"
   tmux select-window -t "$win_id"
-  exec tmux attach-session -t "$session"
+  exec tmux attach-session -t "$session_target"
 fi

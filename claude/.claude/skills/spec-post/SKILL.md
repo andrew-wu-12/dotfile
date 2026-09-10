@@ -54,11 +54,19 @@ last Round History date, and the Open Questions.
 inside `posted:` — not `N-1`. Example: rounds 1 and 2 were never posted, and
 round 3 now is. The PM's delta then spans round 01 to round 03. Any other
 baseline reports a change history the PM never saw. No `posted:` entries at
-all means this is the **first post** (see step 5).
+all means this is the **first post** (see step 6).
 
-### 2. Fetch + run the guards (delegated)
+### 2. Challenge the draft (delegated)
 
-Delegate to a **fresh subagent**. Run it in the foreground — step 3 needs its
+Delegate to `doc-spec-challenge`: extract 規格, hand it to a fresh subagent
+with no chat history, get back `READY` or `REVISE` + findings. On `READY`,
+proceed silently. On `REVISE`, show the findings once and ask whether to
+fix now (back to `spec-sync` or a manual edit) or post anyway — this step
+warns, it does not block.
+
+### 3. Fetch + run the guards (delegated)
+
+Delegate to a **fresh subagent**. Run it in the foreground — step 4 needs its
 output first. Give it the note's frontmatter (`round`, `posted:` entries, last
 Round History date) from step 1 and the four guard rules below. Have it use
 `tool-ticket-get` to fetch the ticket, note the temp dir that fetch creates as
@@ -118,7 +126,7 @@ four guards. Include the full verbatim text for guard 1 only when it
 triggers. Present all triggered guards together, once. Proceed only after the
 user confirms.
 
-### 3. Curate the questions
+### 4. Curate the questions
 
 Eligible items are **unchecked `- [ ]` items only**, anywhere under Open
 Questions. Never post `- [x]`, `~~struck~~`, or `已解決` items.
@@ -129,10 +137,10 @@ BE ticket's privilege id is not a PM question. The user makes the final call.
 Strip the `· evidence: path:line` tail from anything that goes out — it is
 internal grounding, and it reads as noise to a PM.
 
-If nothing is unchecked, skip the comment entirely (see step 5). The
+If nothing is unchecked, skip the comment entirely (see step 6). The
 description sync alone is the report.
 
-### 4. Assemble the description (verbatim — do not retype the spec)
+### 5. Assemble the description (verbatim — do not retype the spec)
 
 Extract `規格` only. The Decision Log is never posted to Jira — it stays
 private to the note:
@@ -177,7 +185,7 @@ EOF
   is 32,767 characters, and `jira-description.sh set` refuses anything past
   it.
 
-### 5. Assemble the comment
+### 6. Assemble the comment
 
 The comment is **question-only**. Do not add a framing sentence, a change
 table, a closing ask, or a ticket number in the title. What changed is already
@@ -199,7 +207,7 @@ Body language is Traditional Chinese (it is the note's language and the PM's).
 ~/bin/md2jira.sh < "$DRAFTS/comment.md" > "$DRAFTS/comment.wiki"
 ```
 
-### 6. Resolve the mention target
+### 7. Resolve the mention target
 
 Do this step only when you are posting a comment — a description-only re-sync
 notifies nobody.
@@ -218,7 +226,7 @@ curl -s -u "$JIRA_TOKEN" -H "Content-Type: application/json" \
 A mention sends a real notification to a named person. State who gets
 notified, by name, in the approval step.
 
-### 7. Get approval
+### 8. Get approval
 
 Both drafts live at stable paths. Each re-render overwrites the file in place,
 so an editor left open on them refreshes automatically:
@@ -230,12 +238,13 @@ so an editor left open on them refreshes automatically:
 
 Show a summary in-session: target ticket, round, both paths with character
 counts, whether the description is empty, ours, or foreign, who gets notified
-(by name), the question count, and every triggered guard. Tell the user to
-review the files. The user revises by telling you what to change; re-render
+(by name), the question count, the challenge verdict, and every triggered
+guard. Tell the user to review the files. The user revises by telling you
+what to change; re-render
 the drafts in place and show the summary again. Write only after an explicit
 approval.
 
-### 8. Write — description first, comment second
+### 9. Write — description first, comment second
 
 ```bash
 ~/bin/jira-description.sh set MOP-XXXX "$DRAFTS/description.wiki"   # prints browse URL
@@ -248,7 +257,7 @@ description is already current truth, and you can simply retry the comment —
 nothing gets duplicated. If the comment succeeds and something later fails,
 **never re-run the whole flow** to fix it.
 
-### 9. Record it in the note
+### 10. Record it in the note
 
 Append to the frontmatter `posted:` list — create the key if it does not
 exist yet, per `doc-spec-schema`'s shape for this field. Write `description:
@@ -260,8 +269,9 @@ Nothing else in the note changes. **Do not re-snapshot** — posting is not a
 round. If this write fails after a successful post, report the URLs
 prominently so the user can add them by hand. Never re-post to "fix" it.
 
-### 10. Report
+### 11. Report
 
 Description URL + round + char count, comment URL, who was notified, which
 questions went out and which were held back (and why), whether an original
-description was archived, and any guard that was overridden.
+description was archived, the challenge verdict and any findings overridden,
+and any guard that was overridden.

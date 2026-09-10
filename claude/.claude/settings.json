@@ -5,6 +5,7 @@
       "Read(~/personal/office-note/**)"
     ]
   },
+  "model": "opus",
   "hooks": {
     "Notification": [
       {
@@ -41,7 +42,17 @@
   "enabledPlugins": {
     "typescript-lsp@claude-plugins-official": true,
     "context7@claude-plugins-official": true,
-    "mattpocock-skills@claude-plugins-official": true
+    "mattpocock-skills@claude-plugins-official": true,
+    "pilotfish@pilotfish": true
+  },
+  "extraKnownMarketplaces": {
+    "pilotfish": {
+      "source": {
+        "source": "github",
+        "repo": "Nanako0129/pilotfish",
+        "ref": "v1.4.1"
+      }
+    }
   },
   "effortLevel": "medium",
   "awaySummaryEnabled": false,
@@ -94,6 +105,11 @@
         "-c",
         "source ~/.nvm/nvm.sh && nvm use 20.19 >/dev/null && npx -y chrome-devtools-mcp@latest"
       ]
+    }
+  },
+  "modelSettings": {
+    "claude-opus-5": {
+      "effortLevel": "high"
     }
   }
 }

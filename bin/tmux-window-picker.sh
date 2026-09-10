@@ -332,9 +332,17 @@ uat branch: $uat_branch"
 # looking for a .workspace.conf. This is cheap (a few stat calls per pane) and
 # works for worktrees and plain checkouts alike.
 build_window_rows() {
+  # \x1f (unit separator), not a tab: IFS=<tab> is still an "IFS whitespace"
+  # character to read/word-splitting, which squeezes runs of it and drops
+  # empty fields — fatal here since @ticket_title is legitimately empty on
+  # any non-mwt window (main checkout, `wt` worktrees) and isn't last in the
+  # list, so a squeeze shifts panepath into title's slot and leaves panepath
+  # itself empty, same failure tmux-ticket-status.sh's cache row hit already
+  # works around.
+  local US=$'\x1f'
   tmux list-windows -a \
-    -F "#{session_name}${TAB}#{window_id}${TAB}#{session_name} │ #{window_name}${TAB}#{@ticket_title}${TAB}#{pane_current_path}" \
-    | while IFS="$TAB" read -r sess winid header title panepath; do
+    -F "#{session_name}${US}#{window_id}${US}#{session_name} │ #{window_name}${US}#{@ticket_title}${US}#{pane_current_path}" \
+    | while IFS="$US" read -r sess winid header title panepath; do
         # hide the hidden serve window (pattern-match serve(*) with optional marker prefix)
         case "$header" in
           *" │ serve("*|*" serve("*) continue ;;

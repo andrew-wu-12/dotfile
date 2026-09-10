@@ -81,7 +81,7 @@ serve_compute_status() {
 
   if [ -n "$port" ]; then
     http=$(curl -s -o /dev/null --max-time 1 -w '%{http_code}' "http://localhost:$port" 2>/dev/null)
-    if printf '%s\n' "$tail" | grep -qi 'compiled successfully' && [ "$http" = "200" ]; then
+    if printf '%s\n' "$tail" | grep -q '\[host\] 100% done' && [ "$http" = "200" ]; then
       STATUS=online
     else
       STATUS=building

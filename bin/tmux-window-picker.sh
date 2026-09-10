@@ -30,7 +30,8 @@
 #   ctrl-p  Deploy the highlighted worktree's ticket (MOP-only): pick a
 #           branch, then pick job(s) to fire, then trace them inline.
 #
-#   ctrl-n  Open NOTE_PATH for this workspace in an nvim popup.
+#   ctrl-n  Open this workspace's note in an nvim popup: NOTE_PATH/<ticket>.md
+#           when the window's ticket key is known, else NOTE_PATH itself.
 #
 #   ctrl-b  Open the highlighted ticket in the JIRA browser (ticket cards
 #           only; no-op on window cards).
@@ -58,6 +59,10 @@
 #   {6} note path              — NOTE_PATH; empty if none
 #   {7} display header         — bold "session │ window-name", or a ticket line
 #   {8} ticket key              — set only on a ticket card (no worktree yet)
+#
+# ctrl-n additionally parses a ticket key (e.g. MOP-27970) out of {7}'s first
+# line for window cards, where {8} is empty — the window name itself carries
+# it (tmux-dev-layout.sh names windows "{branch}(...)").
 #
 # The preview pane (right 60%) calls {5} with {3} as argument when both are
 # set; shows a placeholder for a ticket card with no worktree; else shows
@@ -453,6 +458,7 @@ while true; do
   build_wt_path=$(printf '%s' "$first_line" | cut -d"$TAB" -f4)
   note_path=$(printf '%s' "$first_line" | cut -d"$TAB" -f6)
   ticket=$(printf '%s' "$first_line" | cut -d"$TAB" -f8)
+  [ -z "$ticket" ] && ticket=$(printf '%s' "$first_line" | grep -oE '[A-Z]+-[0-9]+' | head -1)
 
   case "$KEY" in
     tab)
@@ -502,8 +508,15 @@ while true; do
       if [ -z "$note_path" ]; then
         echo "No NOTE_PATH configured for this workspace."; sleep 1; continue
       fi
-      tmux display-popup -E -w 90% -h 80% "nvim '$note_path'"
-      continue
+      full_note_path="$note_path"
+      [ -n "$ticket" ] && full_note_path="$note_path/$ticket.md"
+      # A tmux client shows only one popup at a time and this picker is
+      # already running inside one, so the nvim popup can't open directly
+      # from here — schedule it (same trick as trace_open_popup) so this
+      # popup closes first, then exit instead of looping back.
+      popup_cmd=$(printf 'sleep 0.3 && tmux display-popup -E -w 90%% -h 80%% %s || true' "$(printf 'nvim %q' "$full_note_path")")
+      tmux run-shell -b "$popup_cmd"
+      exit 0
       ;;
   esac
 

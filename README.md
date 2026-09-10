@@ -462,7 +462,18 @@ wt my-feature-branch        # 或 wt -n my-feature-branch
 
 可選的專案設定檔（放在專案根目錄或 `$WORKTREE_ROOT/<repo-name>/`）：
 
-- `.workspace.conf` — 設定 `WORKSPACE_SERVE_CMD` / `WORKSPACE_PREVIEW_CMD`，讓 `prefix+w` 可以啟停開發伺服器並顯示預覽。
+- `.workspace.conf` — 純 shell 變數，從 `$HOME` 往下逐層讀取到目標路徑（由外而內，較內層可覆蓋較外層），可用選項如下：
+
+  | 變數 | 說明 |
+  |---|---|
+  | `SESSION_GROUP` | 指定此工作區的開發視窗要開在哪個 tmux session（`tmux-dev-layout.sh` 讀取）；整條路徑上都沒設定則以專案名稱作為專屬 session。 |
+  | `NOTE_PATH` | 筆記檔路徑，`prefix Ctrl-N` / `tmux-window-picker.sh` 的 `ctrl-n` 用 nvim popup 開啟。 |
+  | `WORKSPACE_SERVE_CMD` | 開發伺服器啟動指令（例如 `yarn serve --cfs --tms --shipment`），`prefix+w` 的 `ctrl-s`/`ctrl-r`/`ctrl-x`/`ctrl-v` 用來啟動/重啟/停止/看記錄。 |
+  | `WORKSPACE_SERVE_LABEL` | 該伺服器的顯示名稱，用在隱藏的 `serve(<label>)` 視窗名稱與狀態列。 |
+  | `WORKSPACE_SERVE_PORT` | 伺服器監聽的埠號，用於健康狀態檢查。 |
+  | `WORKSPACE_PREVIEW_CMD` | `prefix+w` 選取對應視窗/卡片時，右側預覽窗格要執行的指令（例如 `tmux-ticket-status.sh`）。 |
+  | `WORKSPACE_BUILD_CONF` | 設為 `1` 表示這個工作區也有 `.tmux-build.conf`，讓 `prefix+w` 的 `ctrl-g` 可以即時追蹤 CI 建置。 |
+
 - `.tmux-build.conf` — 設定 `BUILD_BACKEND` 等，讓 `prefix+w` 的 `ctrl-g` 可以即時追蹤 CI 建置。
 
 用 `wtd`（在 worktree 內執行）可以拆掉任何 `mwt` 或 `wt` 建立的 worktree。

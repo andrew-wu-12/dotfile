@@ -15,7 +15,7 @@ return {
       reload_on_bufenter = true,
       hijack_cursor = true,
       hijack_netrw = true,
-      sync_root_with_cwd = true,
+      sync_root_with_cwd = false,
       hijack_unnamed_buffer_when_opening = true,
       auto_reload_on_write = true,
       diagnostics = {

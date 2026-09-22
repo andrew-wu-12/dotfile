@@ -33,6 +33,8 @@ while [[ $# -gt 0 ]]; do
   esac
 done
 
+[[ -n ${TMUX:-} && -z ${TMUX_PANE:-} ]] && NEW_WINDOW=1
+
 repo_root=$(git rev-parse --show-toplevel 2>/dev/null) || {
   print -u2 "tmux-dev-layout: not inside a git repo"
   exit 1
@@ -143,6 +145,16 @@ tag_ticket_title() {  # window_id
   tmux set-option -w -t "$1" @ticket_title "$TICKET_TITLE"
 }
 
+# Stashes this window's fixed repo/worktree root as a window user option, so
+# tmux-window-picker.sh can key build/serve status off the window's own
+# identity instead of the pane's live cwd — which drifts the moment anything
+# in the pane (a shell command, an agent) cd's elsewhere, and would otherwise
+# make an unrelated window falsely match whatever worktree is being served.
+tag_workspace_path() {  # window_id
+  [[ -n "${1:-}" ]] || return 0
+  tmux set-option -w -t "$1" @workspace_path "$repo_root"
+}
+
 if [[ -n ${TMUX:-} ]]; then
   cur_session=$(tmux display-message -p '#S')
   if [[ "$cur_session" == "$session_target" ]]; then
@@ -157,10 +169,12 @@ if [[ -n ${TMUX:-} ]]; then
       win_id=$(override_window)
     fi
     tag_ticket_title "$win_id"
+    tag_workspace_path "$win_id"
   else
     # Different session: switch to (creating if needed) the target session.
     win_id=$(ensure_session_and_window "$session_target")
     tag_ticket_title "$win_id"
+    tag_workspace_path "$win_id"
     tmux switch-client -t "$session_target"
     tmux select-window -t "$win_id"
   fi
@@ -168,6 +182,7 @@ else
   # Bare terminal: attach to the repo's target session, creating it if needed.
   win_id=$(ensure_session_and_window "$session_target")
   tag_ticket_title "$win_id"
+  tag_workspace_path "$win_id"
   tmux select-window -t "$win_id"
   exec tmux attach-session -t "$session_target"
 fi

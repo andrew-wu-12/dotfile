@@ -346,8 +346,8 @@ build_window_rows() {
   # works around.
   local US=$'\x1f'
   tmux list-windows -a \
-    -F "#{session_name}${US}#{window_id}${US}#{session_name} │ #{window_name}${US}#{@ticket_title}${US}#{pane_current_path}" \
-    | while IFS="$US" read -r sess winid header title panepath; do
+    -F "#{session_name}${US}#{window_id}${US}#{session_name} │ #{window_name}${US}#{@ticket_title}${US}#{@workspace_path}${US}#{pane_current_path}" \
+    | while IFS="$US" read -r sess winid header title wspath panepath; do
         # hide the hidden serve window (pattern-match serve(*) with optional marker prefix)
         case "$header" in
           *" │ serve("*|*" serve("*) continue ;;
@@ -358,10 +358,18 @@ build_window_rows() {
         preview_cmd=""
         note_path=""
 
-        workspace_config_load "$panepath"
+        # Prefer the window's own fixed @workspace_path (set once at creation
+        # by tmux-dev-layout.sh) over the live pane_current_path: the pane's
+        # cwd drifts the moment a shell/agent inside it cd's elsewhere, which
+        # would otherwise make this window falsely match whichever worktree
+        # is currently being served. Falls back to panepath for windows
+        # tmux-dev-layout.sh never tagged (pre-existing windows, ad-hoc ones).
+        config_path="${wspath:-$panepath}"
+
+        workspace_config_load "$config_path"
 
         if [ -n "${WORKSPACE_SERVE_CMD:-}" ] || [ -n "${WORKSPACE_PREVIEW_CMD:-}" ] || [ "${WORKSPACE_BUILD_CONF:-}" = "1" ]; then
-          top=$(git -C "$panepath" rev-parse --show-toplevel 2>/dev/null)
+          top=$(git -C "$config_path" rev-parse --show-toplevel 2>/dev/null)
           if [ -n "$top" ]; then
             { [ -n "${WORKSPACE_SERVE_CMD:-}" ] || [ -n "${WORKSPACE_PREVIEW_CMD:-}" ]; } && ws_path="$top"
             [ "${WORKSPACE_BUILD_CONF:-}" = "1" ] && build_wt_path="$top"

@@ -1,9 +1,9 @@
 ---
-name: doc-spec-challenge
+name: mop-doc-spec-challenge
 description: >-
   Adversarially challenge the 規格 section for internal contradictions,
   unstated edge cases, cross-reference gaps, and undefined terms before it
-  gets published. Used by spec-post before the write path — not meant to be
+  gets published. Used by mop-spec-post before the write path — not meant to be
   invoked on its own.
 ---
 
@@ -14,15 +14,15 @@ contradiction while writing, it will miss the same contradiction while
 reading it back. This skill hands the extracted 規格 to a **fresh subagent**
 with no chat history, so it isn't primed with the same assumptions.
 
-Scope is bounded to four checks. This is not another pass at `pr-ready`'s
-code-vs-spec job or `spec-drift`'s round-diff job — it never looks at code,
+Scope is bounded to four checks. This is not another pass at `mop-spec-ready-check`'s
+code-vs-spec job or `mop-spec-drift`'s round-diff job — it never looks at code,
 only at 規格 against itself.
 
 ## Workflow
 
 ### 1. Extract 規格
 
-Same slice `spec-post` step 4 already takes:
+Same slice `mop-spec-post` step 4 already takes:
 
 ```bash
 awk '
@@ -34,7 +34,7 @@ awk '
 
 ### 2. Delegate to a fresh subagent
 
-Give it `spec-body.md`, `doc-spec-body`'s rules (so it knows what 規格 is
+Give it `spec-body.md`, `mop-doc-spec-body`'s rules (so it knows what 規格 is
 allowed to say), and the note's **Decision Log** and **Open Questions**
 sections (so it can suppress gaps that are already known and deferred —
 step 4 below). It gets nothing else: no chat log, no round history, no
@@ -65,7 +65,7 @@ Drop any finding that the **Decision Log** already has a row for, or that
 **Open Questions** already lists (checked or not — a checked item is
 resolved, not just tracked, but either way it isn't new). A gap already
 being tracked isn't a fresh finding; re-surfacing it here is noise
-`spec-post`'s own guards don't need.
+`mop-spec-post`'s own guards don't need.
 
 ### 5. Verdict
 
@@ -77,8 +77,8 @@ Report back:
 
 ## Caller contract
 
-`spec-post` runs this before its existing guards. On `READY`, proceed
+`mop-spec-post` runs this before its existing guards. On `READY`, proceed
 silently — a clean run gets no extra noise. On `REVISE`, show the findings
-once and ask: fix now (back to `spec-sync` or a manual edit), or post
+once and ask: fix now (back to `mop-spec-sync` or a manual edit), or post
 anyway. This step **warns, it does not block** — same posture as
-`spec-post`'s other four guards.
+`mop-spec-post`'s other four guards.

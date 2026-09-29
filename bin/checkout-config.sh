@@ -1,7 +1,7 @@
 #!/bin/zsh
 # Open the [DEV] config PR (feature/MOP-XXXX -> dev) for mop_configuration_files.
 # Stops at dev; promotion to uat/master is a timing call made by hand. Run AFTER editing
-# the config working tree (e.g. via the privilege-node skill): stashes those edits and
+# the config working tree (e.g. via the mop-check-privilege skill): stashes those edits and
 # lays them on a fresh feature branch off an up-to-date dev.
 
 source ~/.zshrc

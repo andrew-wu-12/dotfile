@@ -1,10 +1,10 @@
 ---
-name: doc-spec-interview
+name: mop-doc-spec-interview
 description: >-
   Loop the user through spec gaps until every one is answered or marked as
   waiting on the PM or backend — before the note is written. Do not silently
-  file gaps to Open Questions. spec-init uses this for missing/unstated
-  ticket details; spec-sync uses this for contradictions, open questions, and
+  file gaps to Open Questions. mop-spec-init uses this for missing/unstated
+  ticket details; mop-spec-sync uses this for contradictions, open questions, and
   change reasons. Do not invoke this skill on its own.
 ---
 
@@ -17,8 +17,8 @@ the note and snapshot the round.
 
 ## Scope
 
-- **spec-init** — missing/unstated ticket details (grounding check 2).
-- **spec-sync** — unresolved contradictions, every still-open Open Questions
+- **mop-spec-init** — missing/unstated ticket details (grounding check 2).
+- **mop-spec-sync** — unresolved contradictions, every still-open Open Questions
   item from a prior round (with or without a `⏳` marker), and the change
   reason for every decision this round (see below).
 - **Both** — follow-up questions that an answer raises, and gaps found while
@@ -42,10 +42,10 @@ scope is left:
 Every gap question offers two wait options: `待 PM 回覆` and `待後端回覆`. Never
 force an answer.
 
-Re-asked open items (spec-sync) go in one batch per 4, each with a "still
+Re-asked open items (mop-spec-sync) go in one batch per 4, each with a "still
 waiting" option that keeps the item as it is.
 
-## Change reason (spec-sync only)
+## Change reason (mop-spec-sync only)
 
 Every decision this round — changed, added, or answering an Open Question —
 gets one reason question. An answer can carry new spec beyond the question
@@ -64,12 +64,12 @@ Free text goes under "Other". Put the reason the source suggests first with
 
 - **Answered** → one Decision Log row, `Source = dev`. Do not also add an
   Open Questions entry for it. If it answers an existing Open Questions item,
-  check that item off with the answer (`doc-spec-schema`'s format).
+  check that item off with the answer (`mop-doc-spec-schema`'s format).
 - **Waiting** → an unchecked Open Questions item with a `⏳` marker, dated
   today: `· ⏳ 待 PM 回覆 (YYYY-MM-DD)` or `· ⏳ 待後端回覆 (YYYY-MM-DD)`. A
   re-asked item that is still waiting keeps its original marker and date.
 - **Change reason** → prefix the decision's Decision Log row with the reason
-  in brackets, e.g. `〔PM 規格變動〕…`. See `doc-spec-schema` for the row format.
+  in brackets, e.g. `〔PM 規格變動〕…`. See `mop-doc-spec-schema` for the row format.
 
 ## If you cannot ask
 

@@ -1,18 +1,18 @@
 ---
-name: doc-spec-body
+name: mop-doc-spec-body
 description: >-
   Write or rewrite the 規格 (consolidated spec body) section of a spec note:
   field/API/test-scenario formats, business-level terms only, and the
-  decision-log boundary. Used by spec-init (initial write) and spec-sync
+  decision-log boundary. Used by mop-spec-init (initial write) and mop-spec-sync
   (rewrite to current truth) — not meant to be invoked on its own.
 ---
 
 # Doc Spec Body → shape of the 規格 section
 
 The shared rules for what `規格` is allowed to say, regardless of whether it
-is being written for the first time (`spec-init`) or rewritten to current
-truth (`spec-sync`). Both skills invoke this instead of restating these
-rules — duplicating them once already let one drift out of sync (`spec-init`
+is being written for the first time (`mop-spec-init`) or rewritten to current
+truth (`mop-spec-sync`). Both skills invoke this instead of restating these
+rules — duplicating them once already let one drift out of sync (`mop-spec-init`
 silently lost the business-level-terms rule during an edit; this skill is why
 that can't happen again).
 

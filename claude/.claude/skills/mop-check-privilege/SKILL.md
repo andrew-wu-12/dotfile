@@ -1,12 +1,12 @@
 ---
-name: privilege-node
+name: mop-check-privilege
 description: >-
   Resolve the mop-configuration privilege node(s) a feature needs, ENV-aware:
   check dev/uat/master, promote the authoritative dev node or (only if absent
   everywhere) derive a new one from monorepo usage, then hand off to
   checkout-config.sh for the [DEV] PR. Use when a spec/ticket needs a privilege, a
   feature is hidden/403 because its permissionId isn't in the config repo, or
-  "privilege-node MOP-XXXX". Pairs with the spec-init privilege gap check.
+  "mop-check-privilege MOP-XXXX". Pairs with the mop-spec-init privilege gap check.
 ---
 
 # Privilege Node â†’ mop-configuration (env-aware)
@@ -18,7 +18,7 @@ so the usual situation is *"the node exists in dev but hasn't been promoted"* â€
 not *"the node is missing"*. This skill distinguishes those and never re-derives a
 node dev already defines.
 
-`SKILL_DIR` = `~/.claude/skills/privilege-node`.
+`SKILL_DIR` = `~/.claude/skills/mop-check-privilege`.
 
 ## Prerequisites
 

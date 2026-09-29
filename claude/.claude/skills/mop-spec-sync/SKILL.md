@@ -1,11 +1,11 @@
 ---
-name: spec-sync
+name: mop-spec-sync
 description: >-
   Merge new decisions into an existing spec: re-fetch Jira, extract decisions
   from a pasted chat/verbal log, flag contradictions across Jira/chat/current
   spec, rewrite to current truth, and snapshot the round. Use after a PM
   discussion or spec change, when reconciling updated requirements, or
-  "spec-sync MOP-XXXX". Requires the note from spec-init.
+  "mop-spec-sync MOP-XXXX". Requires the note from mop-spec-init.
 ---
 
 # Spec Sync → reconcile a new round
@@ -15,13 +15,13 @@ three channels: Jira, chat or verbal discussion, and the prototype. Chat is
 ephemeral. This skill surfaces contradictions between the channels and records
 trustworthy decisions with their sources.
 
-`SKILL_DIR` = `~/.claude/skills/spec-sync`.
+`SKILL_DIR` = `~/.claude/skills/mop-spec-sync`.
 
 ## Prerequisites
 
 - **Jira token** in the credential store (scripts read it via `~/bin/cred-read.sh`). The fetch surfaces a clean error if the token is wrong.
 - `specs/MOP-XXXX.md` **must already exist**. If not, stop and tell the user to run
-  `spec-init` first.
+  `mop-spec-init` first.
 - **The pasted chat/verbal log.** It arrives as the skill argument or in the
   user's message. If it is missing, ask the user to paste it — a rough summary
   is fine; no formatting is required. A sync with no chat log is valid when
@@ -71,7 +71,7 @@ picking one.
 
 ### 5. Interview the user — loop until settled
 
-Run `doc-spec-interview`'s loop before the rewrite. Put these in its queue:
+Run `mop-doc-spec-interview`'s loop before the rewrite. Put these in its queue:
 - step 4's unresolved contradictions
 - every unchecked Open Questions item from a prior round, with or without a
   `⏳` marker
@@ -85,7 +85,7 @@ stays in) Open Questions with its `⏳` marker.
 
 ### 6. Rewrite to current truth
 
-- Rewrite the `規格` sections using `doc-spec-body`'s conventions (language,
+- Rewrite the `規格` sections using `mop-doc-spec-body`'s conventions (language,
   field/API/test-scenario formats, business-level terms only, decision-log
   boundary, bullet formatting).
 - If an item was checked this round and came back **unchanged**, leave its
@@ -99,7 +99,7 @@ stays in) Open Questions with its `⏳` marker.
   nothing new.
 - **Append** to Decision Log (append-only): one dated, source-tagged row per
   decision this round, in Traditional Chinese, prefixed with its change reason
-  (`doc-spec-schema`'s row format).
+  (`mop-doc-spec-schema`'s row format).
 - **Append** a Round History entry in Traditional Chinese summarizing what
   changed, ending with the per-reason count (append-only).
 - Update Open Questions: check off answered ones, add newly surfaced ones
@@ -113,7 +113,7 @@ stays in) Open Questions with its `⏳` marker.
 ```
 
 Run this **last**, after the rewrite, so `round-NN.md` matches the
-end-of-round-N state. This lets `/spec-drift` diff round-(N-1) against round-N
+end-of-round-N state. This lets `/mop-spec-drift` diff round-(N-1) against round-N
 for exactly this round's change.
 
 ### 8. Report what changed

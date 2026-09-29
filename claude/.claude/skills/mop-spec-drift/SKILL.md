@@ -1,13 +1,13 @@
 ---
-name: spec-drift
+name: mop-spec-drift
 description: >-
   Detect spec-vs-code drift after a spec round: diff the two latest spec-round
   snapshots and, for each CHANGED item, grep the feature branch for code that now
   contradicts the new spec. With only one round, falls back to scanning the PR
   diff for unstated data-relationship cardinality (e.g. code assumes 1:1 where
-  the spec never says). Use before flipping a PR to ready, after a spec-sync
+  the spec never says). Use before flipping a PR to ready, after a mop-spec-sync
   round, when checking whether already-written code still matches the spec, or
-  "spec-drift MOP-XXXX". Feeds /pr-ready.
+  "mop-spec-drift MOP-XXXX". Feeds /mop-spec-ready-check.
 ---
 
 # Spec Drift → is the code still aligned with the spec?
@@ -32,7 +32,7 @@ instead.
   that branch, check it out or ask the user.
 - At least **one round** exists for the ticket (`specs/.rounds/MOP-XXXX/`).
   With zero rounds, there is nothing to check against. Tell the user to run
-  `spec-sync` first.
+  `mop-spec-sync` first.
 
 ## Workflow
 
@@ -148,5 +148,5 @@ the user in English, most actionable first:
 - If nothing contradicts: say so plainly. The round's changes are already
   reflected in code, or have no code surface yet.
 
-This is a pre-ready guard. `/pr-ready` runs it, alongside its own review step,
+This is a pre-ready guard. `/mop-spec-ready-check` runs it, alongside its own review step,
 before it flips the PR to ready. Surface findings; let the user decide.

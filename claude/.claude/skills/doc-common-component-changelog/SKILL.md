@@ -1,5 +1,5 @@
 ---
-name: changelog-confluence
+name: doc-common-component-changelog
 description: >-
   Detect changes to shared/common modules (libs/**) on the current git branch in
   the MOP monorepo and publish a "Common Components Change Log" page per changed
@@ -29,7 +29,7 @@ Traditional-Chinese wording, and confirming before anything goes live.
 - **VPN connected** and Jira token in the credential store (the scripts read it via `~/bin/cred-read.sh`). The
   same token authenticates both Jira and Confluence.
 
-`SKILL_DIR` below = `~/.claude/skills/changelog-confluence`.
+`SKILL_DIR` below = `~/.claude/skills/doc-common-component-changelog`.
 
 ## Workflow
 

@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# Convert Markdown to Jira wiki markup (the string body /rest/api/2 takes), used by /spec-post.
+# Convert Markdown to Jira wiki markup (the string body /rest/api/2 takes), used by /mop-spec-post.
 # Pure filter (stdin -> stdout, no network or side effects) so it can be tested against a fixture.
 # Handles: headings, bold, strikethrough, inline code, links, images, fenced code, tables (header row ->
 # ||a||b||, separator dropped), nested bullets, ordered lists, task checkboxes, blockquotes, horizontal rules;

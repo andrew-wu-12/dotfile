@@ -1,0 +1,27 @@
+{
+  "Console log": {
+    "prefix": "clg",
+    "body": "console.log('$1', $1)$0",
+    "description": "console.log a variable with its label"
+  },
+  "Async arrow function": {
+    "prefix": "afn",
+    "body": [
+      "const ${1:name} = async (${2:args}): Promise<${3:void}> => {",
+      "\t$0",
+      "}"
+    ],
+    "description": "Async arrow function"
+  },
+  "Try/catch": {
+    "prefix": "try",
+    "body": [
+      "try {",
+      "\t$1",
+      "} catch (${2:err}) {",
+      "\tconsole.error(${2:err})$0",
+      "}"
+    ],
+    "description": "try/catch block"
+  }
+}

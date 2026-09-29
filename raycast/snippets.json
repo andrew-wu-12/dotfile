@@ -1,0 +1,73 @@
+[
+  {
+    "name": "DEV PR Template",
+    "text": "Related Tickets: https://morrisonexpress.atlassian.net/browse/MOP-{clipboard}\nFeature Link: https://mop-{clipboard}.dev.morrison.express/\n",
+    "keyword": "devpr"
+  },
+  {
+    "name": "UAT PR Snippet",
+    "text": "Related Tickets: https://morrisonexpress.atlassian.net/browse/MOP-{clipboard}\nFeature Link: https://mop-{clipboard}.uat.morrison.express/",
+    "keyword": "uatpr"
+  },
+  {
+    "name": "[D]EV [M]orrison [E]xpress",
+    "text": "one-dev.morrison.express/",
+    "keyword": "dme"
+  },
+  {
+    "name": "[U]AT [M]orrison [E]xpress",
+    "text": "one-uat.morrison.express/",
+    "keyword": "ume"
+  },
+  {
+    "name": "[O]NE [M]orrison [E]xpress",
+    "text": "one.morrison.express/",
+    "keyword": "ome"
+  },
+  {
+    "name": "[D]ev [M]orrison [L]ink",
+    "text": "https://mop-{clipboard}.dev.morrison.express/",
+    "keyword": "dml"
+  },
+  {
+    "name": "[U]AT [M]OP [L]ink",
+    "text": "https://mop-{clipboard}.uat.morrison.express/",
+    "keyword": "uml"
+  },
+  {
+    "name": "[G]it [C]heckout [B]ranch",
+    "text": "git checkout {clipboard}",
+    "keyword": "gcb"
+  },
+  {
+    "name": "[G]it [C]heckout [F]eature",
+    "text": "git checkout feature/{clipboard}",
+    "keyword": "gcf"
+  },
+  {
+    "name": "[G]it [C]heckout [U]at",
+    "text": "git checkout uat/{clipboard}",
+    "keyword": "gcu"
+  },
+  {
+    "name": "[G]it [C]heckout [N]ew [B]ranch",
+    "text": "git checkout -b {clipboard}",
+    "keyword": "gcnb"
+  },
+  {
+    "name": "[G]it [C]heckout [N]ew [F]eature",
+    "text": "git checkout -b feature/{clipboard}",
+    "keyword": "gcnf"
+  },
+  {
+    "name": "[G]it [C]heckout [N]ew [U]at",
+    "text": "git checkout -b uat/{clipboard}",
+    "keyword": "gcnu"
+  },
+  { "name": "prefix", "text": "report_", "keyword": "prf" },
+  {
+    "name": "[G]it [C]heckout [N]ew [H]otfix",
+    "text": "git checkout -b hotfix/{clipboard}",
+    "keyword": "gcnh"
+  }
+]

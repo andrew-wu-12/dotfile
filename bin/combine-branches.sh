@@ -8,26 +8,9 @@
 # @raycast.packageName Deploy One
 # @raycast.argument1 {"type": "text", "placeholder": "feat-a feat-b feat-c [-d]" }
 #
-# Rebuild a disposable integration branch from a base branch by merging several
-# feature branches into it.
-#
-# The integration branch is thrown away and recreated on every run, so it never
-# drifts: it is always base + the current tip of each feature branch.
-#
-# Usage:
-#   combine-branches.sh [options] <feature-branch>...
-#
-# Options:
-#   -b, --base <branch>   base branch to build on            (default: main)
-#   -n, --name <branch>   integration branch name            (default: integration/combined)
-#   -l, --local           merge local branches (default: origin/<branch> after fetch)
-#   -p, --no-push         build locally only, do not push
-#   -h, --help            show this help
-#
-# Examples:
-#   combine-branches.sh feature/MOP-1 feature/MOP-2 feature/MOP-3
-#   combine-branches.sh -n integration/MOP-demo feature/MOP-1 feature/MOP-2
-#   combine-branches.sh --base uat/MOP-99 feature/MOP-1 feature/MOP-2
+# Rebuild a disposable integration branch (base + current tip of each feature branch,
+# recreated every run so it never drifts) by merging several feature branches.
+# Usage: combine-branches.sh [options] <feature-branch>...   (--help for options)
 
 emulate -L zsh
 set -e
@@ -91,7 +74,6 @@ if [[ $USE_LOCAL -eq 0 ]]; then
     git fetch --prune origin
 fi
 
-# Resolve refs and verify they exist before we touch anything.
 ref_for() { [[ $USE_LOCAL -eq 1 ]] && echo "$1" || echo "origin/$1"; }
 BASE_REF="$(ref_for "$BASE")"
 git rev-parse --verify -q "$BASE_REF" >/dev/null || { echo "Error: base ref '$BASE_REF' not found."; exit 1; }

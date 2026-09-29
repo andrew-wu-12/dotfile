@@ -1,18 +1,13 @@
 #!/usr/bin/env bash
-# Emit the spec delta between two round snapshots, so callers only have to reason
-# about what CHANGED (not the whole spec). round-NN.md == end-of-round-N state, so
-# diffing round-(N-1) -> round-N is exactly one round's change.
-#
-# The two-round form exists for /spec-post, whose baseline is the last round
-# actually POSTED to Jira, not the previous round — when rounds 1-2 were never
-# posted and round 3 is, the PM's delta spans 01 -> 03.
-#
+# Emit the spec delta between two round snapshots so callers reason only about what CHANGED.
+# round-NN.md == end-of-round-N state, so round-(N-1) -> round-N is exactly one round's change.
+# The two-round form exists for /spec-post, whose baseline is the last round actually POSTED to Jira: when
+# rounds 1-2 were never posted and round 3 is, the PM's delta spans 01 -> 03.
 # Usage:
 #   spec-round-diff.sh <MOP-XXXX>          # latest two rounds
 #   spec-round-diff.sh <MOP-XXXX> 3        # round-02 -> round-03
 #   spec-round-diff.sh <MOP-XXXX> 1 3      # round-01 -> round-03
-# Prints the compared filenames (to stderr) and a unified diff (to stdout).
-# Exit 2 if the requested rounds don't exist (nothing to diff — run spec-sync first).
+# Compared filenames go to stderr, a unified diff to stdout. Exit 2 if the rounds don't exist (run spec-sync first).
 set -uo pipefail
 
 TICKET="${1:?usage: spec-round-diff.sh <MOP-XXXX> [BASELINE] [TARGET]}"
@@ -20,7 +15,6 @@ RDIR="$HOME/personal/office-note/Specs/.rounds/$TICKET"
 
 [ -d "$RDIR" ] || { echo "error: no rounds dir for $TICKET ($RDIR)" >&2; exit 2; }
 
-# Sorted round files (round-01.md, round-02.md, ...).
 ROUNDS=()
 while IFS= read -r f; do ROUNDS+=("$f"); done < <(find "$RDIR" -maxdepth 1 -name 'round-*.md' | sort)
 COUNT=${#ROUNDS[@]}

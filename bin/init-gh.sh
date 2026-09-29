@@ -5,7 +5,6 @@ function setup_github_cli() {
     echo "=== GitHub CLI 驗證 ==="
     echo ""
     
-    # Check if already authenticated
     gh auth status 2>/dev/null
     if [ $? -eq 0 ]; then
         echo "✓ GitHub CLI 已完成驗證"
@@ -22,7 +21,6 @@ function setup_github_cli() {
     auth_method=${auth_method:-1}
     
     if [ "$auth_method" = "2" ]; then
-        # Token-based authentication
         echo ""
         echo "取得 Token 的方式："
         echo "1. 前往：https://github.com/settings/tokens/new"
@@ -38,7 +36,6 @@ function setup_github_cli() {
         
         echo "$github_token" | gh auth login -p ssh -h github.com --with-token
     else
-        # Browser-based authentication
         echo "這會開啟瀏覽器進行驗證。"
         echo "⚠️  如果你卡在一次性驗證碼畫面："
         echo "   1. 複製畫面上顯示的代碼"
@@ -47,11 +44,10 @@ function setup_github_cli() {
         echo ""
         read -p "按 Enter 繼續..." </dev/tty
         
-        # Use SSH protocol for authentication with stdin from terminal
+# stdin from the terminal: gh login is interactive.
         gh auth login -p ssh -h github.com -w < /dev/tty
     fi
     
-    # Verify authentication
     gh auth status 2>/dev/null
     if [ $? -eq 0 ]; then
         echo "✓ GitHub CLI 驗證成功"
@@ -67,7 +63,6 @@ function setup_github_cli() {
     fi
 }
 
-# Execute if run directly
 if [[ "${BASH_SOURCE[0]}" == "${0}" ]]; then
     setup_github_cli
 fi

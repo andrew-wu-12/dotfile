@@ -1,11 +1,8 @@
 #!/bin/bash
-# Shared helpers for the init-*.sh scripts. Source this, don't execute it.
-#
-# Callers must set REPO_ROOT first; use resolve_repo_root below.
+# Shared helpers for the init-*.sh scripts (source, don't execute). Callers must set REPO_ROOT first via resolve_repo_root.
 
-# Locate the dotfile repo. The naive "parent of my directory" calculation breaks
-# when a script is invoked through its ~/bin symlink (dirname sees ~/bin, so the
-# parent comes out as $HOME), so validate the result and fall back.
+# "Parent of my directory" breaks when a script runs through its ~/bin symlink (dirname sees ~/bin, so the
+# parent is $HOME), so validate the result and fall back.
 function resolve_repo_root() {
     local script_dir="$1" candidate
     candidate="$(dirname "$script_dir")"
@@ -20,8 +17,7 @@ function resolve_repo_root() {
     echo "$candidate"
 }
 
-# Put brew on PATH for this process. A freshly-installed brew is not on PATH until
-# `brew shellenv` is evaluated, so detecting the binary is not enough on its own.
+# A freshly-installed brew is not on PATH until `brew shellenv` runs, so detecting the binary isn't enough.
 function ensure_brew() {
     command -v brew &>/dev/null && return 0
     if [ -x /opt/homebrew/bin/brew ]; then
@@ -31,18 +27,11 @@ function ensure_brew() {
     return 1
 }
 
-# Package manager abstraction -------------------------------------------------
-#
-# macOS uses Homebrew; Arch Linux uses pacman for anything in the official
-# repos and an AUR helper (yay) for everything else (e.g. wezterm).
-# Callers install by the same package name on both platforms — that holds for
-# everything this repo currently installs, so there is no per-platform name
-# table yet; add one if a future package's name actually diverges.
+# Package manager abstraction: brew on macOS; pacman (official repos) + yay (AUR) on Arch. Package names are
+# shared across platforms; divergences are passed explicitly at the call site.
 
 PKG_MANAGER=""
 
-# Detects and caches which package manager this machine uses. Echoes "brew" or
-# "pacman"; returns 1 with nothing echoed if neither is present.
 function detect_pkg_manager() {
     if [ -z "$PKG_MANAGER" ]; then
         if [[ "$(uname -s)" == "Darwin" ]]; then
@@ -56,11 +45,8 @@ function detect_pkg_manager() {
     echo "$PKG_MANAGER"
 }
 
-# Confirms the OS package manager is usable. macOS: delegates to ensure_brew,
-# since a freshly-installed brew isn't on PATH until `brew shellenv` runs.
-# Arch: pacman ships with the base system, so there is nothing to bootstrap —
-# this just confirms it is there. AUR packages need more than this; see
-# ensure_aur_helper, called separately since not every install needs one.
+# macOS delegates to ensure_brew; Arch ships pacman in the base system, so this only confirms it.
+# AUR needs ensure_aur_helper, called separately since not every install does.
 function ensure_pkg_manager() {
     case "$(detect_pkg_manager)" in
         brew) ensure_brew ;;
@@ -69,9 +55,7 @@ function ensure_pkg_manager() {
     esac
 }
 
-# Bootstraps an AUR helper (yay) on Arch, asking first since it builds from
-# source via makepkg rather than fetching a binary. No-op success on macOS,
-# where AUR has no meaning.
+# Bootstraps yay on Arch (asks first: it builds from source via makepkg); no-op on macOS.
 function ensure_aur_helper() {
     [ "$(detect_pkg_manager)" = "pacman" ] || return 0
     command -v yay &>/dev/null && return 0
@@ -94,17 +78,9 @@ function ensure_aur_helper() {
     return $result
 }
 
-# Installs a package. brew_name is what Homebrew calls it; pacman_name is
-# what pacman/AUR calls it, defaulting to brew_name since most packages this
-# repo installs share a name across both (e.g. "starship", "ripgrep"). Pass it
-# explicitly when they diverge (e.g. `pkg_install nvim neovim`).
-#
-# modifier tells each package manager how to interpret the request, and is
-# meaningless (and ignored) on the other platform:
-#   cask - macOS GUI app, installed via `brew install --cask` (on Arch, GUI
-#          apps are just regular packages, so this is a no-op there)
-#   aur  - not in Arch's official repos, needs an AUR helper (Homebrew has no
-#          such split, so this is a no-op on macOS)
+# pacman_name defaults to brew_name; pass it when they diverge (`pkg_install nvim neovim`).
+# modifier is ignored on the other platform: cask = `brew install --cask` (no-op on Arch, where GUI apps are
+# regular packages); aur = install via yay (no-op on macOS).
 function pkg_install() {
     local brew_name="$1" pacman_name="${2:-$1}" modifier="${3:-}"
 
@@ -131,28 +107,18 @@ function pkg_install() {
     esac
 }
 
-# Secret storage abstraction ---------------------------------------------
-#
-# macOS uses Keychain (`security`), builtin to the OS. Arch has no equivalent
-# builtin, so it uses secret-tool (libsecret) against a Secret Service
-# provider (gnome-keyring or equivalent) — this assumes a desktop login
-# (GNOME/KDE) already unlocks that keyring via PAM; a minimal-WM setup with
-# no such hook needs its own bootstrap, out of scope here. Items are keyed by
-# (service, account) on both backends so callers never need to branch.
+# Secret storage: macOS Keychain (`security`); Arch secret-tool (libsecret) against a Secret Service provider
+# (gnome-keyring or equivalent), assuming a desktop login (GNOME/KDE) unlocks the keyring via PAM; a minimal-WM
+# setup needs its own bootstrap, out of scope. Items are keyed by (service, account) on both backends.
 
-# Makes sure a secret backend is available. No-op on macOS (security ships
-# with the OS). On Arch, installs libsecret if secret-tool isn't already
-# present. Deliberately never called from cred_find/cred_store themselves —
-# detect_status polls those on every menu render, and a status check must
-# stay read-only rather than triggering a pacman install.
+# No-op on macOS; installs libsecret on Arch. Never called from cred_find/cred_store: detect_status polls
+# those on every menu render, and a status check must stay read-only rather than trigger a pacman install.
 function ensure_secret_backend() {
     [ "$(detect_pkg_manager)" = "pacman" ] || return 0
     command -v secret-tool &>/dev/null && return 0
     pkg_install libsecret
 }
 
-# Looks up a stored secret by service name. Echoes the secret, or nothing
-# (with a non-zero return) if not found.
 function cred_find() {
     local service="$1"
     if command -v security &>/dev/null; then
@@ -162,7 +128,6 @@ function cred_find() {
     fi
 }
 
-# Stores (or overwrites) a secret under a service name.
 function cred_store() {
     local service="$1" label="$2" value="$3"
     if command -v security &>/dev/null; then
@@ -172,15 +137,9 @@ function cred_store() {
     fi
 }
 
-# Clipboard abstraction ----------------------------------------------------
-#
-# macOS ships pbcopy/pbpaste, builtin. Arch has no equivalent, and which tool
-# works depends on the session type: wl-clipboard (wl-copy/wl-paste) under
-# Wayland, xclip under X11 — $WAYLAND_DISPLAY is only set in the former, so
-# it picks the right one at call time rather than assuming one session type.
+# Clipboard: macOS pbcopy/pbpaste; Arch uses wl-clipboard under Wayland or xclip under X11, chosen at call
+# time via $WAYLAND_DISPLAY (only set under Wayland).
 
-# Installs the clipboard tool needed for the current session. No-op on
-# macOS and when the tool is already present.
 function ensure_clipboard_backend() {
     [ "$(detect_pkg_manager)" = "pacman" ] || return 0
     if [ -n "$WAYLAND_DISPLAY" ]; then
@@ -192,7 +151,6 @@ function ensure_clipboard_backend() {
     fi
 }
 
-# Copies stdin to the system clipboard.
 function clip_copy() {
     if command -v pbcopy &>/dev/null; then
         pbcopy
@@ -206,7 +164,6 @@ function clip_copy() {
     fi
 }
 
-# Prints the system clipboard's contents to stdout.
 function clip_paste() {
     if command -v pbpaste &>/dev/null; then
         pbpaste
@@ -220,12 +177,8 @@ function clip_paste() {
     fi
 }
 
-# Date arithmetic ----------------------------------------------------------
-#
-# macOS ships BSD date (`-v-14d`); Arch ships GNU date (`-d "-14 days"`) —
-# incompatible flags for the same relative-date computation.
+# BSD date (`-v-14d`, macOS) and GNU date (`-d "-14 days"`, Arch) take incompatible flags.
 
-# Echoes the date N days ago, formatted %Y-%m-%d.
 function date_days_ago() {
     local days="$1"
     if [ "$(detect_pkg_manager)" = "brew" ]; then
@@ -235,15 +188,9 @@ function date_days_ago() {
     fi
 }
 
-# SSH agent ------------------------------------------------------------------
-#
-# macOS's ssh-add takes --apple-use-keychain to persist a key's passphrase in
-# Keychain; no other platform has that flag. The keys this repo generates are
-# all `-N ""` (no passphrase — see generate_ssh_key), so there is nothing for
-# the flag to actually persist here; it's dropped on Arch rather than
-# replaced, since there's no passphrase-caching problem to solve.
+# --apple-use-keychain is macOS-only. This repo's keys are all `-N ""` (no passphrase), so there is nothing
+# to persist; the flag is dropped on Arch rather than replaced.
 
-# Adds a key to the running ssh-agent, using Keychain persistence on macOS.
 function ssh_add_key() {
     local key_path="$1"
     if [ "$(detect_pkg_manager)" = "brew" ]; then
@@ -253,9 +200,7 @@ function ssh_add_key() {
     fi
 }
 
-# Full path to a zsh plugin's main sourced file, given its brew/pacman package
-# name (identical for zsh-autosuggestions / zsh-syntax-highlighting on both
-# platforms — only the share-dir prefix differs).
+# Main sourced file of a zsh plugin; only the share-dir prefix differs by platform.
 function zsh_plugin_file() {
     case "$(detect_pkg_manager)" in
         brew) echo "/opt/homebrew/share/$1/$1.zsh" ;;
@@ -264,7 +209,6 @@ function zsh_plugin_file() {
     esac
 }
 
-# Package name -> stow target dir. Everything lands in $HOME except bin.
 function stow_target_for() {
     case "$1" in
         bin) echo "$HOME/bin" ;;
@@ -272,8 +216,6 @@ function stow_target_for() {
     esac
 }
 
-# Paths (relative to the target dir) that stow refuses to overwrite because
-# something real is already sitting there.
 function stow_conflicts() {
     local pkg="$1" target="$2"
     ( cd "$REPO_ROOT" && stow -n --restow --target="$target" "$pkg" 2>&1 ) \
@@ -294,9 +236,8 @@ function backup_stow_conflicts() {
     done
 }
 
-# Stow a package, asking before touching anything real that is already in place.
-# "Keep" leaves the target alone and skips the whole package — the repo is never
-# written to, which is why --adopt is deliberately not used anywhere.
+# Stow a package, asking before touching anything real already in place. "Keep" skips the whole package: the
+# repo is never written to, which is why --adopt is deliberately not used anywhere.
 function stow_pkg() {
     local pkg="$1" target conflicts answer
     target="${2:-$(stow_target_for "$pkg")}"

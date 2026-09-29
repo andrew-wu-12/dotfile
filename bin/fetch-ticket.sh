@@ -1,16 +1,8 @@
 #!/usr/bin/env bash
-# Fetch a Jira ticket into a machine-readable manifest for the spec skills.
-#
-# Emits a JSON manifest to stdout:
-#   { ticket, type, summary, priority, status, parent,
-#     description,                      # rendered, HTML-stripped plain text
-#     comments: [ { author, created, body } ],
-#     attachments: [ { filename, mime, path } ] }   # images only, downloaded
-#
-# Image attachments are downloaded into <out_dir>/attachments/ so the caller can
-# Read them (prototype screenshots feed the spec). Non-image attachments are
-# listed in the manifest with an empty path but not downloaded.
-#
+# Fetch a Jira ticket into a JSON manifest (stdout) for the spec skills:
+#   { ticket, type, summary, priority, status, parent, description (HTML-stripped text),
+#     comments: [{author, created, body}], attachments: [{filename, mime, path}] }
+# Image attachments are downloaded to <out_dir>/attachments/ (path set); others are listed with an empty path.
 # Usage: fetch-ticket.sh <TICKET-ID> <out_dir>
 # Requires: JIRA_TOKEN (env, else read from the credential store), jq, curl.
 set -euo pipefail
@@ -37,7 +29,6 @@ if ! jq -e '.fields // empty' "$RAW" >/dev/null 2>&1; then
   exit 1
 fi
 
-# Download image attachments; build a JSON array of what we stored.
 ATTACH_MANIFEST="$OUT_DIR/.attachments.json"
 echo '[]' > "$ATTACH_MANIFEST"
 while IFS=$'\t' read -r url filename mime; do

@@ -4,8 +4,7 @@ SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 # shellcheck source=/dev/null
 source "$SCRIPT_DIR/init-lib.sh"
 
-# Ordered step table as three parallel indexed arrays (kept index-aligned so this
-# runs under macOS's stock Bash 3.2 — nothing here needs a newer Bash).
+# Ordered step table as three index-aligned parallel arrays (no associative arrays: macOS stock Bash 3.2).
 STEP_KEYS=(brew required omz base recommend-cli starship nvim tmux wezterm vscode claude check-paths workspace credentials ssh gh clone)
 STEP_LABELS=(
     "Homebrew"
@@ -46,10 +45,8 @@ STEP_SCRIPTS=(
     "init-clone.sh"
 )
 
-# Foundation steps auto-prepended silently to every bundle.
 FOUNDATION_KEYS=(brew required omz base)
 
-# Bundle labels (1-indexed, parallel to bundle runner functions).
 BUNDLE_LABELS=(
     "最小環境設定（VS Code）"
     "個人環境設定（推薦工具 + 終端機）"
@@ -57,9 +54,8 @@ BUNDLE_LABELS=(
     "個人工作區初始化（工作區設定、SSH、GitHub 驗證）"
 )
 
-# Steps that must run every time regardless of detect_status. Restowing is
-# idempotent and cheap, and skipping it is how ~/bin silently drifts from the repo
-# whenever a new script is added.
+# Steps that run every time regardless of detect_status: restowing is idempotent, and skipping it is how
+# ~/bin silently drifts from the repo when a new script is added.
 ALWAYS_RUN_KEYS=(base)
 
 function is_always_run() {
@@ -70,8 +66,6 @@ function is_always_run() {
     return 1
 }
 
-# run_script <script_name> [args...]: runs a script from SCRIPT_DIR with optional
-# args, handling chmod and exit-code reporting.
 function run_script() {
     local script_name="$1"
     shift
@@ -101,8 +95,7 @@ function run_step() {
     run_script "$1"
 }
 
-# Load MOP_*_PATH and token exports from ~/.zshrc into this shell so that steps
-# like clone/credentials have them available regardless of run order.
+# Load MOP_*_PATH and token exports into this shell so clone/credentials steps have them regardless of run order.
 function load_env_vars() {
     echo ""
     echo "=== 載入環境變數 ==="
@@ -124,7 +117,6 @@ function load_env_vars() {
     _token=$(cred_find "getdata.morrison.express") && export GETDATATOKEN="$_token"
 }
 
-# Returns 0 when the component for <key> is fully installed/configured.
 function detect_status() {
     local key="$1"
     case "$key" in
@@ -229,7 +221,6 @@ function status_tag() {
     fi
 }
 
-# Returns 0 when all meaningful steps in the given bundle are installed.
 function bundle_installed() {
     local key
     case "$1" in
@@ -329,13 +320,11 @@ function run_bundle_4() {
     echo "=== 個人工作區初始化 ==="
     run_bundle_foundation
 
-    # workspace: prompt with ~/personal as default; no ~/personal auto-write
     run_script "init-workspace.sh" --default-path ~/personal
 
     # ssh: workspace-scoped identity only (not full global key setup)
     run_script "init-ssh.sh" --workspace
 
-    # gh: skip if already authenticated
     if gh auth status &>/dev/null; then
         echo "✓ 跳過（已驗證）：GitHub CLI 驗證"
     else

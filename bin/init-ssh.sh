@@ -104,10 +104,8 @@ function test_github_connection() {
     echo ""
     echo "正在測試與 GitHub 的 SSH 連線..."
     if [ -n "$key_path" ]; then
-        # -F /dev/null: ignore ~/.ssh/config entirely. Host github.com there sets
-        # IdentityFile ~/.ssh/id_ed25519, and IdentitiesOnly=yes alone does not
-        # exclude that — it only excludes extra ssh-agent-offered keys — so
-        # without -F this test silently falls back to the default key.
+# -F /dev/null: ~/.ssh/config's Host github.com sets IdentityFile ~/.ssh/id_ed25519, which IdentitiesOnly=yes
+# does not exclude, so without -F this test silently uses the default key.
         ssh -F /dev/null -i "$key_path" -o IdentitiesOnly=yes -T git@github.com 2>&1 | grep -q "successfully authenticated"
     else
         ssh -T git@github.com 2>&1 | grep -q "successfully authenticated"
@@ -149,10 +147,8 @@ function run_default_key_tail() {
     echo "✓ SSH 設定完成"
 }
 
-# Sets up an SSH key scoped to a single workspace directory: the key lives at
-# ~/.ssh/id_ed25519_<name>, and git only picks it up for repos under that
-# directory via `includeIf "gitdir:...` + `core.sshCommand` — so it never
-# touches ~/.ssh/config or the default identity.
+# SSH key scoped to one workspace directory: ~/.ssh/id_ed25519_<name>, picked up by git only under that
+# directory via `includeIf "gitdir:..."` + `core.sshCommand`, so ~/.ssh/config and the default identity stay untouched.
 function setup_workspace_identity() {
     local workspace_path abs_workspace name key_path gitconfig_snippet
     local create_new continue_choice
@@ -202,11 +198,8 @@ function setup_workspace_identity() {
 
     add_key_to_agent "$key_path"
 
-    # -F /dev/null: ignore ~/.ssh/config entirely. Its Host github.com block sets
-    # IdentityFile ~/.ssh/id_ed25519, which IdentitiesOnly=yes does NOT exclude —
-    # config-file IdentityFile entries count as "explicit" just like -i does — so
-    # without -F, ssh offers the default key first and GitHub silently
-    # authenticates as the wrong identity instead of this workspace's key.
+# -F /dev/null: config-file IdentityFile entries count as "explicit" like -i, so IdentitiesOnly=yes doesn't
+# exclude ~/.ssh/config's default key; without -F GitHub silently authenticates as the wrong identity.
     cat > "$gitconfig_snippet" << EOF
 [core]
     sshCommand = "ssh -F /dev/null -i $key_path -o IdentitiesOnly=yes"
@@ -267,7 +260,6 @@ function setup_ssh_key() {
     SSH_KEY_PATH="$HOME/.ssh/id_ed25519"
     SSH_CONFIG="$HOME/.ssh/config"
 
-    # Ensure .ssh directory exists
     if [ ! -d "$HOME/.ssh" ]; then
         mkdir -p "$HOME/.ssh"
         chmod 700 "$HOME/.ssh"
@@ -297,7 +289,6 @@ function setup_ssh_key() {
     run_default_key_tail "$SSH_KEY_PATH"
 }
 
-# Execute if run directly
 if [[ "${BASH_SOURCE[0]}" == "${0}" ]]; then
     if [ "${1:-}" = "--workspace" ]; then
         setup_workspace_identity

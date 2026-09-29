@@ -1,16 +1,9 @@
 #!/usr/bin/env bash
-# Read or overwrite a Jira ticket's description. The second write path to Jira in
-# this setup (jira-comment.sh is the first), and the only DESTRUCTIVE one — a PUT
-# replaces the field outright, so callers must run their own ownership guard first.
-#
-# REST API v2 is used in both directions: its description is a plain Jira-wiki-
-# markup string (v3 would require ADF JSON). Jira Cloud stores ADF internally and
-# converts on the way in and out, so `get` after `set` is NOT byte-identical to
-# what was sent — never compare the two for equality.
-#
-# `set` reads the body from a FILE, never from argv, for the same reason
-# jira-comment.sh does: the payload is a multi-line CJK document.
-#
+# Read or overwrite a Jira ticket's description. The only DESTRUCTIVE Jira write path here (jira-comment.sh is
+# the other): a PUT replaces the field outright, so callers must run their own ownership guard first.
+# REST API v2 both ways (plain wiki-markup string; v3 would need ADF JSON). Jira Cloud converts ADF on the way
+# in and out, so `get` after `set` is NOT byte-identical to what was sent; never compare them for equality.
+# `set` reads the body from a FILE, never argv (multi-line CJK payload, same as jira-comment.sh).
 # Usage:
 #   jira-description.sh get <TICKET-ID>              # raw wiki markup -> stdout
 #   jira-description.sh set <TICKET-ID> <body-file>  # overwrite; prints browse URL

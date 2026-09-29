@@ -1,16 +1,10 @@
 #!/usr/bin/env bash
-# Emit the spec delta between two round snapshots of a homelab spec, so
-# callers only have to reason about what CHANGED. round-NN.md ==
-# end-of-round-N state, so diffing round-(N-1) -> round-N is exactly one
-# round's change.
-#
+# Emit the spec delta between two round snapshots of a homelab spec (round-NN.md == end-of-round-N state).
 # Usage:
 #   hl-spec-round-diff.sh <issue>-<slug>          # latest two rounds
 #   hl-spec-round-diff.sh <issue>-<slug> 3        # round-02 -> round-03
 #   hl-spec-round-diff.sh <issue>-<slug> 1 3      # round-01 -> round-03
-# Prints the compared filenames (to stderr) and a unified diff (to stdout).
-# Exit 2 if the requested rounds don't exist (nothing to diff — run
-# hl-spec-sync first).
+# Compared filenames go to stderr, a unified diff to stdout. Exit 2 if the rounds don't exist (run hl-spec-sync first).
 set -uo pipefail
 
 ID="${1:?usage: hl-spec-round-diff.sh <issue>-<slug> [BASELINE] [TARGET]}"
@@ -18,7 +12,6 @@ RDIR="$HOME/personal/project-note/Homelab/2 - Specs/.rounds/$ID"
 
 [ -d "$RDIR" ] || { echo "error: no rounds dir for $ID ($RDIR)" >&2; exit 2; }
 
-# Sorted round files (round-01.md, round-02.md, ...).
 ROUNDS=()
 while IFS= read -r f; do ROUNDS+=("$f"); done < <(find "$RDIR" -maxdepth 1 -name 'round-*.md' | sort)
 COUNT=${#ROUNDS[@]}

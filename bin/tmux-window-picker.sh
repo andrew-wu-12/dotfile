@@ -1,83 +1,44 @@
 #!/bin/bash
-# Vertical window picker: an fzf popup listing every tmux window across all
-# sessions as a vertical stack of cards. Absorbs the old tmux-jira-picker.sh
-# (formerly `prefix j`) as a second, toggleable row set.
+# Vertical window picker (prefix w): fzf popup of every tmux window across all sessions as a stack of cards.
+# Modes: active (default; live windows only, no JIRA call) / all (adds a card per JIRA ticket assigned to you
+# with no worktree yet; cached 5 min at /tmp/tmux-jira-picker.cache, fetched only when entered).
 #
-# Two modes:
-#   active  (default) Today's window list only — one card per live tmux
-#           window across all sessions. No JIRA call.
-#   all     Adds a card per JIRA ticket assigned to you that has no worktree
-#           yet (tickets that already have a worktree show up as window
-#           cards above, in "active"). Cached 5 min at
-#           /tmp/tmux-jira-picker.cache; only fetched when this mode is
-#           entered, never on plain open.
+#   tab     toggle active/all
+#   enter   window card: switch to it (across sessions); ticket card: create worktree + window via worktree-ticket.sh -n
+#   ctrl-s  set the highlighted window's workspace as the dev-server target (needs WORKSPACE_SERVE_CMD in its .workspace.conf)
+#   ctrl-r  restart whatever is served
+#   ctrl-x  stop whatever is served
+#   ctrl-v  view the full serve log
+#   ctrl-g  popup tracing the worktree's CI jobs with a live progress bar (WORKSPACE_BUILD_CONF=1 + .tmux-build.conf)
+#   ctrl-p  deploy the highlighted worktree's ticket (MOP-only): pick branch, pick job(s), trace inline
+#   ctrl-n  open the workspace note in an nvim popup: NOTE_PATH/<ticket>.md when the ticket key is known, else NOTE_PATH
+#   ctrl-b  open the highlighted ticket card in the JIRA browser (no-op on window cards)
+#   ctrl-l  bust the ticket-status preview cache and skip the JIRA ticket-list cache on the next fetch
+#   ctrl-a  actions menu: closes this popup and opens a standalone one listing the actions valid for the card,
+#           by name (no tab toggle). Runs the action, then reopens the picker unless the action opened its own
+#           popup (ctrl-g/ctrl-n). tmux shows one popup per client, so it can't overlay this one in place;
+#           see the `--actions-popup` block below.
+#   esc     cancel
 #
-#   tab     Toggle active/all.
-#   enter   On a window card: switch to it (across sessions) and exit.
-#           On a ticket card (no worktree yet): create the worktree + window
-#           via worktree-ticket.sh -n and exit.
+# ctrl-s/r/x/v/p and tab loop back into a refreshed picker; enter/ctrl-g/ctrl-a/ctrl-n/esc exit (ctrl-a and
+# ctrl-n hand off to their own follow-up popup instead).
+# Helpers: tmux-serve-lib.sh (serve), tmux-build-trace-lib.sh (trace; also sources tmux-build-config.sh, which
+# provides workspace_config_load), tmux-deploy-lib.sh (Jenkins trigger).
 #
-#   ctrl-s  Set the highlighted window's workspace as the dev-server target.
-#           Requires WORKSPACE_SERVE_CMD in the window's .workspace.conf.
-#   ctrl-r  Restart whatever is currently served.
-#   ctrl-x  Stop whatever is currently served.
-#   ctrl-v  View the full serve log.
-#
-#   ctrl-g  Open a popup tracing this worktree's configured CI jobs with a
-#           live progress bar (any workspace with WORKSPACE_BUILD_CONF=1 and
-#           a .tmux-build.conf).
-#
-#   ctrl-p  Deploy the highlighted worktree's ticket (MOP-only): pick a
-#           branch, then pick job(s) to fire, then trace them inline.
-#
-#   ctrl-n  Open this workspace's note in an nvim popup: NOTE_PATH/<ticket>.md
-#           when the window's ticket key is known, else NOTE_PATH itself.
-#
-#   ctrl-b  Open the highlighted ticket in the JIRA browser (ticket cards
-#           only; no-op on window cards).
-#   ctrl-l  Bust the ticket-status preview cache for the highlighted card,
-#           and force the next JIRA ticket-list fetch to skip its cache.
-#   ctrl-a  Actions menu — closes this popup and opens a standalone tmux
-#           popup (small, centered) listing only the actions valid for the
-#           card that was highlighted, by name instead of hotkey (so you
-#           don't have to remember ctrl-s/ctrl-g/ctrl-p/etc.), headed by that
-#           card's own display name. Excludes the tab (ticket-list) toggle —
-#           that's a picker-mode switch, not a per-card action. Runs the
-#           chosen action, then reopens the window picker (unless the action
-#           opened its own follow-up popup, e.g. ctrl-g/ctrl-n). tmux shows
-#           only one popup per client, so this can't overlay the current
-#           popup in place — see the `--actions-popup` block further down.
-#   esc     Cancel.
-#
-# ctrl-s/ctrl-r/ctrl-x/ctrl-v/ctrl-p/tab loop back into a refreshed picker;
-# enter/ctrl-g/ctrl-a/ctrl-n/esc exit this picker (ctrl-a and ctrl-n each
-# hand off to their own follow-up popup instead of looping back in place).
-# Shared serve helpers live in tmux-serve-lib.sh; shared build-trace helpers
-# live in tmux-build-trace-lib.sh (which also sources tmux-build-config.sh,
-# making workspace_config_load available here); shared Jenkins-trigger
-# helpers live in tmux-deploy-lib.sh.
-#
-# Each card is a multi-line fzf item (fzf --read0, fzf >= 0.44 required for
-# multi-line item rendering): a bold header line carrying any 🔴/🟢 marker,
-# then optionally a dim ticket-title line and/or a serve status/marker line.
-# Tab-delimited fields (header is field 7, displayed via --with-nth=7):
-#   {1} session name          — empty on a ticket card
-#   {2} window id             — empty on a ticket card
-#   {3} workspace path        — git toplevel when WORKSPACE_SERVE_CMD or
-#                                WORKSPACE_PREVIEW_CMD is set; empty otherwise
-#   {4} build path            — git toplevel when WORKSPACE_BUILD_CONF=1; empty otherwise
-#   {5} preview cmd           — WORKSPACE_PREVIEW_CMD (absolute path); empty if none
-#   {6} note path              — NOTE_PATH; empty if none
-#   {7} display header         — bold "session │ window-name", or a ticket line
-#   {8} ticket key              — set only on a ticket card (no worktree yet)
-#
-# ctrl-n additionally parses a ticket key (e.g. MOP-27970) out of {7}'s first
-# line for window cards, where {8} is empty — the window name itself carries
-# it (tmux-dev-layout.sh names windows "{branch}(...)").
-#
-# The preview pane (right 60%) calls {5} with {3} as argument when both are
-# set; shows a placeholder for a ticket card with no worktree; else shows
-# "(no preview configured)".
+# Each card is a multi-line fzf item (--read0; fzf >= 0.44 for multi-line rendering): a bold header line
+# (with any 🔴/🟢 marker), then optionally a dim ticket-title line and/or a serve status line.
+# Tab-delimited fields (header is field 7, --with-nth=7):
+#   {1} session name (empty on a ticket card)     {2} window id (empty on a ticket card)
+#   {3} workspace path: git toplevel when WORKSPACE_SERVE_CMD or WORKSPACE_PREVIEW_CMD is set, else empty
+#   {4} build path: git toplevel when WORKSPACE_BUILD_CONF=1, else empty
+#   {5} preview cmd: WORKSPACE_PREVIEW_CMD (absolute path), else empty
+#   {6} note path: NOTE_PATH, else empty
+#   {7} display header: bold "session │ window-name", or a ticket line
+#   {8} ticket key: set only on a ticket card (no worktree yet)
+# ctrl-n also parses a ticket key (e.g. MOP-27970) out of {7}'s first line on window cards ({8} empty):
+# tmux-dev-layout.sh names windows "{branch}(...)".
+# The preview pane (right 60%) runs {5} with {3} when both are set; a placeholder for a ticket card with no
+# worktree; else "(no preview configured)".
 
 set -u
 
@@ -88,8 +49,6 @@ source "$SCRIPT_DIR/tmux-serve-lib.sh"
 source "$SCRIPT_DIR/tmux-build-trace-lib.sh"
 # shellcheck source=tmux-deploy-lib.sh
 source "$SCRIPT_DIR/tmux-deploy-lib.sh"
-# tmux-build-trace-lib.sh sources tmux-build-config.sh, giving us
-# workspace_config_load / workspace_config_reset here.
 
 TAB=$(printf '\t')
 BOLD=$'\033[1m'
@@ -99,8 +58,6 @@ RESET=$'\033[0m'
 mocha="--color=bg+:#313244,bg:#1e1e2e,spinner:#f5e0dc,hl:#f38ba8,fg:#cdd6f4,\
 header:#f5e0dc,info:#cba6f7,pointer:#f5e0dc,marker:#b4befe,fg+:#cdd6f4,\
 prompt:#cba6f7,hl+:#f38ba8,border:#585b70"
-
-# --- JIRA ticket list (absorbed from tmux-jira-picker.sh) -----------------
 
 CACHE_FILE="/tmp/tmux-jira-picker.cache"
 BOARD_CACHE="/tmp/tmux-jira-picker-board.cache"
@@ -120,7 +77,6 @@ get_jira_token() {
   printf '%s' "$tok"
 }
 
-# Resolve the numeric board ID for the MOP project; cache for 24h.
 get_board_id() {
   local now mod age board_id
   if [ -f "$BOARD_CACHE" ]; then
@@ -161,8 +117,6 @@ fetch_jira_raw() {
   | jq -r '.issues[] | [.key, .fields.status.name, .fields.summary] | @tsv'
 }
 
-# Appends one record per ticket assigned to the user that has no worktree
-# yet (tickets that already have one show up as window cards instead).
 build_ticket_rows() {
   local raw now mod age
   if [ -f "$CACHE_FILE" ]; then
@@ -191,11 +145,8 @@ build_ticket_rows() {
 # {5} = preview cmd, {3} = workspace path, {8} = ticket key (no-worktree card).
 PREVIEW_CMD='ws={3}; p={5}; tk={8}; if [ -n "$tk" ] && [ -z "$ws" ]; then printf "(no worktree yet — press enter to create)\n"; elif [ -n "$p" ] && [ -n "$ws" ]; then "$p" "$ws"; else printf "(no preview configured)\n"; fi'
 
-# ctrl-l busts the ticket-status preview cache and the JIRA ticket-list cache.
 RELOAD_BIND="ctrl-l:execute-silent(rm -f $CACHE_FILE)+execute-silent(~/bin/tmux-ticket-status.sh --reload {3} 2>/dev/null)+refresh-preview"
 
-# ctrl-b opens the highlighted ticket card in the JIRA browser; no-op on a
-# window card (empty {8}).
 CTRL_B_BIND="ctrl-b:execute-silent(t={8}; [ -n \"\$t\" ] && open \"$JIRA_BASE/browse/\$t\")"
 
 SERVE_INFO=$(serve_find_window)
@@ -204,8 +155,6 @@ SERVE_PANE=$(printf '%s' "$SERVE_INFO" | cut -d' ' -f3)
 
 list_file=$(mktemp)
 trap 'rm -f "$list_file"' EXIT
-
-# --- start/stop actions on the hidden serve window ---------------------
 
 serve_switch_to() {  # $1 = workspace path
   local target="$1"
@@ -247,13 +196,10 @@ serve_stop_current() {
   sleep 1
 }
 
-# --- ctrl-p: deploy (MOP-only) -------------------------------------------
-#
-# Gated on a resolved .tmux-build.conf (via trace_prepare, same as ctrl-g),
-# VPN when BUILD_VPN_CHECK=1, and a MOP feature/hotfix branch.
-# Step 1 picks the branch (ticket's own, or uat/<parent>). Step 2 picks the
-# job(s): dev fires _feature, uat fires _epic_or_hotfix, one fires both
-# _dev and _uat — all against the branch chosen in step 1.
+# ctrl-p: deploy (MOP-only). Gated on a resolved .tmux-build.conf (trace_prepare, as ctrl-g), VPN when
+# BUILD_VPN_CHECK=1, and a MOP feature/hotfix branch. Step 1 picks the branch (ticket's own or uat/<parent>);
+# step 2 picks job(s): dev fires _feature, uat fires _epic_or_hotfix, one fires both _dev and _uat, all
+# against step 1's branch.
 deploy_run() {
   local wt="$1" branch parsed ticket is_hotfix uat_branch
   local branch_opts branch_choice job_choice
@@ -330,23 +276,14 @@ deploy_run() {
   read -r _
 }
 
-# --- ctrl-a: actions menu -------------------------------------------------
-#
-# ctrl-a in the main loop below never runs the actions menu inline: tmux
-# shows only one popup per client, and this picker is already running
-# inside one, so the menu instead opens as its own standalone tmux popup
-# (same close-then-relaunch trick as ctrl-g/ctrl-n) via `tmux-window-picker.sh
-# --actions-popup <ctx...>` — see that block further down. The functions
-# below are the per-action bodies, shared between the main loop's direct
-# hotkeys (case block, unchanged behavior) and that standalone popup (which
-# has no fzf loop of its own to fall back into, so it calls these directly).
-# Each acts on the same sess/winid/ws_path/build_wt_path/note_path/ticket/
-# ticket8/CUR_TARGET/SERVE_WIN/SERVE_PANE globals the main loop parses out of
-# $first_line (or, in the standalone popup, receives as positional args).
-# Return 1 on a precondition failure (already printed + slept); return
-# whatever the underlying action's exit status is otherwise. ctrl-g/ctrl-n's
-# actions schedule their own follow-up popup on success — callers must not
-# also reopen the window picker in that case.
+# ctrl-a never runs the actions menu inline: tmux shows one popup per client and this picker is already in
+# one, so the menu opens as its own standalone popup (same close-then-relaunch trick as ctrl-g/ctrl-n) via
+# `--actions-popup <ctx...>` (block further down). The functions below are the per-action bodies shared by the
+# main loop's hotkeys and that popup (which has no fzf loop of its own). They act on the sess/winid/ws_path/
+# build_wt_path/note_path/ticket/ticket8/CUR_TARGET/SERVE_WIN/SERVE_PANE globals (parsed from $first_line, or
+# passed as positional args in the popup). Return 1 on a precondition failure (already printed + slept), else
+# the action's exit status. ctrl-g/ctrl-n schedule their own follow-up popup on success, so callers must not
+# also reopen the picker.
 
 action_serve() {
   if [ -z "$ws_path" ]; then echo "No WORKSPACE_SERVE_CMD configured for this window."; sleep 1; return 1; fi
@@ -387,9 +324,8 @@ action_notes() {
   fi
   local full_note_path="$note_path"
   [ -n "$ticket" ] && full_note_path="$note_path/$ticket.md"
-  # A tmux client shows only one popup at a time and this picker is already
-  # running inside one, so the nvim popup can't open directly from here —
-  # schedule it (same trick as trace_open_popup) so this popup closes first.
+  # One popup per client and this picker is already in one, so schedule the nvim popup (as trace_open_popup
+  # does) to open after this one closes.
   local popup_cmd
   popup_cmd=$(printf 'sleep 0.3 && tmux display-popup -E -w 90%% -h 80%% %s || true' "$(printf 'nvim %q' "$full_note_path")")
   tmux run-shell -b "$popup_cmd"
@@ -409,8 +345,7 @@ strip_ansi() {
   sed -e $'s/\x1b\[[0-9;]*m//g'
 }
 
-# Quotes argv for safe embedding in a `tmux run-shell`/display-popup command
-# string; each arg comes back prefixed with a separating space.
+# Quotes argv for embedding in a `tmux run-shell`/display-popup command string (each arg prefixed with a space).
 quote_args() {
   local out="" a
   for a in "$@"; do
@@ -419,11 +354,8 @@ quote_args() {
   printf '%s' "$out"
 }
 
-# Builds the ctrl-a submenu: only the actions valid for the highlighted card
-# (reading the same globals listed above), labeled by name instead of
-# hotkey, headed by the card's own display name. Deliberately excludes
-# "toggle ticket list" — that's a picker-mode switch, not a per-card action.
-# Echoes the chosen action's hotkey on stdout; nothing on cancel.
+# ctrl-a submenu: only actions valid for the highlighted card, labeled by name and headed by its display name;
+# excludes the tab toggle (a mode switch, not a per-card action). Echoes the chosen hotkey, nothing on cancel.
 show_actions_menu_standalone() {
   local label="$1" menu_file choice
   menu_file=$(mktemp)
@@ -463,14 +395,9 @@ show_actions_menu_standalone() {
   printf '%s' "${choice%%$TAB*}"
 }
 
-# --- card list -----------------------------------------------------------
-#
-# Written to a file, not a variable: bash silently drops embedded NUL bytes
-# from variables, which would collapse every card into one unselectable blob.
-#
-# For every pane, workspace_config_load walks up from the pane path to $HOME
-# looking for a .workspace.conf. This is cheap (a few stat calls per pane) and
-# works for worktrees and plain checkouts alike.
+# Card list. Written to a file, not a variable: bash silently drops NUL bytes from variables, which would
+# collapse every card into one unselectable blob. workspace_config_load walks up from each pane path to $HOME
+# for a .workspace.conf (a few stats per pane; works for worktrees and plain checkouts).
 build_window_rows() {
   # \x1f (unit separator), not a tab: IFS=<tab> is still an "IFS whitespace"
   # character to read/word-splitting, which squeezes runs of it and drops
@@ -483,7 +410,6 @@ build_window_rows() {
   tmux list-windows -a \
     -F "#{session_name}${US}#{window_id}${US}#{session_name} │ #{window_name}${US}#{@ticket_title}${US}#{@workspace_path}${US}#{pane_current_path}" \
     | while IFS="$US" read -r sess winid header title wspath panepath; do
-        # hide the hidden serve window (pattern-match serve(*) with optional marker prefix)
         case "$header" in
           *" │ serve("*|*" serve("*) continue ;;
         esac
@@ -493,12 +419,9 @@ build_window_rows() {
         preview_cmd=""
         note_path=""
 
-        # Prefer the window's own fixed @workspace_path (set once at creation
-        # by tmux-dev-layout.sh) over the live pane_current_path: the pane's
-        # cwd drifts the moment a shell/agent inside it cd's elsewhere, which
-        # would otherwise make this window falsely match whichever worktree
-        # is currently being served. Falls back to panepath for windows
-        # tmux-dev-layout.sh never tagged (pre-existing windows, ad-hoc ones).
+        # Prefer the window's fixed @workspace_path (set by tmux-dev-layout.sh) over the live pane path: the
+        # pane's cwd drifts when a shell/agent cd's, falsely matching this window to whichever worktree is
+        # being served. Falls back to panepath for untagged windows.
         config_path="${wspath:-$panepath}"
 
         workspace_config_load "$config_path"
@@ -554,15 +477,10 @@ build_list() {
   [ "$MODE" = "all" ] && build_ticket_rows
 }
 
-# --- --actions-popup: standalone actions popup for ctrl-a -----------------
-#
-# Never invoked directly by a user — ctrl-a in the main loop below schedules
-# `tmux-window-picker.sh --actions-popup <ctx...>` after closing the current
-# popup (tmux shows only one popup per client at a time), passing the
-# highlighted card's context as positional args. Runs the chosen action
-# itself against those args, then reopens the window picker — unless the
-# action already scheduled its own follow-up popup (ctrl-g/ctrl-n), in which
-# case reopening here would race it.
+# --actions-popup: standalone popup for ctrl-a, never invoked by hand. ctrl-a closes the current popup and
+# schedules `... --actions-popup <ctx...>` with the highlighted card's context as positional args (tmux shows
+# one popup per client). Runs the chosen action, then reopens the picker unless the action scheduled its own
+# popup (ctrl-g/ctrl-n), which a reopen here would race.
 if [ "${1:-}" = "--actions-popup" ]; then
   shift
   sess="$1"; winid="$2"; ws_path="$3"; build_wt_path="$4"
@@ -592,11 +510,6 @@ if [ "${1:-}" = "--actions-popup" ]; then
   exit 0
 fi
 
-# --- main loop -------------------------------------------------------------
-#
-# enter/ctrl-g/ctrl-a/ctrl-n/esc exit; ctrl-s/ctrl-r/ctrl-x/ctrl-v/ctrl-p/tab
-# act and loop back into a refreshed picker (ctrl-a's standalone popup loops
-# back too, just via its own reopened picker rather than this loop).
 MODE="active"
 while true; do
   build_list

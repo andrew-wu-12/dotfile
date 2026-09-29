@@ -1,13 +1,8 @@
 #!/bin/bash
 
-# Buckets repo-wide hits of an identifier into out-of-scope (auto-dismissed,
-# no file opened) vs in-scope (needs judgment, with grep context attached),
-# so a caller only has to reason about the small in-scope set instead of every
-# raw hit. Directory-prefix bucketing is only safe for an app-local diff — a
-# libs/ change is meant to be consumed from any app, so that case instead
-# traces which files actually import the changed lib's resolved alias (or
-# live under the same lib root).
-#
+# Buckets repo-wide hits of an identifier into out-of-scope (auto-dismissed, no file opened) vs in-scope
+# (grep context attached). Directory-prefix bucketing is only safe for an app-local diff; a libs/ change is
+# consumed from any app, so that case traces files importing the lib's resolved alias (or under its lib root).
 # Usage: identifier-scope-check.sh <identifier> <repo-root> [base-ref] [head-ref]
 
 set -uo pipefail

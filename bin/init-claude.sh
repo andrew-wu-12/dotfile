@@ -30,9 +30,7 @@ function stow_claude_config() {
     echo "=== Claude 設定連結 ==="
     echo ""
 
-    # Pre-existing real files/dirs (a runtime-generated settings.json, skill dirs
-    # Claude Code created itself) are surfaced by stow_pkg, which backs them up
-    # rather than deleting them.
+# stow_pkg backs up pre-existing real files (runtime-generated settings.json, skill dirs) rather than deleting them.
     stow_pkg claude || return 1
 
     echo "✓ Claude 設定連結完成"

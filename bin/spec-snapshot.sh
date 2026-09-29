@@ -1,12 +1,9 @@
 #!/usr/bin/env bash
-# Snapshot the current spec note into an immutable per-round file, so the
-# vault's 65-second auto-backup commits can't serve as round boundaries but
-# these files can. Call this as the LAST step of /spec-init and /spec-sync,
-# AFTER the note has been (re)written — so round-N.md == end-of-round-N state
-# and /spec-drift can diff round-(N-1) against round-N to get exactly the change.
-#
-# Usage: spec-snapshot.sh <TICKET-ID>
-# Prints the round number (zero-padded) it wrote.
+# Snapshot the current spec note into an immutable per-round file; the vault's 65-second auto-backup commits
+# can't serve as round boundaries but these files can. Call as the LAST step of /spec-init and /spec-sync,
+# AFTER the note is (re)written, so round-N.md == end-of-round-N state and /spec-drift can diff
+# round-(N-1) against round-N.
+# Usage: spec-snapshot.sh <TICKET-ID>   (prints the zero-padded round number it wrote)
 set -euo pipefail
 
 TICKET="${1:?usage: spec-snapshot.sh <TICKET-ID>}"

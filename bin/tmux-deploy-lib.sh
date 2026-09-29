@@ -3,9 +3,7 @@
 
 DEPLOY_JENKINS_URL="https://jenkins.morrison.express"
 
-# Fires buildWithParameters for job $1 with param $2=$3. Uses the caller's
-# $JENKINS_TOKEN if set, else reads it from the credential store. Returns 0 on
-# a 2xx response from Jenkins, nonzero otherwise.
+# POSTs buildWithParameters (param $2=$3) for job $1; returns 0 on a 2xx. Token: caller's $JENKINS_TOKEN, else the credential store.
 deploy_trigger_job() {
   local job="$1" key="$2" value="$3" http_code
 

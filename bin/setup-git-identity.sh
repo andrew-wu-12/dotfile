@@ -40,7 +40,6 @@ if [ -z "$FOLDER" ] || [ -z "$KEY_NAME" ] || [ -z "$EMAIL" ] || [ -z "$GIT_NAME"
     exit 1
 fi
 
-# Expand ~ and resolve to absolute path
 FOLDER="${FOLDER/#\~/$HOME}"
 mkdir -p "$FOLDER"
 FOLDER="$(cd "$FOLDER" && pwd)"
@@ -54,7 +53,6 @@ HOST_ALIAS="github-$KEY_NAME"
 
 mkdir -p "$SSH_DIR" && chmod 700 "$SSH_DIR"
 
-# 1. Generate SSH key
 if [ -f "$SSH_KEY_PATH" ]; then
     echo "✓ SSH key already exists: $SSH_KEY_PATH"
 else
@@ -62,12 +60,10 @@ else
     echo "✓ SSH key generated: $SSH_KEY_PATH"
 fi
 
-# 2. Add to ssh-agent (Keychain-persisted on macOS)
 eval "$(ssh-agent -s)" > /dev/null 2>&1
 ssh_add_key "$SSH_KEY_PATH" || true
 echo "✓ SSH key added to ssh-agent"
 
-# 3. SSH host alias
 touch "$SSH_CONFIG" && chmod 600 "$SSH_CONFIG"
 if grep -q "^Host $HOST_ALIAS\$" "$SSH_CONFIG"; then
     echo "✓ SSH host alias already exists: $HOST_ALIAS"
@@ -85,7 +81,6 @@ EOF
     echo "✓ SSH host alias added: $HOST_ALIAS"
 fi
 
-# 4. Per-folder git config
 cat > "$GIT_CONFIG_PATH" << EOF
 [user]
   email = $EMAIL
@@ -97,7 +92,6 @@ cat > "$GIT_CONFIG_PATH" << EOF
 EOF
 echo "✓ Per-folder git config written: $GIT_CONFIG_PATH"
 
-# 5. includeIf in global gitconfig
 GLOBAL_GITCONFIG="$HOME/.gitconfig"
 INCLUDE_HEADER="[includeIf \"gitdir:$FOLDER/\"]"
 if grep -qF "$INCLUDE_HEADER" "$GLOBAL_GITCONFIG" 2>/dev/null; then
@@ -111,7 +105,6 @@ EOF
     echo "✓ includeIf appended to ~/.gitconfig"
 fi
 
-# 6. Copy public key to clipboard
 PUB_KEY="$SSH_KEY_PATH.pub"
 clip_copy < "$PUB_KEY"
 echo ""

@@ -1,11 +1,8 @@
 #!/bin/zsh
 # Open the [DEV] config PR (feature/MOP-XXXX -> dev) for mop_configuration_files.
-#
-# Migrated from the old 3-branch version that opened dev/uat/master PRs at once:
-# promotion to uat and master is a timing judgment call, so this now stops at dev
-# and you promote by hand. Run AFTER editing the config working tree (e.g. via the
-# privilege-node skill); this stashes those edits and lays them on a fresh
-# feature branch off an up-to-date dev.
+# Stops at dev; promotion to uat/master is a timing call made by hand. Run AFTER editing
+# the config working tree (e.g. via the privilege-node skill): stashes those edits and
+# lays them on a fresh feature branch off an up-to-date dev.
 
 source ~/.zshrc
 
@@ -26,7 +23,6 @@ fi
 
 cd $MOP_CONFIGURATION_PATH || { echo "Error: MOP_CONFIGURATION_PATH not found."; exit 1; }
 
-# There must be working-tree changes to deploy, or there is no PR to open.
 if git diff --quiet && git diff --cached --quiet; then
     echo "Error: no changes in $MOP_CONFIGURATION_PATH to deploy."
     echo "Edit the config (e.g. privileges.json) first, then re-run."
@@ -40,7 +36,6 @@ TARGET_BRANCH="feature/$TICKET_NUMBER"
 PR_TITLE="[DEV] $TICKET_NUMBER: $TICKET_SUMMARY"
 PR_CONTENT="Related Tickets: https://morrisonexpress.atlassian.net/browse/${TICKET_NUMBER}"
 
-# Preserve the working edits, then base a clean feature branch on latest dev.
 git add .
 git stash push -m "config-$TICKET_NUMBER"
 

@@ -9,8 +9,7 @@ function install_homebrew() {
     echo "=== Homebrew 安裝 ==="
     echo ""
 
-    # ensure_brew also covers the case where brew is installed but not yet on PATH
-    # (a fresh install, or a shell that never ran `brew shellenv`).
+# ensure_brew also covers brew installed but not yet on PATH (fresh install, no `brew shellenv`).
     if ensure_brew; then
         echo "✓ Homebrew 已安裝：$(brew --prefix)"
         return 0

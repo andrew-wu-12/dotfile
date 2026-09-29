@@ -1,12 +1,8 @@
 #!/usr/bin/env bash
-# Pre-prod gate: verify every ticket whose branch was merged into a uat/* branch
-# is in "UAT Verified" before the uat -> main (prod) merge. A guard, not a
-# blocker — it reports and exits non-zero if any ticket isn't verified, so you
-# make the call.
-#
-# "Related tickets" = the feature/hotfix branches merged into the uat branch that
-# are NOT yet in main (origin/main..origin/<uat-branch>). Anything already
-# released (in main) drops out automatically.
+# Pre-prod gate: verify every ticket merged into a uat/* branch is in "UAT VERIFIED" before the uat -> main
+# (prod) merge. A guard, not a blocker: reports and exits non-zero if any ticket isn't verified.
+# Related tickets = feature/hotfix branches merged into the uat branch and NOT yet in main
+# (origin/main..origin/<uat-branch>), so already-released ones drop out.
 #
 # Usage:
 #   uat-gate.sh                     # current monorepo branch (must be uat/*)

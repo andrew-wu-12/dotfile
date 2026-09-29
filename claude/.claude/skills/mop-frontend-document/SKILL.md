@@ -8,7 +8,7 @@ description: >-
   has got outdated or never documented, to write up how a screen works for
   someone new to it, to explain what a page can do, or names an existing note
   under `Docs/` to update — even if they never say "note" or "vault". Not for the Jira spec notes under `Specs/`; those belong
-  to spec-init / spec-sync.
+  to mop-spec-init / mop-spec-sync.
 ---
 
 # MOP Frontend Document → feature notes in the office-note vault
@@ -22,7 +22,7 @@ rather than by reading the source.
 
 ## Not the same job as a spec
 
-`Specs/` (spec-init / spec-sync) is an implementation guide for the person
+`Specs/` (mop-spec-init / mop-spec-sync) is an implementation guide for the person
 about to build a ticket, so it carries real logic, field-level rules, and
 validation detail. A `Docs/` note is orientation material: what the page
 offers, how the pieces connect, and the rules a user would actually run

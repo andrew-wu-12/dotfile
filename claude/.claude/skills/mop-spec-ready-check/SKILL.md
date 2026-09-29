@@ -1,12 +1,12 @@
 ---
-name: pr-ready
+name: mop-spec-ready-check
 description: >-
   Check that a feature PR is ready for review. The skill checks four things: the spec
   is posted to Jira, the code agrees with the spec, no code refers to a removed
   identifier, and the diff has no defects. If the gates pass, the skill flips the
   draft PR to ready. The skill also checks a PR that is already ready; then it only
   reports. Use when a feature is done and you want to mark the PR ready for review,
-  "pr-ready", "is this PR ready", or to re-check a PR after pushing fixes. The skill
+  "mop-spec-ready-check", "is this PR ready", or to re-check a PR after pushing fixes. The skill
   does not assign reviewers. CODEOWNERS and the user do that.
 ---
 
@@ -105,7 +105,7 @@ claim.
    Confluence link in the References block of the PR description for each `libs/**`
    change. Its GitHub check reports `pass`. Its comment reports that the link is
    absent. Only the comment text is correct. If the link is absent, report a warning
-   and name `/changelog-confluence`.
+   and name `/doc-common-component-changelog`.
 4. **The review comments that exist.** Make an index of them. Steps 4 and 5 use the
    index. Do not report a finding that a reviewer already gave. Do not report a
    finding that someone already fixed. Mark each finding that you report as **new**,
@@ -144,7 +144,7 @@ SPECS="$HOME/personal/office-note/Specs"
 NOTE="$SPECS/MOP-XXXX.md"
 ```
 
-See `doc-spec-schema` for this path and the frontmatter fields below. Read the
+See `mop-doc-spec-schema` for this path and the frontmatter fields below. Read the
 frontmatter of the note. Compare three things.
 
 1. **The round number and the posted rounds.** Compare frontmatter `round: N` with
@@ -159,8 +159,8 @@ Verdicts:
 
 - **Unposted rounds exist — block the flip.** Report the gap as
   `round: N, last posted: M`. Name each change between round M and round N that a
-  reviewer would read incorrectly. To correct this, run `/spec-post`. Then run
-  `pr-ready` again.
+  reviewer would read incorrectly. To correct this, run `/mop-spec-post`. Then run
+  `mop-spec-ready-check` again.
 - **A round removed an item, and the title or the body still promises that item —
   block the flip.** The correction is cheap. Edit the body. Ask the PM to change the
   title. This correction prevents the most common review comment: "is this feature
@@ -175,15 +175,15 @@ review.
 
 ### 3. Gate: does the code disagree with the spec? (BLOCKING for drift)
 
-Run the **spec-drift** skill for the ticket. The skill takes one of two paths. With
+Run the **mop-spec-drift** skill for the ticket. The skill takes one of two paths. With
 2 or more spec rounds, it compares the last two rounds. Then it greps the branch for
 code that disagrees. With 1 round, it reads the PR diff instead. Then it looks for
-data relationships with an unstated cardinality. That is step 1b of spec-drift.
+data relationships with an unstated cardinality. That is step 1b of mop-spec-drift.
 
 - **The skill found drift** (the round-comparison path) — **block the flip.** Report
   each disagreement. Give `path:line`. Give the old spec value and the new spec
   value. To correct this, change the code. You can also confirm the spec again. Then
-  run `pr-ready` again.
+  run `mop-spec-ready-check` again.
 - **The skill found no drift** — the gate passes. Continue.
 - **The skill reported a contradiction or an ambiguity** (the single-round path) —
   this does not block. Add these items to the warnings from step 5.
@@ -243,7 +243,7 @@ searches — it must never return raw grep output, only verdicts:
    selector and check whether it expects one element. A bare `.click()`, `.type()`,
    or `.should('have.value')` expects one element; `.first()`, `.eq()`, and
    `within()` set a scope. A call site without a scope is now broken. This is the
-   same defect shape as the cardinality check in spec-drift — there the shape
+   same defect shape as the cardinality check in mop-spec-drift — there the shape
    applies to data relationships, here to selectors.
 
 Require the subagent to return one verdict per identifier/selector, `path:line` only:
@@ -347,7 +347,7 @@ Report these items:
   the tests CI did not run for this diff. Give this line even if each check is green.
   A green check with an untested suite is the case that the user must know about.
 - **The warnings**, as one list: the findings from step 5, the ambiguity items from
-  spec-drift, the hits from step 4 that you did not confirm, and each open bot
+  mop-spec-drift, the hits from step 4 that you did not confirm, and each open bot
   request. An example of a bot request is an absent Confluence link. Write "clean" if
   the list is empty. Mark each item as new, already-raised, or already-fixed.
 
@@ -361,7 +361,7 @@ Then write `HEAD` to `$GATE_FILE`.
   round-comparison path found drift), and step 4 (a confirmed broken reference). Each
   one of them blocks the flip alone.
 - The hits from step 4 that you did not confirm never block. The single-round output
-  of spec-drift never blocks. That output also uses the words "contradiction" and
+  of mop-spec-drift never blocks. That output also uses the words "contradiction" and
   "ambiguity", but it is a different check. Do not confuse it with a gate.
 - The findings from step 5 never block. Report them and continue.
 - **Never limit the grep in step 4 to the app that you edited.** The value of the

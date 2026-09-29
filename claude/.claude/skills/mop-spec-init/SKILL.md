@@ -1,10 +1,10 @@
 ---
-name: spec-init
+name: mop-spec-init
 description: >-
   Create a persistent, codebase-grounded spec artifact for a Jira ticket in the
   Obsidian vault, plus a private Open-Questions list. Use when starting a new
-  ticket, initializing a spec, opening the spec for MOP-XXXX, or "spec-init
-  MOP-XXXX". Replaces the one-shot /spec for real ticket work; use spec-sync for
+  ticket, initializing a spec, opening the spec for MOP-XXXX, or "mop-spec-init
+  MOP-XXXX". Replaces the one-shot /spec for real ticket work; use mop-spec-sync for
   later rounds.
 ---
 
@@ -15,11 +15,11 @@ across rounds. It reconciles the ticket, chat decisions, and the prototype into
 one source of truth. This skill writes a real artifact and grounds it in the actual 
 repositories.
 
-`SKILL_DIR` = `~/.claude/skills/spec-init`.
+`SKILL_DIR` = `~/.claude/skills/mop-spec-init`.
 
 ## Artifact schema
 
-See `doc-spec-schema` for the note's path, frontmatter fields, and section
+See `mop-doc-spec-schema` for the note's path, frontmatter fields, and section
 structure.
 
 ## Prerequisites
@@ -27,7 +27,7 @@ structure.
 - **Jira token** in the credential store (scripts read it via `~/bin/cred-read.sh`). The fetch returns a clean error if the token is wrong.
 - Repos on disk: `$MOP_MONOREPO_PATH`, `$MOP_CONFIGURATION_PATH`.
 - If `specs/MOP-XXXX.md` **already exists**, stop — this is a later round. Tell the
-  user to run `spec-sync` instead.
+  user to run `mop-spec-sync` instead.
 
 ## Workflow
 
@@ -75,7 +75,7 @@ its output first. Give it the ticket manifest and attachments from step 1, plus:
    done
    ```
    Report the **promotion state** (e.g. "in dev, missing in uat/master → promote")
-   rather than a flat "missing". The v2 `/privilege-node` skill resolves it.
+   rather than a flat "missing". The v2 `/mop-check-privilege` skill resolves it.
 
 Require the subagent's report to give one finding per check, or state "none
 found." Support each finding with `path:line` evidence only — no raw grep dumps
@@ -84,7 +84,7 @@ does not state something, record it as unstated. Never infer it.
 
 ### 3. Interview the user on gaps
 
-Take step 2's "missing details" findings. Run `doc-spec-interview`'s loop on
+Take step 2's "missing details" findings. Run `mop-doc-spec-interview`'s loop on
 them before you write anything, including the follow-ups the answers raise.
 An answered gap becomes a Decision Log row (`Source = dev`), not an Open
 Question. A gap waiting on the PM or backend goes to Open Questions with its
@@ -92,7 +92,7 @@ Question. A gap waiting on the PM or backend goes to Open Questions with its
 
 ### 4. Generate the consolidated spec
 
-Write the spec body using `doc-spec-body`'s conventions — language, the
+Write the spec body using `mop-doc-spec-body`'s conventions — language, the
 field/API/test-scenario formats, business-level terms only, and the
 decision-log boundary.
 
@@ -100,19 +100,19 @@ Use only concrete details from the ticket, the prototype, the codebase, and
 step 3's interview. **Do not invent** fields, APIs, or behaviors.
 
 If drafting surfaces a new gap, do not guess and do not file it straight to
-Open Questions. Collect them, re-enter `doc-spec-interview`'s loop, and
+Open Questions. Collect them, re-enter `mop-doc-spec-interview`'s loop, and
 update the draft with the answers. Repeat until drafting surfaces nothing new.
 
 ### 5. Assemble Open Questions (private)
 
 Every gap from steps 3–4 that is still waiting becomes a checkbox with its
 `path:line` evidence and its `⏳` marker. This list stays private. You curate it
-before it reaches the PM — that happens in the `/spec-post` step. Keep each
+before it reaches the PM — that happens in the `/mop-spec-post` step. Keep each
 question specific and quotable.
 
 ### 6. Write the note, then snapshot
 
-Write `specs/MOP-XXXX.md` using `doc-spec-schema`'s template. Write Decision
+Write `specs/MOP-XXXX.md` using `mop-doc-spec-schema`'s template. Write Decision
 Log rows and the Round History entry in Traditional Chinese. Then:
 
 ```bash

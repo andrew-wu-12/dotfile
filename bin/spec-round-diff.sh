@@ -1,13 +1,13 @@
 #!/usr/bin/env bash
 # Emit the spec delta between two round snapshots so callers reason only about what CHANGED.
 # round-NN.md == end-of-round-N state, so round-(N-1) -> round-N is exactly one round's change.
-# The two-round form exists for /spec-post, whose baseline is the last round actually POSTED to Jira: when
+# The two-round form exists for /mop-spec-post, whose baseline is the last round actually POSTED to Jira: when
 # rounds 1-2 were never posted and round 3 is, the PM's delta spans 01 -> 03.
 # Usage:
 #   spec-round-diff.sh <MOP-XXXX>          # latest two rounds
 #   spec-round-diff.sh <MOP-XXXX> 3        # round-02 -> round-03
 #   spec-round-diff.sh <MOP-XXXX> 1 3      # round-01 -> round-03
-# Compared filenames go to stderr, a unified diff to stdout. Exit 2 if the rounds don't exist (run spec-sync first).
+# Compared filenames go to stderr, a unified diff to stdout. Exit 2 if the rounds don't exist (run mop-spec-sync first).
 set -uo pipefail
 
 TICKET="${1:?usage: spec-round-diff.sh <MOP-XXXX> [BASELINE] [TARGET]}"
@@ -20,7 +20,7 @@ while IFS= read -r f; do ROUNDS+=("$f"); done < <(find "$RDIR" -maxdepth 1 -name
 COUNT=${#ROUNDS[@]}
 
 if [ "$COUNT" -lt 2 ]; then
-  echo "error: need >=2 rounds to diff (found $COUNT). Run spec-sync to create the next round." >&2
+  echo "error: need >=2 rounds to diff (found $COUNT). Run mop-spec-sync to create the next round." >&2
   exit 2
 fi
 

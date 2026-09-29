@@ -1,17 +1,17 @@
 ---
-name: doc-spec-schema
+name: mop-doc-spec-schema
 description: >-
   Shared artifact schema for the spec note: file path, frontmatter fields,
-  and section headings. Used by spec-init (creates the note), spec-post and
-  pr-ready (read frontmatter fields) — not meant to be invoked on its own.
+  and section headings. Used by mop-spec-init (creates the note), mop-spec-post and
+  mop-spec-ready-check (read frontmatter fields) — not meant to be invoked on its own.
 ---
 
 # Doc Spec Schema → shape of the spec artifact
 
 The shared structural facts about the spec note — where it lives, what its
 frontmatter fields mean, and what sections it has — regardless of which
-skill is creating, reading, or updating it. `spec-init`, `spec-post`, and
-`pr-ready` all reference this instead of restating it.
+skill is creating, reading, or updating it. `mop-spec-init`, `mop-spec-post`, and
+`mop-spec-ready-check` all reference this instead of restating it.
 
 ## Artifact location
 
@@ -24,20 +24,20 @@ skill is creating, reading, or updating it. `spec-init`, `spec-post`, and
 
 - `tags` — vault tags, always includes `📥/🟧` and `spec`.
 - `ticket` — the Jira id, e.g. `MOP-XXXX`.
-- `created` — `YYYY-MM-DD`, set once at spec-init.
-- `round` — current round number. Bumped by spec-sync each round.
+- `created` — `YYYY-MM-DD`, set once at mop-spec-init.
+- `round` — current round number. Bumped by mop-spec-sync each round.
 - `prototype` — Figma/prototype URL, or empty.
-- `posted` — list of publish records, one per spec-post write. Each entry:
+- `posted` — list of publish records, one per mop-spec-post write. Each entry:
   `{round, date, url?, description}`. `url` is the comment URL when a
   comment was posted; omitted for a description-only re-sync. `description`
-  is `synced` or `resynced`. Shape only — see `spec-post` for how the
+  is `synced` or `resynced`. Shape only — see `mop-spec-post` for how the
   baseline round is chosen and when to write which value.
 
 ## Sections (in order)
 
 1. `# [MOP-XXXX] <summary>` — title, plus `> Jira:` link line.
-2. `## 規格 (Consolidated Spec)` — see `doc-spec-body` for what this contains.
-3. `## Open Questions (private — curate before /spec-post)` — checkbox list,
+2. `## 規格 (Consolidated Spec)` — see `mop-doc-spec-body` for what this contains.
+3. `## Open Questions (private — curate before /mop-spec-post)` — checkbox list,
    each item with `· evidence: path:line` where there is evidence.
    - Waiting: `- [ ] <question>  ·  ⏳ 待 PM 回覆 (YYYY-MM-DD)` or
      `⏳ 待後端回覆 (YYYY-MM-DD)`. The date is when it was first deferred.
@@ -47,13 +47,13 @@ skill is creating, reading, or updating it. `spec-init`, `spec-post`, and
 4. `## Decision Log` — `| Date | Source | Decision |` table, append-only.
    - Headers and `Source` tags (`jira`/`chat`/`dev`/`pm`) stay in English.
    - The Decision text is in Traditional Chinese.
-   - spec-sync rows start with a change reason in brackets: `〔PM 規格變動〕`,
+   - mop-spec-sync rows start with a change reason in brackets: `〔PM 規格變動〕`,
      `〔Dev 理解錯誤〕`, `〔先前決議錯誤〕`, `〔新資訊〕`, or free text. A row that
      replaces an earlier decision ends with `，取代 YYYY-MM-DD「…」`.
 5. `## Round History` — `- **Round N** (date): summary`, append-only.
    - The `**Round N** (date):` label stays in English. The summary is in
      Traditional Chinese.
-   - spec-sync entries end with a count per reason, e.g.
+   - mop-spec-sync entries end with a count per reason, e.g.
      `（2 項 PM 規格變動、1 項新資訊）`.
 
 ## Template
@@ -86,7 +86,7 @@ prototype: <figma-url or empty>
 ### 3. 測試案例情境
 - 邊界案例（Precondition/Action/Expected Result）
 
-## Open Questions (private — curate before /spec-post)
+## Open Questions (private — curate before /mop-spec-post)
 - [ ] <question>  ·  evidence: `path:line`  ·  ⏳ 待 PM 回覆 (<YYYY-MM-DD>)
 
 ## Decision Log

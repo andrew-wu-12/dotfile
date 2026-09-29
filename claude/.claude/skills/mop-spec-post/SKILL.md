@@ -1,17 +1,17 @@
 ---
-name: spec-post
+name: mop-spec-post
 description: >-
   Sync the consolidated spec note to its Jira ticket: overwrite the description
   with the current spec (stamped round + date) and post a round-scoped change
   record as a comment with a curated subset of the private Open Questions. Use
   when a spec round is ready for the PM, confirming the spec with the PM,
-  publishing/pushing the spec or its questions to Jira, or "spec-post MOP-XXXX".
-  Requires the note from spec-init/spec-sync.
+  publishing/pushing the spec or its questions to Jira, or "mop-spec-post MOP-XXXX".
+  Requires the note from mop-spec-init/mop-spec-sync.
 ---
 
 # Spec Post → publish the spec, record what changed
 
-The last step of a spec round. `/spec-init` and `/spec-sync` keep a private,
+The last step of a spec round. `/mop-spec-init` and `/mop-spec-sync` keep a private,
 consolidated artifact. This skill publishes it, so the PM confirms the *whole*
 understanding and answers the open questions **in round 1 instead of across
 five separate rounds**. Chat is ephemeral. A ticket is not.
@@ -30,11 +30,11 @@ there is one canonical copy, on the ticket, always current.
 This is the **only write path to Jira** in this setup, and the PM sees it.
 Nothing goes out without an explicit approval in the same session.
 
-`SKILL_DIR` = `~/.claude/skills/spec-post`.
+`SKILL_DIR` = `~/.claude/skills/mop-spec-post`.
 
 ## Prerequisites
 
-- `specs/MOP-XXXX.md` exists. If not, stop — run `spec-init` first.
+- `specs/MOP-XXXX.md` exists. If not, stop — run `mop-spec-init` first.
 - **Jira token** in the credential store (scripts read it via `~/bin/cred-read.sh`). The fetch surfaces a clean error if the token is wrong.
 - Scripts: `~/bin/md2jira.sh`, `~/bin/jira-comment.sh`, `~/bin/jira-description.sh`.
 
@@ -58,10 +58,10 @@ all means this is the **first post** (see step 6).
 
 ### 2. Challenge the draft (delegated)
 
-Delegate to `doc-spec-challenge`: extract 規格, hand it to a fresh subagent
+Delegate to `mop-doc-spec-challenge`: extract 規格, hand it to a fresh subagent
 with no chat history, get back `READY` or `REVISE` + findings. On `READY`,
 proceed silently. On `REVISE`, show the findings once and ask whether to
-fix now (back to `spec-sync` or a manual edit) or post anyway — this step
+fix now (back to `mop-spec-sync` or a manual edit) or post anyway — this step
 warns, it does not block.
 
 ### 3. Fetch + run the guards (delegated)
@@ -111,7 +111,7 @@ None of the four hard-blocks:
 3. **Newer Jira activity.** Flag any comment whose `created` date is later
    than the note's last Round History date — the spec does not reflect it yet.
    List each one as author, date, first line. Offer two choices: run
-   `/spec-sync` first, or post anyway.
+   `/mop-spec-sync` first, or post anyway.
 4. **Note drifted from its snapshot.**
    ```bash
    diff -u "$SPECS/.rounds/MOP-XXXX/round-NN.md" "$NOTE" | tail -n +3
@@ -134,7 +134,7 @@ items. `⏳ 待後端回覆` items stay private — the backend is asked directl
 through the PM's comment.
 
 If an unchecked item has no `⏳` marker, it was never asked. List those
-separately and suggest running `spec-sync` first; do not post them.
+separately and suggest running `mop-spec-sync` first; do not post them.
 
 Present the eligible items numbered, each with an include/exclude
 recommendation. The user makes the final call.
@@ -264,7 +264,7 @@ nothing gets duplicated. If the comment succeeds and something later fails,
 ### 10. Record it in the note
 
 Append to the frontmatter `posted:` list — create the key if it does not
-exist yet, per `doc-spec-schema`'s shape for this field. Write `description:
+exist yet, per `mop-doc-spec-schema`'s shape for this field. Write `description:
 synced` for a first sync of the round, `resynced` for a re-sync (omit `url:`
 in that case — no comment went out). This keeps old entries and the step-1
 baseline lookup parsing correctly.

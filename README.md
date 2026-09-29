@@ -1,0 +1,539 @@
+# Dotfile 專案說明文件
+
+這是一個個人化的開發環境配置專案，包含 Zsh 設定檔和多個自動化腳本，用於簡化日常開發工作流程。
+
+## 目錄結構
+
+```
+dotfile/
+├── zsh/              # Zsh 配置檔案
+│   └── .zshrc       # Zsh 主要配置檔
+├── bin/              # 自動化腳本目錄
+│   ├── init.sh
+│   ├── checkout-config.sh
+│   ├── deploy-one.sh
+│   └── bi-weekly-report.sh
+└── README.md
+```
+
+---
+
+## Zsh 配置說明
+
+### Alias 別名介紹
+
+#### 自訂腳本別名
+
+| 別名  | 完整指令                                                     | 說明                    |
+| ----- | ------------------------------------------------------------ | ----------------------- |
+| `crc` | `~/bin/checkout-config.sh`                                   | 快速切換配置檔分支      |
+| `dpo` | `~/bin/deploy-one.sh $(git rev-parse --abbrev-ref HEAD)`     | 部署當前分支到 Monorepo |
+| `bws` | `~/bin/bi-weekly-report.sh`                                  | 生成雙週工作報告        |
+| `tbs` | `~/bin/trace-build.sh $(git rev-parse --abbrev-ref HEAD)`    | 追蹤當前分支的 Jenkins 建置狀態 |
+
+**參數說明：**
+
+- `$(git rev-parse --abbrev-ref HEAD)` - 自動取得當前 Git 分支名稱
+
+#### Git 相關別名
+
+| 別名  | 完整指令                                                | 參數     | 說明                           |
+| ----- | ------------------------------------------------------- | -------- | ------------------------------ |
+| `gp`  | `git push origin $(git rev-parse --abbrev-ref HEAD)`    | 無       | 推送當前分支到遠端             |
+| `gpf` | `git push -f origin $(git rev-parse --abbrev-ref HEAD)` | 無       | 強制推送當前分支               |
+| `gP`  | `git pull origin $(git rev-parse --abbrev-ref HEAD)`    | 無       | 拉取當前分支最新代碼           |
+| `gc`  | `git checkout`                                          | 分支名稱 | 切換分支                       |
+| `gco` | `git commit -m`                                         | 提交訊息 | 提交變更                       |
+| `gca` | `git commit --amend --no-edit`                          | 無       | 修改最後一次提交（不編輯訊息） |
+| `gs`  | `git status`                                            | 無       | 查看 Git 狀態                  |
+| `gbc` | `echo "$(git rev-parse --abbrev-ref HEAD)" \| _clip_copy` | 無     | 複製當前分支名稱到剪貼簿       |
+
+**使用範例：**
+
+```bash
+# 推送當前分支
+gp
+
+# 強制推送當前分支（需謹慎使用）
+gpf
+
+# 切換到 develop 分支
+gc develop
+
+# 提交變更
+gco "修復登入問題"
+
+# 複製分支名稱
+gbc
+```
+
+#### Yarn 相關別名
+
+| 別名 | 完整指令                                          | 說明                 |
+| ---- | ------------------------------------------------- | -------------------- |
+| `ys` | `yarn serve`                                      | 啟動開發伺服器       |
+| `yt` | `yarn test`                                       | 執行測試             |
+| `yb` | `yarn build-local`                                | 本地建置             |
+| `yg` | `yarn gen:modal "$(git rev-parse --show-prefix)"` | 在當前目錄生成 Modal |
+
+#### Tmux 相關別名
+
+| 別名  | 完整指令               | 參數     | 說明               |
+| ----- | ---------------------- | -------- | ------------------ |
+| `tpr` | `tmux select-pane -T`  | 面板標題 | 設定 Tmux 面板標題 |
+| `tvs` | `tmux split-window -v` | 無       | 垂直分割視窗       |
+| `ths` | `tmux split-window -h` | 無       | 水平分割視窗       |
+
+#### Tmux Session 持久化快捷鍵
+
+由 `tmux-resurrect` + `tmux-continuum` 提供，每 5 分鐘自動存檔，開啟 tmux server 時自動還原（重開機後直接執行 `tmux` 即可回復）。關掉終端機視窗本身不會遺失 session，用 `tmux attach` 接回即可。
+
+| 快捷鍵            | 說明                       |
+| ----------------- | -------------------------- |
+| `prefix` `Ctrl-S` | 立即存檔目前所有 session   |
+| `prefix` `Ctrl-R` | 手動還原上一次存檔         |
+
+> 只會還原 shell 與其工作目錄（含 scrollback 內容），執行中的程式不會還原，`nvim` 若有 `Session.vim` 則會重開檔案。
+
+---
+
+### Export 環境變數介紹
+
+#### 專案路徑變數
+
+| 變數名稱                 | 預設值                                  | 說明                  |
+| ------------------------ | --------------------------------------- | --------------------- |
+| `MOP_CONFIGURATION_PATH` | `$HOME/project/mop_configuration_files` | MOP 配置檔案專案路徑  |
+| `MOP_CONSOLE_PATH`       | `$HOME/project/mop_console`             | MOP Console 專案路徑  |
+| `MOP_MONOREPO_PATH`      | `$HOME/project/mop-console-monorepo`    | MOP Monorepo 專案路徑 |
+| `MOP_EPOD_PATH`          | `$HOME/project/mop_epod`                | MOP ePOD 專案路徑     |
+
+#### 安全憑證變數
+
+這些變數從 macOS Keychain 安全地讀取，不會直接暴露在環境變數中：
+
+| 變數名稱        | 服務名稱                        | 說明                    |
+| --------------- | ------------------------------- | ----------------------- |
+| `JENKINS_TOKEN` | `jenkins.morrison.express`      | Jenkins CI/CD 訪問令牌  |
+| `JIRA_TOKEN`    | `morrisonexpress.atlassian.net` | Atlassian JIRA API 令牌 |
+| `GETDATATOKEN`  | `getdata.morrison.express`      | GetData API 令牌        |
+
+**安全性說明：**
+
+- 令牌儲存在 macOS Keychain 中
+- 使用 `security find-generic-password` 命令動態讀取
+- 避免明文儲存敏感資訊
+- 只設為 shell 變數、不 `export`：子行程（Claude Code、MCP server、npm scripts）不會繼承；其他腳本透過 `~/bin/cred-read.sh <服務名稱>` 按需讀取
+
+#### 其他重要變數
+
+| 變數名稱  | 說明                      |
+| --------- | ------------------------- |
+| `ZSH`     | Oh My Zsh 安裝路徑        |
+| `NVM_DIR` | Node Version Manager 目錄 |
+
+---
+
+## Bin 目錄腳本介紹
+
+### 1. init.sh - 環境初始化腳本
+
+**功能說明：**
+自動化設置開發環境，包含必要套件安裝、可選工具安裝、配置檔案連結、路徑驗證等。
+
+**使用的環境變數：**
+
+- `HOME` - 使用者家目錄
+- `USER` - 當前使用者名稱
+- `MOP_*_PATH` - 各專案路徑變數
+
+**執行動作：**
+
+1. **必要套件安裝** - 檢查並安裝必要工具：
+
+   - `jq` - JSON 解析工具
+   - `gh` - GitHub CLI
+   - `curl` - 資料傳輸工具
+   - `git` - 版本控制系統
+   - `stow` - 符號連結管理工具
+   - `nvm` - Node.js 版本管理器
+2. **Oh My Zsh 安裝** - 安裝 Zsh 框架
+
+3. **基礎配置連結** - 使用 GNU Stow 建立必要符號連結：
+
+   - 連結 `.zshrc` 到家目錄
+   - 連結 `bin/` 目錄下的腳本到 `~/bin`
+
+4. **可選工具安裝** - 以互動方式安裝你需要的工具：
+
+   - Recommended CLI Tools：`zoxide`、`ripgrep`、`eza`
+   - `starship` - Shell Prompt
+   - `nvim` - 編輯器與設定檔
+   - `tmux` - Terminal Multiplexer 與設定檔
+   - `wezterm` - 終端機設定檔
+
+5. **路徑檢查與修正** - 驗證專案路徑：
+
+   - 檢查 `MOP_*_PATH` 變數指向的目錄是否存在
+   - 提供互動式修正選項
+   - 自動建立不存在的目錄
+
+6. **憑證設定** - 安全地儲存 API 令牌：
+
+   - 將令牌儲存到 macOS Keychain
+   - 在 `.zshrc` 中設定安全的憑證讀取方式
+   - 支援三個服務：Jenkins、JIRA、GetData
+
+7. **Git 與 SSH 設定** - 引導完成 SSH 與 GitHub CLI 登入：
+
+   - 建立或重用 SSH Key
+   - 選擇是否將 GitHub URL 全域改為 SSH
+   - 使用 `gh auth login` 完成 GitHub CLI 驗證
+
+8. **Git 專案複製** - 自動複製專案儲存庫：
+   - GitHub 認證
+   - 檢查專案是否已存在
+   - 複製到配置的路徑
+
+**使用案例：**
+
+```bash
+# 首次設定環境
+cd ~/dotfile/bin
+./init.sh
+
+# 腳本會引導你完成：
+# 1. 安裝必要套件
+# 2. 設定 Oh My Zsh
+# 3. 連結基礎配置
+# 4. 選擇要安裝的可選工具
+# 5. 驗證並建立專案目錄
+# 6. 輸入 API 令牌（安全儲存到 Keychain）
+# 7. 設定 SSH 與 GitHub CLI
+# 8. 複製 Git 專案（如果需要）
+```
+
+---
+
+### 2. checkout-config.sh - 配置檔分支切換
+
+**參數：**
+
+- `$1` - 票券編號
+
+**使用的環境變數：**
+
+- `MOP_CONFIGURATION_PATH` - 配置檔專案路徑
+- `JIRA_TOKEN` - JIRA API 認證令牌
+
+**執行動作：**
+
+1. 切換到配置檔專案目錄
+2. 暫存當前變更（使用 `git stash`）
+3. 從 JIRA 取得票券摘要
+4. 為每個環境建立配置分支：
+   - `feature/MOP-1234-dev` - 開發環境配置
+   - `feature/MOP-1234-uat` - UAT 環境配置
+   - `feature/MOP-1234-prod` - 生產環境配置
+5. 生成對應的 PR 標題和內容
+
+**使用案例：**
+
+```bash
+# 使用別名
+crc MOP-1234
+
+# 直接執行
+~/bin/checkout-config.sh MOP-1234
+
+# 腳本會：
+# 1. 保存當前工作
+# 2. 為 dev、uat、prod 建立分支
+# 3. 準備好讓你修改各環境的配置
+```
+
+---
+
+### 3. deploy-one.sh - Monorepo 專案部署
+
+**參數：**
+
+- `$1` - 分支名稱（自動傳入當前分支）
+
+**使用的環境變數：**
+
+- `JENKINS_TOKEN` - Jenkins 認證令牌
+
+**執行動作：**
+
+1. 同時觸發多個 Jenkins Job：
+   - `mop_console_monorepo_dev` - 開發環境
+   - `mop_console_monorepo_uat` - UAT 環境
+2. 使用 curl 呼叫 Jenkins buildWithParameters API
+3. 傳遞分支參數給 Jenkins
+
+**使用案例：**
+
+```bash
+# 使用別名（部署當前分支到兩個環境）
+dpo
+
+# 或指定分支
+~/bin/deploy-one.sh feature/MOP-1234
+
+# 輸出示例：
+# Processing Jenkins Job: mop_console_monorepo_uat
+# Processing Jenkins Job: mop_console_monorepo_dev
+# Deploy Success!
+```
+
+---
+
+### 4. bi-weekly-report.sh - 雙週工作報告生成
+
+**參數：**
+無（自動計算日期範圍）
+
+**使用的環境變數：**
+
+- `MOP_MONOREPO_PATH` - Monorepo 專案路徑
+
+**執行動作：**
+
+1. 計算日期範圍（過去 14 天到今天）
+2. 使用 GitHub CLI (`gh`) 取得 PR 清單：
+   - 進行中的 PR（狀態為 open）
+   - 已完成的 PR（在日期範圍內關閉）
+3. 過濾指派給當前使用者的 PR
+4. 提取 PR 資訊（標題、內容、URL）
+5. 組合成 JSON 格式
+6. 自動複製到剪貼簿
+
+**使用案例：**
+
+```bash
+# 使用別名生成報告
+bws
+
+# 或直接執行
+~/bin/bi-weekly-report.sh
+
+# 輸出示例：
+# Start Date: 2026-01-06
+# End Date: 2026-01-20
+# Report copied to clipboard.
+
+# 剪貼簿內容（JSON 格式）：
+# {
+#   "on_going": [
+#     {
+#       "title": "[DEV] MOP-1234: 新增登入功能",
+#       "body": "...",
+#       "url": "https://github.com/..."
+#     }
+#   ],
+#   "closed": [
+#     {
+#       "title": "[UAT] MOP-1233: 修復支付問題",
+#       "body": "...",
+#       "url": "https://github.com/..."
+#     }
+#   ]
+# }
+```
+
+---
+
+### 5. trace-build.sh - Jenkins 建置追蹤
+
+**參數：**
+
+- `$1` - 分支名稱（自動傳入當前分支）
+
+**使用的環境變數：**
+
+- `JENKINS_TOKEN` - Jenkins 認證令牌
+
+**執行動作：**
+
+1. 根據分支名稱搜尋最近的 Jenkins 建置紀錄
+2. 支援多個 Job 同時搜尋：
+   - `mop_console_bulild_by_feature`
+   - `mop_console_bulild_by_epic_or_hotfix`
+   - `mop_console_monorepo_feature`
+3. 顯示即時建置狀態：
+   - 建置中：顯示進度條、經過時間、預估剩餘時間 (ETA)
+   - 已完成：顯示最終結果與總耗時
+4. **特色功能**：
+   - 支援點擊建置編號（如 `#123`）直接開啟 Jenkins 頁面
+   - 自動隱藏無關的舊建置
+   - 建置完成後發送桌面通知
+
+**使用案例：**
+
+```bash
+# 使用別名（追蹤當前分支）
+tbs
+
+# 或指定分支
+~/bin/trace-build.sh feature/MOP-1234
+
+# 輸出示例：
+# 🔍 Searching for recent builds for branch: feature/MOP-1234...
+# ⏳ Tracing 1 builds...
+# mop_console_bulild_by_feature #123 [#####...............]  25% (ETA: 3m 12s)
+```
+
+---
+
+## Git Worktree 工作流程範例
+
+簡要範例：如何用 git worktree 為不同任務建立獨立工作區，並搭配 tmux session 分組。完整機制詳見 `CLAUDE.md`。
+
+### 1. 從零開始建立一個新的 MOP worktree
+
+```bash
+mwt MOP-12345          # 或 mwt -n MOP-12345（開新視窗而非覆蓋目前視窗）
+```
+
+會自動：查詢 JIRA 票券 → 建立 `uat/<parent>` + `feature/MOP-12345` 分支（不動主專案 HEAD、不 stash）→ 在 `$WORKTREE_ROOT/mop-console-monorepo/MOP-12345` 建立 worktree → clone `node_modules`（APFS clonefile）→ 安裝 git hooks → 開啟草稿 PR → 呼叫 `tmux-dev-layout.sh` 開啟開發視窗。
+
+### 2. 設定多個專案共用同一個 tmux session
+
+例如想讓 `mop-console-monorepo` 與 `mop_configuration_files` 共用同一個 `mop` session，而不是各自獨立一個 session：
+
+```bash
+echo 'SESSION_GROUP=mop' >> "$WORKTREE_ROOT/mop-console-monorepo/.workspace.conf"
+echo 'SESSION_GROUP=mop' >> "$WORKTREE_ROOT/mop_configuration_files/.workspace.conf"
+```
+
+- `SESSION_GROUP`是加在既有的 `.workspace.conf` 裡（跟 `WORKSPACE_SERVE_CMD` 等設定同一個檔案），不是另開新檔，所以已經有 `.workspace.conf` 的專案（例如 `mop-console-monorepo`）只需要多加一行。請放在專案「外層」的資料夾，例如 `$WORKTREE_ROOT/<repo>/.workspace.conf`（套用到該 repo 的所有 worktree，做法同 `.tmux-build.conf`）。
+- 基於安全考量，**專案（git toplevel）內部的 `.workspace.conf` / `.tmux-build.conf` 一律不讀取**：clone 下來的 repo、checkout 的 PR 分支、或 agent 寫進 worktree 的檔案，都不該在按下 `prefix w` 時被執行。不是自己擁有、或 group/other 可寫的設定檔也會被略過。主 checkout（例如 `~/project/mop-console-monorepo`）的外層是 `~/project`，那裡的設定會套用到其下所有專案。
+- 不需要重新執行任何腳本 —— `tmux-dev-layout.sh` 每次開啟/切換視窗時都會即時重新解析 `SESSION_GROUP`。
+- 沒有設定這個檔案的專案（例如 `dotfile`）維持原本行為：以專案名稱作為專屬 session。
+
+### 3. 從零開始為自訂（非 MOP）專案建立 worktree
+
+```bash
+cd ~/some/other/repo        # 目前所在目錄必須在目標專案內
+wt my-feature-branch        # 或 wt -n my-feature-branch
+```
+
+不涉及票券系統：若分支不存在則從專案預設分支建立 `my-feature-branch`（純 `git branch`，不 checkout、不 push、不開 PR）→ 在 `$WORKTREE_ROOT/<repo-name>/my-feature-branch` 建立 worktree → 若有 `node_modules` 則 clone、安裝 hooks（與 `mwt` 共用 `worktree-lib.sh`）→ `tmux-dev-layout.sh` 開啟視窗，落在 `<repo-name>` 專屬 session（除非依上一步設定了 `SESSION_GROUP`）。
+
+可選的專案設定檔（放在專案根目錄或 `$WORKTREE_ROOT/<repo-name>/`）：
+
+- `.workspace.conf` — 純 shell 變數，從 `$HOME` 往下逐層讀取到目標專案的外層資料夾（由外而內，較內層可覆蓋較外層；專案內部的檔案不讀取），可用選項如下：
+
+  | 變數 | 說明 |
+  |---|---|
+  | `SESSION_GROUP` | 指定此工作區的開發視窗要開在哪個 tmux session（`tmux-dev-layout.sh` 讀取）；整條路徑上都沒設定則以專案名稱作為專屬 session。 |
+  | `NOTE_PATH` | 筆記檔路徑，`prefix Ctrl-N` / `tmux-window-picker.sh` 的 `ctrl-n` 用 nvim popup 開啟。 |
+  | `WORKSPACE_SERVE_CMD` | 開發伺服器啟動指令（例如 `yarn serve --cfs --tms --shipment`），`prefix+w` 的 `ctrl-s`/`ctrl-r`/`ctrl-x`/`ctrl-v` 用來啟動/重啟/停止/看記錄。 |
+  | `WORKSPACE_SERVE_LABEL` | 該伺服器的顯示名稱，用在隱藏的 `serve(<label>)` 視窗名稱與狀態列。 |
+  | `WORKSPACE_SERVE_PORT` | 伺服器監聽的埠號，用於健康狀態檢查。 |
+  | `WORKSPACE_PREVIEW_CMD` | `prefix+w` 選取對應視窗/卡片時，右側預覽窗格要執行的指令（例如 `tmux-ticket-status.sh`）。 |
+  | `WORKSPACE_BUILD_CONF` | 設為 `1` 表示這個工作區也有 `.tmux-build.conf`，讓 `prefix+w` 的 `ctrl-g` 可以即時追蹤 CI 建置。 |
+
+- `.tmux-build.conf` — 設定 `BUILD_BACKEND` 等，讓 `prefix+w` 的 `ctrl-g` 可以即時追蹤 CI 建置。
+
+用 `wtd`（在 worktree 內執行）可以拆掉任何 `mwt` 或 `wt` 建立的 worktree。
+
+---
+
+## 安裝與使用
+
+### 快速開始
+
+1. **克隆專案**
+
+   ```bash
+   git clone <this-repo-url> ~/dotfile
+   ```
+
+2. **執行初始化**
+
+   ```bash
+   cd ~/dotfile/bin
+   chmod +x *.sh
+   ./init.sh
+   ```
+
+3. **重新載入 Shell**
+   ```bash
+   source ~/.zshrc
+   ```
+
+### 手動設定憑證
+
+如果需要更新 API 令牌：
+
+```bash
+# 儲存到 Keychain
+security add-generic-password -a "$USER" -s "jenkins.morrison.express" -w "your-token-here" -U
+
+# 驗證儲存
+security find-generic-password -a "$USER" -s "jenkins.morrison.express" -w
+```
+
+---
+
+## 常見問題
+
+### Q: 腳本執行權限問題
+
+```bash
+# 賦予所有腳本執行權限
+chmod +x ~/bin/*.sh
+```
+
+### Q: 找不到命令
+
+確保 `~/bin` 已加入 PATH：
+
+```bash
+export PATH="$HOME/bin:$PATH"
+```
+
+### Q: Keychain 存取問題
+
+首次使用可能需要授權存取 Keychain，點選「允許」即可。
+
+### Q: Oh My Zsh 錯誤
+
+如果在執行腳本時出現 Oh My Zsh 錯誤，這是正常的，因為腳本會選擇性載入環境變數而不初始化完整的 Oh My Zsh。
+
+---
+
+## 依賴項目
+
+- macOS（使用 Keychain 功能）
+- Homebrew
+- Git
+- GitHub CLI (`gh`)
+- jq（JSON 處理）
+- curl
+- Node.js（透過 nvm 管理）
+
+---
+
+## 授權
+
+此專案為個人開發環境配置，僅供參考使用。
+
+---
+
+## 更新日誌
+
+### 2026-03-24
+
+- **trace-build.sh 更新**：
+  - 新增 Jenkins 建置編號超連結功能，可直接點擊跳轉至 Jenkins 頁面。
+  - 優化終端機顯示刷新機制，解決畫面閃爍問題。
+  - 修正超連結顯示錯誤，僅針對建置編號進行連結。
+
+### 2026-01-06
+
+- 新增完整的中文文檔
+- 優化環境變數載入機制
+- 改進憑證安全儲存方式

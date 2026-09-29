@@ -6,23 +6,12 @@
 #   |         (~3/4 h)          | (~1/4 w) |
 #   +---------------------------+----------+
 #
-# Idempotent by window name (the repo dir): re-running re-selects the
-# window. Bootstraps tmux if invoked from a bare terminal.
-#
-# Default rebuilds the layout on the current window in place. -n/--new-window
-# opens a new window instead. Either way, a matching existing window is
-# selected, never duplicated.
-#
-# $TICKET_TITLE (worktree-ticket.sh, mwt only) is stashed as the
-# @ticket_title window user option for tmux-window-picker.sh's card body.
-#
-# Session is resolved per repo, not the currently attached session:
-# SESSION_GROUP from .workspace.conf, resolved by tmux-build-config.sh's
-# workspace_config_load — same walk and trust rules tmux-window-picker.sh
-# uses for WORKSPACE_* (never a file inside the repo itself).
-# No SESSION_GROUP anywhere in the ancestry falls back to the repo name as
-# its own session. A target session other than the one attached switches
-# sessions instead of overriding the current window.
+# Default rebuilds the layout on the current window in place; -n/--new-window opens a new window instead.
+# Either way a matching existing window is selected, never duplicated. Bootstraps tmux from a bare terminal.
+# $TICKET_TITLE (worktree-ticket.sh, mwt only) is stashed as the @ticket_title window option for the picker's card body.
+# Session: SESSION_GROUP from .workspace.conf via workspace_config_load (same walk and trust rules as
+# tmux-window-picker.sh; never a file inside the repo), else the repo name. A target session other than the
+# attached one is switched to instead of overriding the current window.
 
 set -eu
 
@@ -56,8 +45,6 @@ win_name="${branch_name}(${main_repo})"
 # called from here (zsh's sticky emulation).
 emulate sh -c "source ${(q)${0:A:h}}/tmux-build-config.sh"
 
-# Sets $SESSION_GROUP from the .workspace.conf files that apply to path $1.
-# Unset if none exists, or none set it.
 resolve_session_group() {  # $1 = repo root
   unset SESSION_GROUP
   workspace_config_load "$1"
@@ -66,7 +53,6 @@ resolve_session_group() {  # $1 = repo root
 resolve_session_group "$repo_root"
 session_target="${SESSION_GROUP:-$main_repo}"
 
-# Splits the claude pane off nvim pane $1, launches both tools, focuses nvim.
 layout_panes() {  # nvim_pane_id
   local p_nvim=$1 p_claude
   p_claude=$(tmux split-window -h -l 25% -t "$p_nvim" -c "$repo_root" -P -F '#{pane_id}')
@@ -89,8 +75,6 @@ build_window() {  # session
   layout_panes "$p_nvim"
 }
 
-# Ensures session $1 exists and has this repo's window (creating either as
-# needed). Prints the window id.
 ensure_session_and_window() {  # $1 = target session
   local target=$1 win_id
   if tmux has-session -t "=$target" 2>/dev/null; then
@@ -104,12 +88,8 @@ ensure_session_and_window() {  # $1 = target session
   print -r -- "$win_id"
 }
 
-# Rebuilds the layout on the window currently in view: kills every pane but
-# this script's own, renames the window, hands that pane to layout_panes.
-#
-# Can't respawn-kill the current pane (it would kill this script mid-flight).
-# `cd`/`nvim` are queued via send-keys instead — the shell picks them up once
-# the script exits and reads stdin again.
+# Rebuilds the layout on the window in view. Can't respawn-kill the current pane (it would kill this script),
+# so `cd`/`nvim` are queued via send-keys and the shell picks them up once the script exits.
 override_window() {
   local cur_win cur_pane
   cur_win=$(tmux display-message -p '#{window_id}')
@@ -123,8 +103,8 @@ override_window() {
   print -r -- "$cur_win"
 }
 
-# Echoes the window id for name $2 in session $1. Matches exactly or with a
-# leading notification marker (tmux-agent-notify.sh's "<marker><name>").
+# Window id for name $2 in session $1; matches exactly or with a leading notification marker
+# (tmux-agent-notify.sh's "<marker><name>").
 window_id_for() {  # session, window_name
   tmux list-windows -t "$1" -F '#{window_id} #{window_name}' 2>/dev/null \
     | while IFS=' ' read -r id name; do
@@ -133,17 +113,13 @@ window_id_for() {  # session, window_name
   return 0  # "no match" is not an error; without this `set -e` aborts the caller
 }
 
-# Stashes $TICKET_TITLE (if set) as a window user option.
 tag_ticket_title() {  # window_id
   [[ -n "${TICKET_TITLE:-}" && -n "${1:-}" ]] || return 0
   tmux set-option -w -t "$1" @ticket_title "$TICKET_TITLE"
 }
 
-# Stashes this window's fixed repo/worktree root as a window user option, so
-# tmux-window-picker.sh can key build/serve status off the window's own
-# identity instead of the pane's live cwd — which drifts the moment anything
-# in the pane (a shell command, an agent) cd's elsewhere, and would otherwise
-# make an unrelated window falsely match whatever worktree is being served.
+# Fixed repo/worktree root as a window option, so the picker keys build/serve status off the window's own
+# identity, not the pane's live cwd (which drifts when anything cd's and would falsely match an unrelated window).
 tag_workspace_path() {  # window_id
   [[ -n "${1:-}" ]] || return 0
   tmux set-option -w -t "$1" @workspace_path "$repo_root"
@@ -152,7 +128,6 @@ tag_workspace_path() {  # window_id
 if [[ -n ${TMUX:-} ]]; then
   cur_session=$(tmux display-message -p '#S')
   if [[ "$cur_session" == "$session_target" ]]; then
-    # Same session: reuse, build, or override the window in place.
     win_id=$(window_id_for "$cur_session" "$win_name")
     if [[ -n "$win_id" ]]; then
       tmux select-window -t "$win_id"
@@ -165,7 +140,6 @@ if [[ -n ${TMUX:-} ]]; then
     tag_ticket_title "$win_id"
     tag_workspace_path "$win_id"
   else
-    # Different session: switch to (creating if needed) the target session.
     win_id=$(ensure_session_and_window "$session_target")
     tag_ticket_title "$win_id"
     tag_workspace_path "$win_id"
@@ -173,7 +147,6 @@ if [[ -n ${TMUX:-} ]]; then
     tmux select-window -t "$win_id"
   fi
 else
-  # Bare terminal: attach to the repo's target session, creating it if needed.
   win_id=$(ensure_session_and_window "$session_target")
   tag_ticket_title "$win_id"
   tag_workspace_path "$win_id"

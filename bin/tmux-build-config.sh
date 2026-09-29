@@ -1,31 +1,21 @@
-# Config resolution + branch-role resolution for the generic build/trace
-# engine (tmux-build-trace-lib.sh). Bash 3.2-clean, sourced only.
+# Config + branch-role resolution for the build/trace engine (tmux-build-trace-lib.sh). Bash 3.2-clean, sourced only.
 #
-# A repo's build/trace behavior (CI backend, job list, how each job's branch
-# is computed) is declared in ".tmux-build.conf" files: plain sourced shell
-# variable assignments, found by walking every directory from $HOME down to
-# the target worktree path and sourcing each one found, outer to inner. A
-# folder-level file (e.g. $WORKTREE_ROOT/<repo>/.tmux-build.conf) sets
-# defaults for every worktree under it; sourcing order means a closer file
-# overrides individual variables from a farther one just by reassigning them
-# — no merge logic needed.
+# Build/trace behavior is declared in ".tmux-build.conf" files (plain sourced shell assignments) found by walking
+# every directory from $HOME down to the target worktree path and sourcing each, outer to inner, so a closer file
+# overrides a farther one just by reassigning (no merge logic). A folder-level file (e.g.
+# $WORKTREE_ROOT/<repo>/.tmux-build.conf) sets defaults for every worktree under it.
 #
-# The walk stops *above* the target's git toplevel: a config inside a repo is
-# repo content (a cloned repo, a checked-out PR branch, a file an agent wrote
-# into its worktree), and sourcing it would run that code on every picker
-# open. Put per-repo config in the folder that contains the checkouts
-# instead, e.g. $WORKTREE_ROOT/<repo>/.
+# The walk stops *above* the target's git toplevel: a config inside a repo is repo content (a cloned repo, a
+# checked-out PR branch, a file an agent wrote into its worktree), and sourcing it would run that code on every
+# picker open. Put per-repo config in the folder containing the checkouts, e.g. $WORKTREE_ROOT/<repo>/.
 
 BUILD_SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]:-$0}")" && pwd)"
 
 BUILD_CONFIG_VARS="BUILD_BACKEND BUILD_VPN_CHECK BUILD_CRED_NAME BUILD_JENKINS_URL BUILD_FORGEJO_URL BUILD_FORGEJO_REPO BUILD_TICKET_LOOKUP BUILD_JOBS"
 WORKSPACE_CONFIG_VARS="WORKSPACE_PREVIEW_CMD WORKSPACE_SERVE_CMD WORKSPACE_SERVE_LABEL WORKSPACE_BUILD_CONF WORKSPACE_SERVE_PORT NOTE_PATH"
 
-# Clears every BUILD_* variable a previous build_config_load call may have
-# set — needed because tmux-window-picker.sh is one long-lived process that
-# resolves config for a different worktree on every ctrl-g, so a stale value
-# from the last worktree must not leak into the next one when it doesn't
-# redefine that variable.
+# tmux-window-picker.sh is one long-lived process resolving config for a different worktree on every ctrl-g,
+# so stale BUILD_* values from the previous worktree must be cleared.
 build_config_reset() {
   local v
   for v in $BUILD_CONFIG_VARS; do unset "$v"; done
@@ -68,9 +58,6 @@ config_source_trusted() {
   source "$f"
 }
 
-# Sources every trusted ".workspace.conf" in config_dirs of path $1, outer to
-# inner, setting WORKSPACE_* vars. Leaves them all unset (via
-# workspace_config_reset) if none is found.
 workspace_config_load() {
   local dir
 
@@ -84,9 +71,6 @@ $(config_dirs "$1")
 CONFIG_DIRS
 }
 
-# Sources every trusted ".tmux-build.conf" in config_dirs of worktree path
-# $1, outer to inner. Leaves BUILD_* unset (all of them, via
-# build_config_reset) if none is found.
 build_config_load() {
   local dir
 
@@ -100,10 +84,8 @@ $(config_dirs "$1")
 CONFIG_DIRS
 }
 
-# Ticket number + hotfix flag from branch name $1, tab-separated
-# ("MOP-1234<TAB>false"). Nonzero exit and no output if $1 isn't a
-# feature/hotfix branch. Only meaningful for BUILD_TICKET_LOOKUP=jira repos
-# (MOP) — the jira_parent role is the only caller.
+# Ticket number + hotfix flag from branch $1, tab-separated ("MOP-1234<TAB>false"); nonzero and no output if
+# $1 isn't a feature/hotfix branch. Only for BUILD_TICKET_LOOKUP=jira repos (MOP).
 build_parse_ticket_branch() {
   case "$1" in
     feature/MOP-*) printf '%s\tfalse\n' "${1#feature/}" ;;
@@ -112,9 +94,7 @@ build_parse_ticket_branch() {
   esac
 }
 
-# uat/<parent> for ticket $1 (feature, via JIRA parent lookup), or branch $3
-# itself when $2 (is_hotfix) is true. Prints the branch name, or empty +
-# nonzero exit if the parent lookup fails.
+# uat/<parent> for ticket $1 (via JIRA parent lookup), or $3 itself for a hotfix; empty + nonzero if the lookup fails.
 build_resolve_jira_parent_branch() {
   local ticket="$1" is_hotfix="$2" branch="$3" parent
   if [ "$is_hotfix" = "true" ]; then
@@ -135,16 +115,11 @@ build_resolve_jira_parent_branch() {
   printf 'uat/%s\n' "$parent"
 }
 
-# Resolves job spec role $1 (current|base|jira_parent) to an actual branch
-# name for worktree $2, given its currently checked-out branch $3. Falls back
-# to $3 itself on any resolution failure so a job spec never silently
-# disappears from the trace — it just traces the wrong branch, which is
-# visible in the output.
-#   current     — the worktree's own checked-out branch
-#   base        — the repo's default branch (main/master), via
-#                 worktree-lib.sh's wt_default_base_branch (zsh)
-#   jira_parent — MOP-only: the ticket's uat/<parent> branch, requires
-#                 BUILD_TICKET_LOOKUP=jira in config
+# Resolves job role $1 (current|base|jira_parent) to a branch for worktree $2 (checked out on $3). Falls back
+# to $3 on any failure so a job never silently disappears from the trace; it just traces the wrong branch,
+# which is visible in the output.
+#   current: the worktree's own branch; base: repo default branch (wt_default_base_branch in worktree-lib.sh, zsh);
+#   jira_parent: MOP-only uat/<parent> (needs BUILD_TICKET_LOOKUP=jira)
 build_resolve_role() {
   local role="$1" wt="$2" branch="$3" parsed ticket is_hotfix result
 

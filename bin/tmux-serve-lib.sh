@@ -1,17 +1,11 @@
-# Shared dev-server helpers — sourced by tmux-window-picker.sh (bash, `prefix
-# w`) and worktree-done.sh (zsh, `wtd`), so kept to syntax both shells
-# understand: no bash arrays, no zsh-only glob modifiers.
-#
-# One dev server runs at a time (global constraint). Its tmux window is named
-# "serve(<label>)" where label comes from WORKSPACE_SERVE_LABEL in the
-# workspace config. serve_find_window matches any serve(*) window by pattern
-# so it works regardless of which workspace is currently active.
+# Shared dev-server helpers sourced by tmux-window-picker.sh (bash) and worktree-done.sh (zsh), so kept to
+# syntax both shells understand: no bash arrays, no zsh-only glob modifiers.
+# One dev server runs at a time; its window is "serve(<label>)" (label = WORKSPACE_SERVE_LABEL), and
+# serve_find_window matches any serve(*) window so it works whichever workspace is active.
 
-# Returns "serve(<label>)" for a given label string.
 serve_make_win_name() { printf 'serve(%s)\n' "$1"; }
 
-# Prints "session window_id pane_id" for the hidden serve window, or nothing.
-# Matches any window named serve(*) (with optional notification-marker prefix).
+# Prints "session window_id pane_id" for the hidden serve window (serve(*), optional marker prefix), or nothing.
 serve_find_window() {
   local tab sess winid wname pane
   tab=$(printf '\t')
@@ -27,8 +21,7 @@ serve_find_window() {
       done
 }
 
-# Creates (or finds and renames) the hidden serve window. Always prints
-# "session window_id pane_id". $1 = workspace label for the window name.
+# Creates (or finds and renames) the hidden serve window; prints "session window_id pane_id".
 serve_ensure_window() {
   local label="${1:-serve}" win_name found sess winid pane
   win_name=$(serve_make_win_name "$label")
@@ -45,18 +38,13 @@ serve_ensure_window() {
   printf '%s %s %s\n' "$sess" "$winid" "$pane"
 }
 
-# Reads @serve_target off window $1 (the hidden serve window's id).
 serve_current_target() {
   tmux show-option -w -t "$1" -v @serve_target 2>/dev/null
 }
 
-# Sets $STATUS (offline|building|online|error) and, when STATUS=error,
-# $ERR_DETAIL. Relies on caller having set $SERVE_WIN and $SERVE_PANE.
-# The serve port is read from @serve_port on the serve window — set by the
-# caller via `tmux set-option -w -t $SERVE_WIN @serve_port <port>` when
-# starting a serve session. If unset, HTTP health-check is skipped and
-# yarn-specific log patterns are used alone (status stays building unless
-# they match).
+# Sets $STATUS (offline|building|online|error) and, on error, $ERR_DETAIL; needs $SERVE_WIN and $SERVE_PANE.
+# The port comes from @serve_port on the serve window (set by the caller when starting serve); if unset the
+# HTTP check is skipped and status stays building unless the yarn log patterns match.
 serve_compute_status() {
   local cur cmd tail http port
   ERR_DETAIL=""
@@ -108,8 +96,7 @@ serve_target_label() {  # $1 = worktree/checkout path
   printf '%s (%s)' "$name" "${branch:-?}"
 }
 
-# If the serve window is currently targeting worktree path $1, stop the
-# process and clear the target. Silent no-op otherwise. Used by wtd on teardown.
+# If the serve window targets worktree path $1, stop it and clear the target (used by wtd on teardown).
 serve_stop_if_target() {
   local want="$1" info wid pane cur
   info=$(serve_find_window)

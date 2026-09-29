@@ -1,9 +1,7 @@
 #!/bin/zsh
-# Generic worktree-native branch onboarding for any git repo (alias: wt).
-# Unlike worktree-ticket.sh (mwt), this has no JIRA/ticket system: it takes a
-# plain branch name, creates it off the repo's default branch if it doesn't
-# already exist, and materializes it as a worktree — locally only, no push, no
-# PR. Operates on whichever repo the cwd is inside, not a hardcoded path.
+# Generic worktree-native branch onboarding for any git repo (alias: wt). Unlike worktree-ticket.sh (mwt) it has
+# no JIRA/ticket system: takes a plain branch name, creates it off the default branch if missing, and
+# materializes it as a worktree, locally only (no push, no PR), in whichever repo the cwd is inside.
 
 emulate -L zsh
 set -u
@@ -13,8 +11,6 @@ source ~/.zshrc
 
 WORKTREE_ROOT="${WORKTREE_ROOT:-$HOME/project/worktrees}"
 
-# -n/--new-window forwards straight to tmux-dev-layout.sh: open the dev layout
-# in a new tmux window instead of the default of overriding the current one.
 DEV_LAYOUT_FLAGS=()
 while [[ "${1:-}" == -n || "${1:-}" == --new-window ]]; do
     DEV_LAYOUT_FLAGS=(-n)

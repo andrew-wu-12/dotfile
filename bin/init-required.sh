@@ -5,9 +5,7 @@ SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 source "$SCRIPT_DIR/init-lib.sh"
 
 function install_required_packages() {
-    # "<brew/command name>:<pacman name>" — pacman name defaults to the first
-    # field when omitted (see the parse below). gh is the one divergence: its
-    # command and brew formula are "gh", but the pacman package is "github-cli".
+# "<brew/command name>:<pacman name>"; the pacman name defaults to the first field. gh is the one divergence (pacman: github-cli).
     local packages=("jq" "gh:github-cli" "curl" "git" "stow")
 
     echo ""

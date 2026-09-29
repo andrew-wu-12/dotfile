@@ -1,20 +1,10 @@
 #!/bin/zsh
-# Re-applies the @ticket_title window user option after a tmux-resurrect
-# restore. tmux-resurrect's default state capture (sessions/windows/panes/
-# layout/cwd/running-program) does not include custom window user options, so
-# a full tmux-server restart (terminal quit + continuum auto-restore, or a
-# manual prefix Ctrl-R) recreates ticket worktree windows without the ticket
-# title tmux-window-picker.sh shows on their card — only the window name
-# ("<branch>(<repo>)", which resurrect does restore) survives.
-#
-# Registered as @resurrect-hook-post-restore-all in .tmux.conf, so resurrect's
-# restore.sh runs this once, after every window/pane is already restored.
-#
-# worktree-ticket.sh (mwt) writes the ticket title to a sibling file next to
-# (not inside) the worktree dir — $WORKTREE_ROOT/<repo>/<ticket>.title — so it
-# never shows up as untracked in that worktree's own `git status`. This script
-# reads it back for any window whose pane currently sits in a worktree under
-# $WORKTREE_ROOT.
+# Re-applies the @ticket_title window option after a tmux-resurrect restore: resurrect doesn't capture custom
+# window options, so restored ticket windows lose the title on the picker's card (only the window name survives).
+# Registered as @resurrect-hook-post-restore-all in .tmux.conf (runs once, after every window/pane is restored).
+# worktree-ticket.sh writes the title to $WORKTREE_ROOT/<repo>/<ticket>.title, next to (not inside) the worktree
+# so it never shows in that worktree's `git status`; this reads it back for windows whose pane sits in a
+# worktree under $WORKTREE_ROOT.
 
 emulate -L zsh
 set -u

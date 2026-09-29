@@ -1,16 +1,9 @@
 #!/usr/bin/env bash
-# Convert Markdown to Jira wiki markup (the string body that /rest/api/2 takes).
-#
-# Pure filter: stdin -> stdout. No network, no Jira knowledge, no side effects,
-# so it can be unit-tested against a fixture. Used by /spec-post to render a spec
-# note into a PM-facing comment.
-#
-# Handles: headings, bold, strikethrough, inline code, links, images, fenced code,
-# tables (header row -> ||a||b||, separator dropped), bullets (nested), ordered
-# lists, task checkboxes, blockquotes, horizontal rules. Anything else passes
-# through untouched. Escaped pipes inside table cells become &#124; (a literal |
-# would otherwise split the cell).
-#
+# Convert Markdown to Jira wiki markup (the string body /rest/api/2 takes), used by /spec-post.
+# Pure filter (stdin -> stdout, no network or side effects) so it can be tested against a fixture.
+# Handles: headings, bold, strikethrough, inline code, links, images, fenced code, tables (header row ->
+# ||a||b||, separator dropped), nested bullets, ordered lists, task checkboxes, blockquotes, horizontal rules;
+# anything else passes through. Escaped pipes in table cells become &#124; (a literal | would split the cell).
 # Usage: md2jira.sh < in.md > out.wiki
 set -euo pipefail
 
@@ -47,7 +40,6 @@ function inline(s,   out, i, n, code, tok, p, m, t, u, c) {
     }
     s = out s
 
-    # links [text](url) -> [text|url]
     out = ""
     while (match(s, /\[[^]]*\]\([^)]*\)/)) {
         m = substr(s, RSTART, RLENGTH)
@@ -59,9 +51,8 @@ function inline(s,   out, i, n, code, tok, p, m, t, u, c) {
     }
     s = out s
 
-    # Escape bare [brackets] — Jira reads them as link syntax, so "[DEV] config PR"
-    # or "[MISSING]" would render as a broken link. Converted links (which now
-    # contain |) and [~accountid:…] mentions are left alone.
+    # Escape bare [brackets]: Jira reads them as link syntax ("[DEV] config PR" would render as a broken
+    # link). Converted links (contain |) and [~accountid:...] mentions are left alone.
     out = ""
     while (match(s, /\[[^]|~]*\]/)) {
         out = out substr(s, 1, RSTART - 1) "\\" substr(s, RSTART, RLENGTH - 1) "\\]"
@@ -78,7 +69,6 @@ function inline(s,   out, i, n, code, tok, p, m, t, u, c) {
     }
     s = out s
 
-    # strikethrough ~~x~~ -> -x-
     out = ""
     while (match(s, /~~[^~]+~~/)) {
         out = out substr(s, 1, RSTART - 1) "-" substr(s, RSTART + 2, RLENGTH - 4) "-"
@@ -86,9 +76,8 @@ function inline(s,   out, i, n, code, tok, p, m, t, u, c) {
     }
     s = out s
 
-    # Braces inside {{monospace}} must be escaped: Jira reads a bare { as the start
-    # of a macro, so `Col xs={2}` -> {{Col xs={2}}} desyncs the parser and every
-    # heading and table AFTER it in the document renders as plain text.
+    # Escape braces inside {{monospace}}: Jira reads a bare { as a macro start, so `Col xs={2}` desyncs the
+    # parser and every heading and table AFTER it renders as plain text.
     for (i = 1; i <= n; i++) {
         tok = "\001" i "\002"
         p = index(s, tok)
@@ -176,7 +165,6 @@ END {
             continue
         }
 
-        # Plain blockquote: group consecutive lines into {quote}, single line as bq.
         if (match(line, /^[ \t]*> ?/)) {
             if (i < NR && L[i+1] ~ /^[ \t]*>/) {
                 print "{quote}"

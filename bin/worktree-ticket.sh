@@ -9,30 +9,22 @@
 # Optional parameters
 # @raycast.argument1 {"type": "text", "placeholder": "DEV Ticket Number" }
 #
-# Worktree-native ticket onboarding for the MOP monorepo (alias: mwt). This
-# never moves the main checkout's HEAD and never stashes: branches are created without checkout (via commit-tree), then
-# materialized as a git worktree under $WORKTREE_ROOT so you can context-switch
-# between tickets without stash/pop. For non-MOP repos, see worktree-generic.sh
-# (alias: wt).
+# Worktree-native ticket onboarding for the MOP monorepo (alias: mwt). Never moves the main checkout's HEAD and
+# never stashes: branches are created without checkout (commit-tree), then materialized as a worktree under
+# $WORKTREE_ROOT. For non-MOP repos, see worktree-generic.sh (alias: wt).
 
 emulate -L zsh
 set -u
 
-# Shared JIRA/PR helpers and worktree-materialization helpers. ${0:A:h} =
-# symlink-resolved dir of this script, so this resolves through the ~/bin
-# symlink.
+# ${0:A:h} is the symlink-resolved script dir, so this works through the ~/bin symlink.
 source "${0:A:h}/ticket-lib.sh"
 source "${0:A:h}/worktree-lib.sh"
 
-# Source zshrc after function definitions to avoid alias conflicts, and to load
-# $JIRA_TOKEN / $MOP_MONOREPO_PATH.
+# After the function definitions to avoid alias conflicts; loads $JIRA_TOKEN / $MOP_MONOREPO_PATH.
 source ~/.zshrc
 
 WORKTREE_ROOT="${WORKTREE_ROOT:-$HOME/project/worktrees}"
 
-# -n/--new-window forwards straight to tmux-dev-layout.sh: open the dev layout
-# in a new tmux window instead of the default of overriding the current one.
-# --no-pr skips gh pr create even for new branches.
 DEV_LAYOUT_FLAGS=()
 SKIP_PR=0
 while [[ "${1:-}" == -n || "${1:-}" == --new-window || "${1:-}" == --no-pr ]]; do
@@ -43,12 +35,9 @@ while [[ "${1:-}" == -n || "${1:-}" == --new-window || "${1:-}" == --no-pr ]]; d
     shift
 done
 
-# Ensure a branch exists and optionally has a draft PR, without checking it out
-# anywhere. The branch is created one empty commit ahead of its base (so gh has
-# a diff to open the PR against), pushed, and a draft PR is opened unless
-# $SKIP_PR is set. If the branch already exists locally or on origin, it is
-# reused and no PR is created.
-#   $1 branch data (from pr_get_params)  $2 base ref (e.g. origin/main)  $3 pr base branch
+# Ensure a branch exists (created without checkout) and optionally has a draft PR. The branch is one empty
+# commit ahead of its base so gh has a diff to open the PR against; a branch that already exists locally or on
+# origin is reused and gets no PR.
 function wt_ensure_branch() {
     local BRANCH_DATA="$1" BASE_REF="$2" PR_BASE="$3"
     local NAME=$(get_from_json "$BRANCH_DATA" ".branch_name")
@@ -75,12 +64,9 @@ function wt_ensure_branch() {
     gh pr create -a @me -B "$PR_BASE" -H "$NAME" -t "$TITLE" -b "$CONTENT" -d
 }
 
-# Populates $WORKTREE_DIR/systemOptions — generated, gitignored data (enums,
-# menus, ports, etc. from `yarn download-options`) that a fresh `git worktree
-# add` never gets, since only the .d.ts stubs are tracked in git (see
-# .gitignore: "systemOptions/*" + "!systemOptions/**/*.d.ts"). Runs on every
-# mwt invocation (new worktree or reopening an existing one), so it
-# self-heals worktrees created before this existed.
+# Populates $WORKTREE_DIR/systemOptions: generated, gitignored data (`yarn download-options`) that a fresh
+# `git worktree add` never gets, since only the .d.ts stubs are tracked (.gitignore: "systemOptions/*" +
+# "!systemOptions/**/*.d.ts"). Runs on every mwt invocation so older worktrees self-heal.
 function wt_ensure_system_options() {
     local WORKTREE_DIR="$1"
     local SENTINEL="systemOptions/allCity.js"
@@ -91,19 +77,14 @@ function wt_ensure_system_options() {
         echo "Cloning systemOptions/ from main checkout…"
         rm -rf "$WORKTREE_DIR/systemOptions"
         cp -c -R "$MOP_MONOREPO_PATH/systemOptions" "$WORKTREE_DIR/systemOptions"
-        # Restores the tracked .d.ts stubs to this worktree's own branch
-        # version — the wholesale copy above just clobbered them with
-        # main's, which cp -R can't avoid short of hand-rolling an exclude.
+        # Restore the tracked .d.ts stubs to this branch's version; the wholesale copy clobbered them with main's.
         git -C "$WORKTREE_DIR" checkout -- systemOptions 2>/dev/null
         return 0
     fi
 
-    # Main checkout has never run download-options either — fetch fresh.
-    # Requires VPN (internal *.local API hosts) and $GETDATATOKEN (read by
-    # ~/.zshrc, sourced above, and handed to yarn alone since it is not
-    # exported). Never blocks worktree creation/opening: mwt's whole point is
-    # not needing VPN, so a
-    # missing/failed fetch here is a warn-and-continue, not a hard failure.
+    # Main checkout never ran download-options either: fetch fresh. Needs VPN (internal *.local API hosts) and
+    # $GETDATATOKEN (read by ~/.zshrc, handed to yarn alone since it isn't exported). Never blocks worktree
+    # creation: mwt's point is not needing VPN, so a missing/failed fetch warns and continues.
     if ! scutil --nc list | command grep -q "Connected"; then
         echo "Warning: systemOptions/ is missing and VPN is off — skipping (some option/enum dropdowns may not work). Connect to VPN and re-run mwt to heal."
         return 0
@@ -135,11 +116,9 @@ PARENT_TICKET_NUMBER: $PARENT_TICKET_NUMBER"
 REPO_NAME=$(wt_repo_name "$MOP_MONOREPO_PATH")
 WORKTREE_DIR="$WORKTREE_ROOT/$REPO_NAME/$TICKET_NUMBER"
 
-# Sibling file (not inside the worktree, so it never shows up in that
-# worktree's own `git status`) that tmux-restore-ticket-titles.sh reads to
-# re-tag @ticket_title after a tmux-resurrect restore, which doesn't capture
-# custom window options. Written on every mwt run, including "already
-# exists", so it self-heals for worktrees created before this existed.
+# Sibling file (not inside the worktree, so it never shows in its `git status`) that
+# tmux-restore-ticket-titles.sh reads to re-tag @ticket_title after a tmux-resurrect restore. Written on every
+# run, so older worktrees self-heal.
 echo "$TICKET_TITLE" > "${WORKTREE_DIR}.title"
 
 if [[ -e "$WORKTREE_DIR" ]]; then
@@ -151,8 +130,7 @@ if [[ -e "$WORKTREE_DIR" ]]; then
     exit 0
 fi
 
-# All branch plumbing runs from the main checkout, but only via refs — HEAD and
-# the working tree there are never touched.
+# Branch plumbing runs from the main checkout via refs only; its HEAD and working tree are never touched.
 cd "$MOP_MONOREPO_PATH"
 git fetch origin
 

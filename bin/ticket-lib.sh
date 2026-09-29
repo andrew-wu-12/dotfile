@@ -1,9 +1,7 @@
 #!/bin/zsh
-# Shared JIRA/PR helpers for worktree-ticket.sh (mwt).
-# Source this, don't execute it. Pure functions only — no side effects, no env
-# mutation, no network calls at load time. Requires zsh (uses 1-based arrays and
-# the (@s/-/) split flag). Uses $JIRA_TOKEN if the caller has it (from sourcing
-# ~/.zshrc), else reads it from the credential store on first call.
+# Shared JIRA/PR helpers for worktree-ticket.sh (mwt); source, don't execute. Pure functions: no side effects,
+# env mutation, or network calls at load time. Requires zsh (1-based arrays, the (@s/-/) split flag).
+# Uses $JIRA_TOKEN if the caller has it (from ~/.zshrc), else reads it from the credential store on first call.
 
 function get_from_json() {
     printf '%s\n' "$1" | jq -r $2

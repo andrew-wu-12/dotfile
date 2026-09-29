@@ -1,60 +1,31 @@
 #!/bin/zsh
-# Ticket dev-status report for mwt worktrees: spec path, then a per-ticket
-# info block (PR link+status, Jira link+status, preview link, Jenkins
-# status) for the feature/hotfix ticket and, when one exists, its epic —
-# finally a Deploy block (deploy plan link, one-uat/one-dev Jenkins status
-# with last-trigger time, same numbers as the per-ticket Jenkins rows, just
-# side-by-side). Print-and-exit, no interactivity — called by
-# tmux-window-picker.sh's fzf --preview for the highlighted card's worktree
-# path, which re-invokes on every highlighted row and expects a plain
-# print-and-exit command.
+# Ticket dev-status report for mwt worktrees: spec path, a per-ticket block (PR, Jira, preview, Jenkins) for the
+# feature/hotfix ticket and, when one exists, its epic, then a Deploy block (deploy plan, one-uat/one-dev Jenkins
+# status). Print-and-exit: tmux-window-picker.sh's fzf --preview re-invokes it for each highlighted card.
 #
 # Usage:
 #   tmux-ticket-status.sh [DIR]           print the report (DIR default $PWD)
 #   tmux-ticket-status.sh --reload [DIR]  bust the cache for DIR, print nothing
+# The ticket comes from the branch checked out in DIR (feature/<ticket> or hotfix/<ticket>), not the worktree
+# path. Links are plain URLs for WezTerm's cmd-click.
 #
-# Ticket is resolved from the branch checked out in DIR (feature/<ticket> or
-# hotfix/<ticket>), not the worktree path itself.  Links are plain URLs for
-# WezTerm's own cmd-click.
+# Caching: everything except "spec created" is one JSON blob in "${ROOT}.status-cache.json" (sibling of the
+# worktree, like worktree-ticket.sh's ".title" file; worktree-done.sh cleans it up). Fetched links and statuses
+# don't change retroactively, so the report is one unit: fetched live once, then served from cache until an
+# explicit ctrl-l reload in the picker (which calls --reload). No TTL: staleness is manual, by design.
+# "spec created" is a local stat() and the field most likely to flip mid-session, so it's always recomputed.
+# ~/.zshrc and ticket-lib.sh (tokens, JIRA helpers) are sourced lazily after the cache check, so a hit is just
+# a git rev-parse plus a jq read.
 #
-# Caching: the whole report (everything below except "spec created") is
-# cached as one JSON blob in a sibling file next to the worktree,
-# "${ROOT}.status-cache.json" — same convention as worktree-ticket.sh's
-# ".title" file, and cleaned up by worktree-done.sh the same way. PR/Jira/
-# Jenkins/Confluence links and statuses never change retroactively once
-# fetched (aside from lifecycle progress you drive yourself), so it's safe
-# to treat the whole report as one unit: it is fetched live once, then
-# served from cache until you explicitly reload with ctrl-l in the picker
-# (tmux-window-picker.sh's ctrl-l binding calls this script with --reload
-# then refreshes the preview). There is no automatic TTL — staleness is
-# entirely manual, by design.
+# PR status: Draft/Open/Closed/Approved/Merged/Not opened/Error (Error = the gh lookup failed); the symbol is
+# derived at render time (pr_symbol_state). Jira status keeps its own state+value pair (jira_status_check):
+# its names are open-ended text, and done means matching $UAT_GATE_STATUS.
 #
-# "spec created" is excluded from the cache: it's a local stat() with no
-# network cost, and the one field you're likely to flip mid-session while
-# looking at this exact card, so it's always recomputed live.
-#
-# On a cache hit no network calls happen at all, so ~/.zshrc and
-# ticket-lib.sh (needed only for tokens and JIRA helpers) are sourced lazily,
-# after the cache check — a hit is just a git rev-parse plus a jq read.
-#
-# PR status is one of Draft/Open/Closed/Approved/Merged/Not opened/Error
-# (Not opened = no PR exists yet, Error = the gh lookup itself failed). The
-# ✓/○/⚠ symbol is derived from that text at render time (see
-# pr_symbol_state): Approved/Merged → done, Error → error, everything else
-# → pending. Jira status keeps its own state+value pair (jira_status_check)
-# since Jira status names are open-ended text, not a fixed enum — done means
-# the value matches $UAT_GATE_STATUS, not any particular string.
-#
-# Three-state checklist: done / pending / error. "Pending" covers anything
-# that hasn't happened yet (no PR opened, no matching build, wrong Jira
-# status) — expected mid-flight states, not failures. "Error" is reserved for
-# the check itself failing (bad token, network, non-2xx) so a broken
-# integration doesn't read the same as normal in-progress work. There's no
-# uat/<parent> branch for hotfix/Production-Support tickets, so hotfix
-# reports have no Epic block at all; if the epic *lookup* fails (Jira
-# unreachable) for a feature ticket, the Epic block still renders with
-# ⚠ Error rows rather than being silently hidden, since "no epic" and
-# "couldn't check" are different facts.
+# Three states: done / pending / error. Pending = not happened yet (no PR, no build, wrong Jira status), a
+# normal mid-flight state; error = the check itself failed (bad token, network, non-2xx), so a broken
+# integration doesn't read as normal progress. Hotfix/Production-Support tickets have no uat/<parent>, so their
+# reports have no Epic block; if the epic lookup fails for a feature ticket the Epic block still renders with
+# error rows, since "no epic" and "couldn't check" are different facts.
 
 emulate -L zsh
 set -u
@@ -100,17 +71,15 @@ symbol() {
     esac
 }
 
-# ticket_number (MOP-1234) + env (dev/uat) -> the ticket's per-env preview
-# URL, same template as ticket-lib.sh's pr_get_content(). Pure string work,
-# no network/cache needed — recomputed live every render, cache hit or not.
+# ticket_number + env -> per-env preview URL (same template as ticket-lib.sh's pr_get_content); pure string
+# work, recomputed on every render.
 mop_preview_url() {
     local ticket_number="$1" env="$2"
     local parts=("${(@s/-/)ticket_number}")
     printf 'https://mop-%s.%s.morrison.express/' "${parts[2]}" "$env"
 }
 
-# macOS VPN profile state, same check used by deploy-one.sh/deploy-i18n.sh —
-# jenkins.morrison.express is only reachable over VPN.
+# jenkins.morrison.express is only reachable over VPN (same check as deploy-one.sh).
 vpn_connected() {
     scutil --nc list 2>/dev/null | grep -q "Connected"
 }
@@ -122,9 +91,7 @@ row() {  # $1 state  $2 label  $3 detail (optional)
     printf '\n'
 }
 
-# One row of a ticket/deploy info block. $1 state  $2 label  $3 status text
-# (optional — PR/Jira status word, or a Jenkins build detail)  $4 url
-# (optional). "na" state prints just the label, like the old link_row.
+# One row of an info block: $1 state, $2 label, $3 status text (optional), $4 url (optional). "na" prints just the label.
 info_row() {
     local state="$1" label="$2" statustext="${3:-}" url="${4:-}"
     if [[ "$state" == "na" ]]; then
@@ -139,10 +106,8 @@ info_row() {
     printf '\n'
 }
 
-# done/pending/error for a PR status TEXT (Draft/Open/Closed/Approved/
-# Merged/Not opened/Error). Approved and Merged are the only "done" states —
-# Closed-without-merge is treated as pending (nothing more to do right now)
-# rather than as an error, since it's not the lookup that failed.
+# Approved and Merged are the only "done" PR states; Closed-without-merge is pending (nothing to do), not an
+# error, since the lookup didn't fail.
 pr_symbol_state() {
     case "$1" in
         Approved|Merged) echo done ;;
@@ -151,10 +116,8 @@ pr_symbol_state() {
     esac
 }
 
-# gh pr view for $1 (branch name) -> prints "STATUS<TAB>URL", STATUS one of
-# Draft/Open/Closed/Approved/Merged/Not opened/Error. MERGED beats
-# draft/review state; draft beats review decision (a draft can still show a
-# stale reviewDecision from before it was converted back to draft).
+# gh pr view for branch $1 -> "STATUS<TAB>URL". MERGED beats draft/review state; draft beats review decision
+# (a draft can show a stale reviewDecision from before it was converted back to draft).
 pr_check() {
     local branch="$1" out rc state isdraft decision url text
     out=$(gh pr view "$branch" --json url,reviewDecision,state,isDraft 2>&1)
@@ -200,12 +163,9 @@ jira_status_check() {
     fi
 }
 
-# Latest build in Jenkins job $1 matching BRANCH param $2 -> "STATE<TAB>DETAIL",
-# DETAIL being the result word plus the build's trigger time (HH:MM). Mirrors
-# trace-build.sh's find_build_in_job, single-shot (no polling). FAILURE gets
-# its own "failed" state (red ✗) since it's meaningfully different from
-# "still building" or "no build found yet" — those, and any other result
-# (ABORTED/UNSTABLE/etc.), stay "pending". Only a broken API call is "error".
+# Latest build in Jenkins job $1 with BRANCH param $2 -> "STATE<TAB>DETAIL" (result word + trigger time HH:MM);
+# like trace-build.sh's find_build_in_job, single-shot. FAILURE is its own "failed" state (red); still building,
+# no build yet, and other results (ABORTED/UNSTABLE/...) stay pending; only a broken API call is error.
 jenkins_deploy_check() {
     local job="$1" branch="$2" resp build result ts_ms ts_sec time_str label
     resp=$(curl -s -g --user "$JENKINS_TOKEN" \
@@ -268,9 +228,8 @@ BRANCH=$(git rev-parse --abbrev-ref HEAD 2>/dev/null)
 ROOT=$(git rev-parse --show-toplevel 2>/dev/null)
 CACHE_FILE="${ROOT}.status-cache.json"
 
-# --reload never needs to know the ticket, or even source anything — it just
-# busts the cache file; the picker's ctrl-l binding chains a refresh-preview
-# right after, which re-invokes this script normally and repopulates it.
+# --reload only busts the cache file (no ticket lookup or sourcing); the picker's ctrl-l chains a preview
+# refresh that re-invokes this script and repopulates it.
 if $RELOAD; then
     rm -f "$CACHE_FILE"
     exit 0
@@ -284,7 +243,6 @@ case "$BRANCH" in
         ;;
 esac
 
-# 1. Spec created — always live, see the caching note in the file header.
 SPEC_PATH="$SPECS_DIR/$TICKET_NUMBER.md"
 if [[ -e "$SPEC_PATH" ]]; then
     SPEC_STATE=done
@@ -294,13 +252,9 @@ fi
 
 CACHE_HIT=false
 if [[ -f "$CACHE_FILE" ]]; then
-    # \x1f (unit separator), not a tab: IFS=<tab> is still an "IFS whitespace"
-    # character to read/word-splitting, which squeezes runs of it and drops
-    # empty fields — fatal here since several fields (e.g. uat_deploy_detail)
-    # are legitimately empty and NOT last in the list, so a squeeze would
-    # shift every field after it by one. \x1f isn't whitespace, so empty
-    # fields are preserved positionally, same reasoning as IFS=: for
-    # /etc/passwd-style parsing.
+    # \x1f, not a tab: a tab in IFS is whitespace, so read squeezes runs of it and drops empty fields, shifting
+    # every later field (several, e.g. uat_deploy_detail, are legitimately empty and not last). \x1f isn't
+    # whitespace, so empty fields stay positional.
     CACHE_ROW=$(jq -r '[.fetched_at, .ticket_summary, .has_epic, .epic_error, .parent_ticket_number,
         .feature_pr_status, .feature_pr_url, .epic_pr_status, .epic_pr_url,
         .jira_status_state, .jira_status_value, .epic_jira_status_state, .epic_jira_status_value,
@@ -341,30 +295,24 @@ if ! $CACHE_HIT; then
         fi
     fi
 
-    # 2. Feature/hotfix PR status (the ticket's own branch, whichever prefix)
     IFS=$'\t' read -r FEATURE_PR_STATUS FEATURE_PR_URL <<< "$(pr_check "$BRANCH")"
 
-    # 3. Epic PR status (uat/<parent> branch)
     if $HAS_EPIC; then
         IFS=$'\t' read -r EPIC_PR_STATUS EPIC_PR_URL <<< "$(pr_check "$UAT_BRANCH")"
     else
         EPIC_PR_STATUS=""; EPIC_PR_URL=""
     fi
 
-    # 4. Jira status verified (feature/hotfix ticket itself)
     IFS=$'\t' read -r JIRA_STATUS_STATE JIRA_STATUS_VALUE <<< "$(jira_status_check "$TICKET_NUMBER")"
 
-    # 5. Jira status verified (epic ticket, same check against the parent)
     if $HAS_EPIC; then
         IFS=$'\t' read -r EPIC_JIRA_STATUS_STATE EPIC_JIRA_STATUS_VALUE <<< "$(jira_status_check "$PARENT_TICKET_NUMBER")"
     else
         EPIC_JIRA_STATUS_STATE=""; EPIC_JIRA_STATUS_VALUE=""
     fi
 
-    # 6/7. one-dev/one-uat Jenkins deployed. jenkins.morrison.express is
-    # VPN-only, so skip both live calls when the VPN is down instead of
-    # letting them fail slowly one by one; the "no epic to check" case below
-    # is a structural na/error independent of VPN, not a network failure.
+    # jenkins.morrison.express is VPN-only: skip both live calls when the VPN is down instead of failing slowly
+    # one by one. The "no epic to check" case is a structural error independent of VPN.
     if vpn_connected; then
         IFS=$'\t' read -r DEV_DEPLOY_STATE DEV_DEPLOY_DETAIL <<< "$(jenkins_deploy_check mop_console_monorepo_dev "$BRANCH")"
         if $IS_HOTFIX; then
@@ -383,7 +331,6 @@ if ! $CACHE_HIT; then
         fi
     fi
 
-    # Confluence deploy plan (epic only)
     if $HAS_EPIC; then
         IFS=$'\t' read -r CONFLUENCE_STATE CONFLUENCE_URL <<< "$(confluence_check "$PARENT_TICKET_NUMBER" "$PARENT_SUMMARY")"
     elif $EPIC_ERROR; then
@@ -446,9 +393,8 @@ if $IS_HOTFIX; then FEATURE_ENV="uat"; else FEATURE_ENV="dev"; fi
 info_row "$(pr_symbol_state "$FEATURE_PR_STATUS")" "PR" "$FEATURE_PR_STATUS" "$FEATURE_PR_URL"
 info_row "$JIRA_STATUS_STATE" "Jira" "$JIRA_STATUS_VALUE" "$JIRA_BROWSE/$TICKET_NUMBER"
 info_row done "Preview" "" "$(mop_preview_url "$TICKET_NUMBER" "$FEATURE_ENV")"
-# Hotfix owns both dev+uat Jenkins builds via the Deploy section below, but
-# only has one ticket block, so show uat here (dev alone would understate
-# how far it's actually deployed for a hotfix, uat is the meaningful gate).
+# A hotfix owns both dev+uat builds via the Deploy section but has one ticket block, so show uat here (the
+# meaningful gate).
 if $IS_HOTFIX; then
     info_row "$UAT_DEPLOY_STATE" "Jenkins" "$UAT_DEPLOY_DETAIL"
 else

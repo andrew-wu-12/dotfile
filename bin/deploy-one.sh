@@ -8,16 +8,13 @@
 # @raycast.packageName Deploy One
 # @raycast.argument1 {"type": "text", "placeholder": "Branch Name" }
 
-# Start with clean zsh environment
 emulate -L zsh
 
-# Source zshrc to get environment variables
 source ~/.zshrc
 
 SCRIPT_DIR="${0:A:h}"
 source "$SCRIPT_DIR/tmux-deploy-lib.sh"
 
-# Check VPN connection
 if ! scutil --nc list | command grep -q "Connected"; then
     echo "Error: VPN connection is off. Please connect to VPN before deploying."
     exit 1

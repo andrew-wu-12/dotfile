@@ -1,22 +1,15 @@
 #!/bin/bash
 
-# Utility to check if an i18n key or value exists.
-# Searches ALL cached modules by default (so a reuse check doesn't need to know
-# the namespace). Pass an optional [module] to scope to that module + commons
-# (module matches take precedence); pass 'commons' to scope to commons only.
+# Check whether an i18n key or value exists; searches ALL cached modules by default.
+# Usage: check-i18n.sh <key_or_value> [module|commons]   (module = that module + commons, module matches win; commons = commons only)
+# Batch: check-i18n.sh --batch [module] <<< $'one\ntwo'   (one sync, scope resolution and jq pass for N strings)
 # Auto-syncs a local i18n cache (timestamp-gated) before looking up.
-#
-# Batch mode: check-i18n.sh --batch [module] <<< $'string one\nstring two\n...'
-# Classifies every newline-delimited string from stdin in one process (one
-# sync, one scope resolution, one jq pass) instead of one script invocation
-# per string — a caller with N candidate strings gets one round trip, not N.
 
 BASE_URL="https://one-static.morrison.express/i18n/prod"
 CACHE_DIR="${XDG_CACHE_HOME:-$HOME/.cache}/mop-i18n"
 TS_FILE="$CACHE_DIR/timestamp.json"
 COMMONS_FILE="$CACHE_DIR/commons.json"
 
-# Sync the local i18n cache only when the deployed timestamp differs.
 sync_i18n() {
   mkdir -p "$CACHE_DIR"
 
@@ -92,14 +85,12 @@ if [ ! -f "$COMMONS_FILE" ]; then
   exit 1
 fi
 
-# Normalize a key input: strip a leading '<namespace>.' so a full key like
-# "tms.consol_no" also matches by its bare key "consol_no".
+# Strip a leading '<namespace>.' so "tms.consol_no" also matches bare "consol_no".
 if [ "$BATCH" = false ]; then
   CLEAN_KEY="${INPUT#commons.}"
   [ -n "$MODULE" ] && CLEAN_KEY="${CLEAN_KEY#"$MODULE".}"
 fi
 
-# Emit a JSON array of {path,key,value} for every namespace in a file's .enLang.
 file_entries() {
   jq -c '(.enLang // {}) | to_entries
     | map(.key as $p | ((.value // {}) | to_entries
@@ -107,8 +98,7 @@ file_entries() {
     | add // []' "$1"
 }
 
-# Scope: a specific module (+ commons) if given; 'commons' for commons only;
-# otherwise EVERY cached module (the default reuse check).
+# Scope: module (+ commons), commons only, or (default) every cached module.
 if [ -n "$MODULE" ] && [ "$MODULE" != "commons" ]; then
   if [ -f "$CACHE_DIR/$MODULE.json" ]; then
     SCOPE="$MODULE + commons"
@@ -164,8 +154,7 @@ if [ "$BATCH" = false ]; then
   exit 0
 fi
 
-# Batch mode: pair each input with its normalized key (same stripping rule as
-# single mode), then classify all pairs in one jq pass over $ENTRIES.
+# Batch: pair each input with its normalized key, classify all pairs in one jq pass.
 PAIRS=""
 while IFS= read -r line; do
   [ -z "$line" ] && continue

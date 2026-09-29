@@ -1,18 +1,11 @@
 #!/bin/bash
-# Forgejo issue picker for open issues on the homelab repo ($FORGEJO_HOMELAB_REPO).
-# Mirrors tmux-jira-picker.sh's structure and keybindings, but keys off
-# Forgejo issues instead of Jira tickets, and worktree-generic.sh (no ticket
-# system, plain branch name) instead of worktree-ticket.sh (MOP-only).
-#
-#   enter    Create/open the issue's worktree in a new tmux window
-#            (branch feature/<number>-<slug>, via `wt -n`)
-#   ctrl-o   Open the issue in the browser (stays in picker)
-#   ctrl-r   Force-reload the issue list from Forgejo (busts cache)
-#   esc      Cancel
-#
-# Issue list is cached for 5 minutes at /tmp/tmux-forgejo-picker.cache.
-#
-# --fetch: print fzf-ready lines to stdout (used by ctrl-r reload binding).
+# Forgejo issue picker for open issues on the homelab repo ($FORGEJO_HOMELAB_REPO); uses worktree-generic.sh
+# (plain branch name, no ticket system).
+#   enter   create/open the issue's worktree in a new tmux window (branch feature/<number>-<slug>, via `wt -n`)
+#   ctrl-o  open the issue in the browser (stays in picker)
+#   ctrl-r  force-reload the issue list (busts cache)
+#   esc     cancel
+# Issue list is cached 5 minutes at /tmp/tmux-forgejo-picker.cache. --fetch prints fzf-ready lines (ctrl-r reload).
 
 set -u
 
@@ -43,10 +36,8 @@ get_forgejo_token() {
     security find-generic-password -a "$USER" -s "git.tailcb6113.ts.net" -w 2>/dev/null
 }
 
-# Deterministic branch-safe slug from an issue title: lowercase, non-alnum
-# runs collapsed to a single "-", trimmed, capped at 40 chars. Must match
-# exactly between the worktree-exists check and the branch name `enter`
-# creates, since there's no other link between an issue and its branch.
+# Deterministic branch-safe slug from an issue title (lowercase, non-alnum runs -> "-", trimmed, 40 chars).
+# Must match between the worktree-exists check and the branch `enter` creates: nothing else links an issue to its branch.
 slugify() {
     printf '%s' "$1" | tr '[:upper:]' '[:lower:]' | sed -E 's/[^a-z0-9]+/-/g; s/^-+|-+$//g' | cut -c1-40
 }
@@ -105,13 +96,11 @@ build_lines() {
     done
 }
 
-# --fetch mode: force-fetch, write cache, print lines (called by fzf ctrl-r reload)
 if [ "${1:-}" = "--fetch" ]; then
     build_lines "force"
     exit 0
 fi
 
-# Main picker
 LINES=$(build_lines "")
 
 if [ -z "$LINES" ]; then

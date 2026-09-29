@@ -1,8 +1,5 @@
-# Jenkins backend for the generic build/trace engine (tmux-build-trace-lib.sh).
-# Dispatched by name (trace_backend_find_build/poll_build call
-# "${BUILD_BACKEND}_find_build"/"_poll_build") when BUILD_BACKEND=jenkins.
-# Requires BUILD_JENKINS_URL (from config) and $JENKINS_TOKEN (fetched by
-# jenkins_ensure_auth, below).
+# Jenkins backend for the build/trace engine (tmux-build-trace-lib.sh), dispatched by name when BUILD_BACKEND=jenkins.
+# Requires BUILD_JENKINS_URL (config) and $JENKINS_TOKEN (set by jenkins_ensure_auth).
 
 jenkins_ensure_auth() {
   JENKINS_TOKEN=$(cred_find "${BUILD_CRED_NAME:-jenkins.morrison.express}")
@@ -20,7 +17,6 @@ jenkins_find_build() {
       ' 2>/dev/null
 }
 
-# Polls a build's URL $1 for {result,building,estimatedDuration} as compact JSON.
 jenkins_poll_build() {
   local url="$1"
   curl -s --user "$JENKINS_TOKEN" "${url}api/json?tree=result,building,estimatedDuration" 2>/dev/null \

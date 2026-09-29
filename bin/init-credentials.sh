@@ -39,10 +39,8 @@ function handle_credentials() {
         return 1
     fi
 
-    # Parse credentials from JSON config
     cred_count=$(echo "$credentials" | jq -r '.credentials | length')
     
-    # Process each credential
     for ((i=0; i<$cred_count; i++)); do
         service_name=$(echo "$credentials" | jq -r ".credentials[$i].service_name")
         variable_name=$(echo "$credentials" | jq -r ".credentials[$i].variable_name")
@@ -51,7 +49,6 @@ function handle_credentials() {
         echo ""
         printf "正在設定：%b \n" "$description"
         
-        # Check if credential already exists in the secret store
         existing=$(cred_find "$service_name")
         
         if [ -n "$existing" ]; then
@@ -62,7 +59,7 @@ function handle_credentials() {
             fi
         fi
         
-        # Prompt for credential (display description without escape sequences for the prompt)
+# Strip the OSC-8 hyperlink escapes for the prompt.
         description_plain=$(echo "$credentials" | jq -r ".credentials[$i].description" | sed 's/\\e\]8;;[^\\]*\\e\\\\//g; s/\\e\]8;;\\e\\\\//g')
         read -r -s -p "請輸入你的 ${description_plain}：" credential_value </dev/tty
         echo "" 
@@ -72,7 +69,6 @@ function handle_credentials() {
             continue
         fi
         
-        # Store credential in the platform secret store
         echo "正在儲存憑證..."
         cred_store "$service_name" "$service_name" "$credential_value"
 
@@ -88,7 +84,6 @@ function handle_credentials() {
     echo "⚠️  注意：憑證會儲存在系統憑證儲存區（macOS Keychain / secret-tool），並由 .zshrc 載入"
 }
 
-# Execute if run directly
 if [[ "${BASH_SOURCE[0]}" == "${0}" ]]; then
     handle_credentials
 fi

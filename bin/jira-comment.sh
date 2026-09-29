@@ -1,12 +1,7 @@
 #!/usr/bin/env bash
-# Post a comment to a Jira ticket. The only write path to Jira in this setup.
-#
-# Uses REST API v2, whose comment body is a plain Jira-wiki-markup string (v3
-# would require ADF JSON). The body is read from a FILE, never from argv — the
-# payload is a multi-line CJK document and argv quoting is where that goes wrong.
-#
-# Prints the browse URL of the created comment to stdout.
-#
+# Post a comment to a Jira ticket (the only write path to Jira in this setup); prints the comment's browse URL.
+# Uses REST API v2 (plain Jira-wiki-markup body; v3 would need ADF JSON). The body is read from a FILE, never
+# argv: the payload is a multi-line CJK document and argv quoting is where that goes wrong.
 # Usage: jira-comment.sh <TICKET-ID> <body-file>
 # Requires: JIRA_TOKEN (env, else read from the credential store), jq, curl.
 set -euo pipefail

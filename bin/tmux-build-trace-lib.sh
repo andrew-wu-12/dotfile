@@ -6,8 +6,6 @@ source "$TRACE_SCRIPT_DIR/tmux-build-config.sh"
 # shellcheck source=init-lib.sh
 source "$TRACE_SCRIPT_DIR/init-lib.sh"
 
-# Loads config, backend module, and backend auth for worktree $1 — everything
-# trace_run needs. Returns nonzero with an error on any missing piece.
 trace_prepare() {
   local wt="$1" module auth_fn
 
@@ -36,8 +34,6 @@ trace_prepare() {
   fi
 }
 
-# Prints a trace_run spec for job $1 on branch $2, with KEY/LABEL from
-# BUILD_JOBS (falling back to the job name).
 trace_job_spec() {
   local want="$1" branch="$2" key job role label
   while IFS='|' read -r key job role label; do
@@ -116,9 +112,8 @@ trace_draw_bar() {
   printf "]"
 }
 
-# Args: "KEY|JOB|BRANCH|LABEL" specs. Optional $TRACE_NOTIFY_SUBTITLE.
-# Returns 0 all succeeded, 2 any failed, 1 none found. Discovery retries ~16s
-# since a just-triggered build sits in the CI queue before appearing.
+# Args: "KEY|JOB|BRANCH|LABEL" specs; optional $TRACE_NOTIFY_SUBTITLE. Returns 0 all succeeded, 2 any failed,
+# 1 none found. Discovery retries ~16s since a just-triggered build sits in the CI queue before appearing.
 trace_run() {
   local TMP_DIR spec key job branch label build rest
   local TRACKED_KEYS="" file attempt max_attempts=8

@@ -3,7 +3,7 @@ name: mop-doc-spec-schema
 description: >-
   Shared artifact schema for the spec note: file path, frontmatter fields,
   and section headings. Used by mop-spec-init (creates the note), mop-spec-post and
-  mop-spec-ready-check (read frontmatter fields) — not meant to be invoked on its own.
+  mop-spec-feature-ready (read frontmatter fields) — not meant to be invoked on its own.
 ---
 
 # Doc Spec Schema → shape of the spec artifact
@@ -11,7 +11,7 @@ description: >-
 The shared structural facts about the spec note — where it lives, what its
 frontmatter fields mean, and what sections it has — regardless of which
 skill is creating, reading, or updating it. `mop-spec-init`, `mop-spec-post`, and
-`mop-spec-ready-check` all reference this instead of restating it.
+`mop-spec-feature-ready` all reference this instead of restating it.
 
 ## Artifact location
 

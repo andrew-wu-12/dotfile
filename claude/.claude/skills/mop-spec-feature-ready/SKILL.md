@@ -1,12 +1,12 @@
 ---
-name: mop-spec-ready-check
+name: mop-spec-feature-ready
 description: >-
   Check that a feature PR is ready for review. The skill checks four things: the spec
   is posted to Jira, the code agrees with the spec, no code refers to a removed
   identifier, and the diff has no defects. If the gates pass, the skill flips the
   draft PR to ready. The skill also checks a PR that is already ready; then it only
   reports. Use when a feature is done and you want to mark the PR ready for review,
-  "mop-spec-ready-check", "is this PR ready", or to re-check a PR after pushing fixes. The skill
+  "mop-spec-feature-ready", "is this PR ready", or to re-check a PR after pushing fixes. The skill
   does not assign reviewers. CODEOWNERS and the user do that.
 ---
 
@@ -160,7 +160,7 @@ Verdicts:
 - **Unposted rounds exist — block the flip.** Report the gap as
   `round: N, last posted: M`. Name each change between round M and round N that a
   reviewer would read incorrectly. To correct this, run `/mop-spec-post`. Then run
-  `mop-spec-ready-check` again.
+  `mop-spec-feature-ready` again.
 - **A round removed an item, and the title or the body still promises that item —
   block the flip.** The correction is cheap. Edit the body. Ask the PM to change the
   title. This correction prevents the most common review comment: "is this feature
@@ -183,7 +183,7 @@ data relationships with an unstated cardinality. That is step 1b of mop-spec-dri
 - **The skill found drift** (the round-comparison path) — **block the flip.** Report
   each disagreement. Give `path:line`. Give the old spec value and the new spec
   value. To correct this, change the code. You can also confirm the spec again. Then
-  run `mop-spec-ready-check` again.
+  run `mop-spec-feature-ready` again.
 - **The skill found no drift** — the gate passes. Continue.
 - **The skill reported a contradiction or an ambiguity** (the single-round path) —
   this does not block. Add these items to the warnings from step 5.

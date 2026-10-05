@@ -1,10 +1,10 @@
 ---
-name: mop-prod-ready
+name: mop-spec-ready-prod
 description: >-
   Before a prod (uat -> main) merge, verify every feature/hotfix ticket merged
   into the uat branch is in "UAT VERIFIED" status. Use when about to deploy a
   uat branch to prod, checking release readiness, "is this release UAT verified",
-  or "mop-prod-ready MOP-XXXX". A guard, not a blocker — reports and flags, you decide.
+  or "mop-spec-ready-prod MOP-XXXX". A guard, not a blocker — reports and flags, you decide.
 ---
 
 # UAT Gate → pre-prod ticket-status check

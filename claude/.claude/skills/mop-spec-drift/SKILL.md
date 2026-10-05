@@ -7,7 +7,7 @@ description: >-
   diff for unstated data-relationship cardinality (e.g. code assumes 1:1 where
   the spec never says). Use before flipping a PR to ready, after a mop-spec-sync
   round, when checking whether already-written code still matches the spec, or
-  "mop-spec-drift MOP-XXXX". Feeds /mop-spec-ready-check.
+  "mop-spec-drift MOP-XXXX". Feeds /mop-spec-feature-ready.
 ---
 
 # Spec Drift → is the code still aligned with the spec?
@@ -148,5 +148,5 @@ the user in English, most actionable first:
 - If nothing contradicts: say so plainly. The round's changes are already
   reflected in code, or have no code surface yet.
 
-This is a pre-ready guard. `/mop-spec-ready-check` runs it, alongside its own review step,
+This is a pre-ready guard. `/mop-spec-feature-ready` runs it, alongside its own review step,
 before it flips the PR to ready. Surface findings; let the user decide.

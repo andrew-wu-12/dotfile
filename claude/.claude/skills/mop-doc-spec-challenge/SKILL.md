@@ -14,7 +14,7 @@ contradiction while writing, it will miss the same contradiction while
 reading it back. This skill hands the extracted 規格 to a **fresh subagent**
 with no chat history, so it isn't primed with the same assumptions.
 
-Scope is bounded to four checks. This is not another pass at `mop-spec-ready-check`'s
+Scope is bounded to four checks. This is not another pass at `mop-spec-feature-ready`'s
 code-vs-spec job or `mop-spec-drift`'s round-diff job — it never looks at code,
 only at 規格 against itself.
 

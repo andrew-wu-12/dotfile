@@ -46,7 +46,7 @@ serve_current_target() {
 # The port comes from @serve_port on the serve window (set by the caller when starting serve); if unset the
 # HTTP check is skipped and status stays building unless the yarn log patterns match.
 serve_compute_status() {
-  local cur cmd tail http port
+  local cur cmd tail last_cycle http port
   ERR_DETAIL=""
 
   if [ -z "${SERVE_WIN:-}" ]; then STATUS=offline; return; fi
@@ -58,10 +58,11 @@ serve_compute_status() {
 
   tail=$(tmux capture-pane -p -t "$SERVE_PANE" -S -80 2>/dev/null)
   port=$(tmux show-option -w -t "$SERVE_WIN" -v @serve_port 2>/dev/null)
+  last_cycle=$(printf '%s\n' "$tail" | awk '/[0-9]+% building/ { buf = ""; } { buf = buf $0 "\n" } END { printf "%s", buf }')
 
-  if printf '%s\n' "$tail" | grep -qiE 'failed to compile|ERROR in '; then
+  if printf '%s\n' "$last_cycle" | grep -qiE 'failed to compile|ERROR in '; then
     STATUS=error
-    ERR_DETAIL=$(printf '%s\n' "$tail" \
+    ERR_DETAIL=$(printf '%s\n' "$last_cycle" \
       | grep -iE '^ERROR in |cannot find module|module not found:|^Found [0-9]+ error' \
       | tail -4)
     return

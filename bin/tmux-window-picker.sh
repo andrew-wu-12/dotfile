@@ -341,6 +341,36 @@ action_reload_cache() {
   ~/bin/tmux-ticket-status.sh --reload "$ws_path" 2>/dev/null
 }
 
+worktree_root_for_window() {
+  local pane_path root
+  [ -n "$winid" ] || return 1
+  pane_path=$(tmux display-message -p -t "$winid" '#{pane_current_path}' 2>/dev/null) || return 1
+  root=$(git -C "$pane_path" rev-parse --show-toplevel 2>/dev/null) || return 1
+  [ -f "$root/.git" ] || return 1
+  printf '%s' "$root"
+}
+
+action_close_worktree() {
+  local root branch answer out status
+  root=$(worktree_root_for_window) || { echo "Not a linked worktree."; sleep 1; return 1; }
+  branch=$(git -C "$root" rev-parse --abbrev-ref HEAD 2>/dev/null)
+  printf 'Close %s worktree? [y/N] ' "$branch"
+  read -r answer
+  case "$answer" in
+    y|Y) ;;
+    *) return 1 ;;
+  esac
+  out=$(mktemp)
+  (cd "$root" && zsh ~/bin/worktree-done.sh) 2>&1 | tee "$out"
+  status=${PIPESTATUS[0]}
+  if [ "$status" -ne 0 ] || grep -q 'not deleted (unmerged)' "$out"; then
+    printf '\nPress any key to continue...'
+    read -r -n 1 -s
+  fi
+  rm -f "$out"
+  return "$status"
+}
+
 strip_ansi() {
   sed -e $'s/\x1b\[[0-9;]*m//g'
 }
@@ -382,6 +412,9 @@ show_actions_menu_standalone() {
       printf 'ctrl-b\tOpen ticket in browser\n'
     fi
     printf 'ctrl-l\tReload cache\n'
+    if worktree_root_for_window >/dev/null; then
+      printf 'wt-close\tWorktree: Close\n'
+    fi
   } > "$menu_file"
 
   choice=$(fzf < "$menu_file" \
@@ -500,6 +533,7 @@ if [ "${1:-}" = "--actions-popup" ]; then
       ctrl-n) action_notes && reopen=0 ;;
       ctrl-b) action_browser ;;
       ctrl-l) action_reload_cache ;;
+      wt-close) action_close_worktree ;;
     esac
   fi
 

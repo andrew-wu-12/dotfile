@@ -219,7 +219,7 @@ git diff origin/main...HEAD | grep '^-' | grep -oE "[A-Z_][A-Z0-9_]*=|^\s*-?\s*[
 The pattern is a start, not exhaustive. Add by hand: env var names,
 compose service/network/volume names, Caddy hostnames/routes, and anything
 another service or script (`tmux-build-backend-forgejo.sh`,
-`tmux-forgejo-picker.sh`, `README.md`) references by name.
+`tmux-task-source-forgejo.sh`, `README.md`) references by name.
 
 For each identifier, grep the whole repo — not just the app you edited,
 the value of this step is in the files the diff doesn't contain:

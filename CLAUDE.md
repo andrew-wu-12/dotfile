@@ -90,8 +90,8 @@ All scripts are symlinked to `~/bin/` and have aliases in `.zshrc`. Read a scrip
 
 **Tmux workspace**
 - **`tmux-dev-layout.sh` (`dev [-n]`)** — Builds the nvim + command + claude window, named `{branch}({repo})`. Idempotent: an existing matching window is selected, never duplicated. Session comes from `SESSION_GROUP` in `.workspace.conf` (via `workspace_config_load`, so the same walk and trust rules as below), falling back to the repo name.
-- **`tmux-window-picker.sh` (`prefix w`)** — fzf popup: window switcher, MOP `yarn serve` control, JIRA ticket picker (`Tab` toggles), trace/deploy/browser/notes actions. Never creates/renames/kills windows itself — `mwt`/`wt`/`wtd` own that lifecycle.
-- **`tmux-forgejo-picker.sh` (`prefix i`)** — Issue picker for the `homelab` repo (Forgejo); `enter` runs `wt -n` on `feature/<number>-<slug>`. Entirely separate from `prefix w`.
+- **`tmux-window-picker.sh` (`prefix w`)** — fzf popup scoped to the current session: window switcher, MOP `yarn serve` control (serve keys act on the one global serve from any session), the session's task list (`Tab` toggles), trace/deploy/browser/notes actions, and a header line counting 🔴/🟢 windows in other sessions. Never creates/renames/kills windows itself — `mwt`/`wt`/`wtd` own that lifecycle; a task card's `start` hands off to them.
+- **`tmux-task-source-<name>.sh`** — Per-session task sources for `prefix w`, selected by `TASK_SOURCE_CMD` in `.workspace.conf` (resolved from the current window's `@workspace_path`; unset means no `Tab`). Each implements `list` (`key<TAB>title<TAB>status`, already excluding tasks that have a worktree), `url <key>`, and `start <key>`; stateless — the picker caches `list` for 5 min, `ctrl-l` busts it. `jira` (MOP board, `start` = `mwt -n`) is wired in `$WORKTREE_ROOT/mop-console-monorepo/.workspace.conf`; `forgejo` (homelab issues, `start` = `wt -n feature/<number>-<slug>`) belongs in `$WORKTREE_ROOT/homelab/.workspace.conf` on the machine holding the homelab checkout.
 - **`tmux-ticket-status.sh`** — Print-and-exit ticket dev-status checklist used as `prefix w`'s preview pane. Three states: done / pending (normal not-yet-there) / error (the check itself failed). Hotfix tickets have no `uat/<parent>`, so epic rows render N/A. Uncached.
 - **`tmux-serve-lib.sh`** — Single-`yarn serve` bookkeeping shared by the picker (bash) and `wtd` (zsh); only one MOP serve can run since ports are hardcoded.
 - **`tmux-agent-notify.sh`** — Claude Code notification hook; see [Parallel Ticket Workspaces](#parallel-ticket-workspaces-git-worktrees).
@@ -127,8 +127,8 @@ MOP's 4-job trace config lives in `$WORKTREE_ROOT/mop-console-monorepo/.tmux-bui
 `prefix` is `Ctrl-B`. Notable bindings:
 - `prefix Ctrl-G` — opens lazygit in a popup
 - `prefix Ctrl-E` — opens nvim in a popup, same path as the current pane
-- `prefix w` — vertical window "tab" picker and MOP `yarn serve` control (fzf popup, all sessions); `tmux-window-picker.sh`, replaces native choose-tree. Highlighting a MOP worktree card shows its ticket dev-status report (`tmux-ticket-status.sh`) in a preview pane. `Tab` toggles in a second row set: JIRA tickets assigned to you with no worktree yet (absorbs the old `prefix j` picker).
-- `prefix i` — Forgejo issue picker for the `homelab` repo, `tmux-forgejo-picker.sh`; separate from `prefix w`'s JIRA-driven picker.
+- `prefix w` — vertical window "tab" picker and MOP `yarn serve` control (fzf popup, current session only); `tmux-window-picker.sh`, replaces native choose-tree. Highlighting a MOP worktree card shows its ticket dev-status report (`tmux-ticket-status.sh`) in a preview pane. `Tab` toggles in a second row set: the session's tasks with no worktree yet, from its `TASK_SOURCE_CMD` (JIRA for MOP, Forgejo issues for homelab; absorbs the old `prefix j` and `prefix i` pickers).
+- `prefix O` — tmux-sessionx session switcher; `@sessionx-filter-current 'false'` so every session is listed, including the attached one.
 - `prefix Ctrl-S` / `prefix Ctrl-R` — tmux-resurrect save / restore
 - Navigation via vim-tmux-navigator: `Ctrl-h/j/k/l` and arrow variants
 

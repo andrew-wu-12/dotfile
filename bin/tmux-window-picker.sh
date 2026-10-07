@@ -1,10 +1,13 @@
 #!/bin/bash
-# Vertical window picker (prefix w): fzf popup of every tmux window across all sessions as a stack of cards.
-# Modes: active (default; live windows only, no JIRA call) / all (adds a card per JIRA ticket assigned to you
-# with no worktree yet; cached 5 min at /tmp/tmux-jira-picker.cache, fetched only when entered).
+# Vertical window picker (prefix w): fzf popup of the current session's tmux windows as a stack of cards, with a
+# header line counting 🔴/🟢 windows in other sessions (switch sessions with prefix O).
+# Modes: active (default; live windows only) / all (adds a card per task from the session's task source with no
+# worktree yet). The task source is TASK_SOURCE_CMD from the current window's @workspace_path .workspace.conf, a
+# script implementing `list` / `url <key>` / `start <key>` (tmux-task-source-*.sh); its `list` output is cached
+# 5 min at /tmp/tmux-task-source.<cksum>.cache, fetched only when entered. No source: no all mode.
 #
-#   tab     toggle active/all
-#   enter   window card: switch to it (across sessions); ticket card: create worktree + window via worktree-ticket.sh -n
+#   tab     toggle active/all (only with a task source)
+#   enter   window card: switch to it; task card: `$TASK_SOURCE_CMD start <key>` (creates worktree + window)
 #   ctrl-s  set the highlighted window's workspace as the dev-server target (needs WORKSPACE_SERVE_CMD in its .workspace.conf)
 #   ctrl-r  restart whatever is served
 #   ctrl-x  stop whatever is served
@@ -12,8 +15,8 @@
 #   ctrl-g  popup tracing the worktree's CI jobs with a live progress bar (WORKSPACE_BUILD_CONF=1 + .tmux-build.conf)
 #   ctrl-p  deploy the highlighted worktree's ticket (MOP-only): pick branch, pick job(s), trace inline
 #   ctrl-n  open the workspace note in an nvim popup: NOTE_PATH/<ticket>.md when the ticket key is known, else NOTE_PATH
-#   ctrl-b  open the highlighted ticket card in the JIRA browser (no-op on window cards)
-#   ctrl-l  bust the ticket-status preview cache and skip the JIRA ticket-list cache on the next fetch
+#   ctrl-b  open the highlighted task card in the browser via `$TASK_SOURCE_CMD url <key>` (no-op on window cards)
+#   ctrl-l  bust the ticket-status preview cache and skip the task-list cache on the next fetch
 #   ctrl-a  actions menu: closes this popup and opens a standalone one listing the actions valid for the card,
 #           by name (no tab toggle). Runs the action, then reopens the picker unless the action opened its own
 #           popup (ctrl-g/ctrl-n). tmux shows one popup per client, so it can't overlay this one in place;
@@ -28,16 +31,16 @@
 # Each card is a multi-line fzf item (--read0; fzf >= 0.44 for multi-line rendering): a bold header line
 # (with any 🔴/🟢 marker), then optionally a dim ticket-title line and/or a serve status line.
 # Tab-delimited fields (header is field 7, --with-nth=7):
-#   {1} session name (empty on a ticket card)     {2} window id (empty on a ticket card)
+#   {1} session name (empty on a task card)       {2} window id (empty on a task card)
 #   {3} workspace path: git toplevel when WORKSPACE_SERVE_CMD or WORKSPACE_PREVIEW_CMD is set, else empty
 #   {4} build path: git toplevel when WORKSPACE_BUILD_CONF=1, else empty
 #   {5} preview cmd: WORKSPACE_PREVIEW_CMD (absolute path), else empty
 #   {6} note path: NOTE_PATH, else empty
-#   {7} display header: bold "session │ window-name", or a ticket line
-#   {8} ticket key: set only on a ticket card (no worktree yet)
+#   {7} display header: bold window name, or a task line
+#   {8} task key: set only on a task card (no worktree yet)
 # ctrl-n also parses a ticket key (e.g. MOP-27970) out of {7}'s first line on window cards ({8} empty):
 # tmux-dev-layout.sh names windows "{branch}(...)".
-# The preview pane (right 60%) runs {5} with {3} when both are set; a placeholder for a ticket card with no
+# The preview pane (right 60%) runs {5} with {3} when both are set; a placeholder for a task card with no
 # worktree; else "(no preview configured)".
 
 set -u
@@ -59,95 +62,70 @@ mocha="--color=bg+:#313244,bg:#1e1e2e,spinner:#f5e0dc,hl:#f38ba8,fg:#cdd6f4,\
 header:#f5e0dc,info:#cba6f7,pointer:#f5e0dc,marker:#b4befe,fg+:#cdd6f4,\
 prompt:#cba6f7,hl+:#f38ba8,border:#585b70"
 
-CACHE_FILE="/tmp/tmux-jira-picker.cache"
-BOARD_CACHE="/tmp/tmux-jira-picker-board.cache"
 CACHE_TTL=300       # 5 minutes
-BOARD_TTL=86400     # 24 hours
-JIRA_BASE="https://morrisonexpress.atlassian.net"
-JIRA_JQL='assignee = currentUser() AND status IN ("Backlog","Develop","In Progress","DESIGN","SA SIGNOFF","Designing","Approved","Auto Testing","Designed","DEV","DEV VERIFIED","To Do","UAT","UAT VERIFIED","Verified") ORDER BY status ASC, Rank ASC'
-WORKTREE_ROOT="${WORKTREE_ROOT:-$HOME/project/worktrees}"
-MOP_REPO="mop-console-monorepo"
 
-get_jira_token() {
-  local tok
-  tok=$(security find-generic-password -a "$USER" -s "morrisonexpress.atlassian.net" -w 2>/dev/null)
-  if [ -z "$tok" ]; then
-    tok=$(zsh -c 'source ~/.zshrc >/dev/null 2>&1; printf "%s" "$JIRA_TOKEN"' 2>/dev/null)
-  fi
-  printf '%s' "$tok"
-}
+CUR_SESSION=$(tmux display-message -p '#{session_name}')
 
-get_board_id() {
-  local now mod age board_id
-  if [ -f "$BOARD_CACHE" ]; then
-    now=$(date +%s)
-    mod=$(stat -f %m "$BOARD_CACHE" 2>/dev/null || echo 0)
-    age=$(( now - mod ))
-    if [ "$age" -lt "$BOARD_TTL" ]; then
-      cat "$BOARD_CACHE"
-      return
-    fi
-  fi
-  local token
-  token=$(get_jira_token)
-  board_id=$(/usr/bin/curl -s -u "$token" -X GET \
-    -H "Accept: application/json" \
-    "$JIRA_BASE/rest/agile/1.0/board?projectKeyOrId=MOP&maxResults=1" \
-  | jq -r '.values[0].id' 2>/dev/null)
-  if [ -z "$board_id" ] || [ "$board_id" = "null" ]; then
-    return 1
-  fi
-  printf '%s' "$board_id" > "$BOARD_CACHE"
-  printf '%s' "$board_id"
-}
+# Task source of the session, resolved from the current window's fixed @workspace_path (a pane's cwd drifts, and
+# an untagged window has no source). Kept in TASK_SRC: workspace_config_load resets TASK_SOURCE_CMD per card.
+TASK_SRC=""
+TASK_CACHE=""
+cur_wspath=$(tmux display-message -p '#{@workspace_path}' 2>/dev/null)
+if [ -n "$cur_wspath" ]; then
+  workspace_config_load "$cur_wspath"
+  [ -n "${TASK_SOURCE_CMD:-}" ] && [ -x "$TASK_SOURCE_CMD" ] && TASK_SRC="$TASK_SOURCE_CMD"
+fi
+[ -n "$TASK_SRC" ] && TASK_CACHE="/tmp/tmux-task-source.$(printf '%s' "$TASK_SRC" | cksum | cut -d' ' -f1).cache"
 
-fetch_jira_raw() {
-  local token board_id
-  token=$(get_jira_token)
-  [ -z "$token" ] && return 1
-  board_id=$(get_board_id)
-  [ -z "$board_id" ] && return 1
-  /usr/bin/curl -s -u "$token" -X GET \
-    -H "Accept: application/json" \
-    -G \
-    --data-urlencode "jql=$JIRA_JQL" \
-    --data-urlencode "fields=summary,status" \
-    --data-urlencode "maxResults=100" \
-    "$JIRA_BASE/rest/agile/1.0/board/$board_id/issue" \
-  | jq -r '.issues[] | [.key, .fields.status.name, .fields.summary] | @tsv'
-}
-
-build_ticket_rows() {
+build_task_rows() {
   local raw now mod age
-  if [ -f "$CACHE_FILE" ]; then
+  [ -n "$TASK_SRC" ] || return
+  if [ -f "$TASK_CACHE" ]; then
     now=$(date +%s)
-    mod=$(stat -f %m "$CACHE_FILE" 2>/dev/null || echo 0)
+    mod=$(stat -f %m "$TASK_CACHE" 2>/dev/null || echo 0)
     age=$(( now - mod ))
-    [ "$age" -lt "$CACHE_TTL" ] && raw=$(cat "$CACHE_FILE")
+    [ "$age" -lt "$CACHE_TTL" ] && raw=$(cat "$TASK_CACHE")
   fi
 
   if [ -z "${raw:-}" ]; then
-    raw=$(fetch_jira_raw 2>/dev/null)
+    raw=$("$TASK_SRC" list 2>/dev/null)
     [ -z "$raw" ] && return
-    printf '%s\n' "$raw" > "$CACHE_FILE"
+    printf '%s\n' "$raw" > "$TASK_CACHE"
   fi
 
-  printf '%s\n' "$raw" | while IFS="$TAB" read -r ticket status summary; do
-    [ -z "$ticket" ] && continue
-    [ -d "$WORKTREE_ROOT/$MOP_REPO/$ticket" ] && continue  # already a window card
-    summary=$(printf '%s' "$summary" | tr '\t' ' ')
+  printf '%s\n' "$raw" | while IFS="$TAB" read -r key title status; do
+    [ -z "$key" ] && continue
     status_padded=$(printf '%-14s' "$status")
-    header="${BOLD}${ticket}${RESET}  ${DIM}[${status_padded}]${RESET}  ${summary}"
-    printf '%s\0' "${TAB}${TAB}${TAB}${TAB}${TAB}${TAB}${header}${TAB}${ticket}" >> "$list_file"
+    header="${BOLD}${key}${RESET}  ${DIM}[${status_padded}]${RESET}  ${title}"
+    printf '%s\0' "${TAB}${TAB}${TAB}${TAB}${TAB}${TAB}${header}${TAB}${key}" >> "$list_file"
   done
 }
 
-# {5} = preview cmd, {3} = workspace path, {8} = ticket key (no-worktree card).
+# "sess 🔴n 🟢m" for each other session with marked windows, " · "-joined; empty when there are none.
+other_sessions_summary() {
+  tmux list-windows -a -F '#{session_name}	#{window_name}' 2>/dev/null \
+    | awk -F'\t' -v cur="$CUR_SESSION" '
+        $1 == cur { next }
+        index($2, "🔴") == 1 { red[$1]++; seen[$1] = 1 }
+        index($2, "🟢") == 1 { green[$1]++; seen[$1] = 1 }
+        END {
+          out = ""
+          for (s in seen) {
+            item = s
+            if (red[s])   item = item " 🔴" red[s]
+            if (green[s]) item = item " 🟢" green[s]
+            out = (out == "" ? item : out " · " item)
+          }
+          print out
+        }'
+}
+
+# {5} = preview cmd, {3} = workspace path, {8} = task key (no-worktree card).
 PREVIEW_CMD='ws={3}; p={5}; tk={8}; if [ -n "$tk" ] && [ -z "$ws" ]; then printf "(no worktree yet — press enter to create)\n"; elif [ -n "$p" ] && [ -n "$ws" ]; then "$p" "$ws"; else printf "(no preview configured)\n"; fi'
 
-RELOAD_BIND="ctrl-l:execute-silent(rm -f $CACHE_FILE)+execute-silent(~/bin/tmux-ticket-status.sh --reload {3} 2>/dev/null)+refresh-preview"
+RELOAD_BIND="ctrl-l:execute-silent(rm -f $(printf '%q' "$TASK_CACHE"))+execute-silent(~/bin/tmux-ticket-status.sh --reload {3} 2>/dev/null)+refresh-preview"
 
-CTRL_B_BIND="ctrl-b:execute-silent(t={8}; [ -n \"\$t\" ] && open \"$JIRA_BASE/browse/\$t\")"
+CTRL_B_BIND="ctrl-b:execute-silent(t={8}; src=$(printf '%q' "$TASK_SRC"); [ -n \"\$t\" ] && [ -n \"\$src\" ] && open \"\$(\"\$src\" url \"\$t\")\")"
 
 SERVE_INFO=$(serve_find_window)
 SERVE_WIN=$(printf '%s' "$SERVE_INFO" | cut -d' ' -f2)
@@ -332,12 +310,12 @@ action_notes() {
 }
 
 action_browser() {
-  if [ -z "$ticket8" ]; then echo "No ticket associated with this card."; sleep 1; return 1; fi
-  open "$JIRA_BASE/browse/$ticket8"
+  if [ -z "$ticket8" ] || [ -z "$TASK_SRC" ]; then echo "No task associated with this card."; sleep 1; return 1; fi
+  open "$("$TASK_SRC" url "$ticket8")"
 }
 
 action_reload_cache() {
-  rm -f "$CACHE_FILE"
+  [ -n "$TASK_CACHE" ] && rm -f "$TASK_CACHE"
   ~/bin/tmux-ticket-status.sh --reload "$ws_path" 2>/dev/null
 }
 
@@ -409,7 +387,7 @@ show_actions_menu_standalone() {
       printf 'ctrl-n\tNotes: Open\n'
     fi
     if [ -n "$ticket8" ]; then
-      printf 'ctrl-b\tOpen ticket in browser\n'
+      printf 'ctrl-b\tOpen task in browser\n'
     fi
     printf 'ctrl-l\tReload cache\n'
     if worktree_root_for_window >/dev/null; then
@@ -440,11 +418,11 @@ build_window_rows() {
   # itself empty, same failure tmux-ticket-status.sh's cache row hit already
   # works around.
   local US=$'\x1f'
-  tmux list-windows -a \
-    -F "#{session_name}${US}#{window_id}${US}#{session_name} │ #{window_name}${US}#{@ticket_title}${US}#{@workspace_path}${US}#{pane_current_path}" \
+  tmux list-windows -t "=$CUR_SESSION" \
+    -F "#{session_name}${US}#{window_id}${US}#{window_name}${US}#{@ticket_title}${US}#{@workspace_path}${US}#{pane_current_path}" \
     | while IFS="$US" read -r sess winid header title wspath panepath; do
         case "$header" in
-          *" │ serve("*|*" serve("*) continue ;;
+          serve\(*|*" serve("*) continue ;;
         esac
 
         ws_path=""
@@ -507,7 +485,7 @@ build_list() {
   : > "$list_file"
 
   build_window_rows
-  [ "$MODE" = "all" ] && build_ticket_rows
+  if [ "$MODE" = "all" ]; then build_task_rows; fi
 }
 
 # --actions-popup: standalone popup for ctrl-a, never invoked by hand. ctrl-a closes the current popup and
@@ -549,13 +527,20 @@ while true; do
   build_list
   [ -s "$list_file" ] || exit 0
 
-  if [ "$MODE" = "active" ]; then
-    HEADER=$(printf 'ctrl-a:actions menu  tab:all tickets  ctrl-s:serve  ctrl-r:restart  ctrl-x:stop  ctrl-g:trace build\nctrl-p:deploy  ctrl-v:view log  ctrl-n:notes  ctrl-l:reload preview')
+  if [ "$MODE" = "active" ] && [ -n "$TASK_SRC" ]; then
+    HEADER=$(printf 'ctrl-a:actions menu  tab:all tasks  ctrl-s:serve  ctrl-r:restart  ctrl-x:stop  ctrl-g:trace build\nctrl-p:deploy  ctrl-v:view log  ctrl-n:notes  ctrl-l:reload preview')
+    PROMPT='window ❯ '
+  elif [ "$MODE" = "active" ]; then
+    HEADER=$(printf 'ctrl-a:actions menu  ctrl-s:serve  ctrl-r:restart  ctrl-x:stop  ctrl-g:trace build\nctrl-p:deploy  ctrl-v:view log  ctrl-n:notes  ctrl-l:reload preview')
     PROMPT='window ❯ '
   else
-    HEADER=$(printf 'ctrl-a:actions menu  tab:active only  ctrl-b:browser  ctrl-l:reload tickets  ctrl-s:serve  ctrl-r:restart\nctrl-x:stop  ctrl-g:trace build  ctrl-p:deploy  ctrl-v:view log  ctrl-n:notes')
+    HEADER=$(printf 'ctrl-a:actions menu  tab:active only  ctrl-b:browser  ctrl-l:reload tasks  ctrl-s:serve  ctrl-r:restart\nctrl-x:stop  ctrl-g:trace build  ctrl-p:deploy  ctrl-v:view log  ctrl-n:notes')
     PROMPT='all ❯ '
   fi
+  summary=$(other_sessions_summary)
+  [ -n "$summary" ] && HEADER=$(printf '%s\n%s' "${DIM}other sessions: ${summary}${RESET}" "$HEADER")
+  EXPECT=ctrl-s,ctrl-r,ctrl-x,ctrl-v,ctrl-g,ctrl-p,ctrl-n,ctrl-a
+  [ -n "$TASK_SRC" ] && EXPECT="$EXPECT,tab"
 
   result=$(fzf \
     --read0 \
@@ -570,7 +555,7 @@ while true; do
     --header-first \
     --prompt="$PROMPT" \
     --pointer='▶' \
-    --expect=ctrl-s,ctrl-r,ctrl-x,ctrl-v,ctrl-g,ctrl-p,ctrl-n,ctrl-a,tab \
+    --expect="$EXPECT" \
     --bind="$RELOAD_BIND" \
     --bind="$CTRL_B_BIND" \
     --preview="$PREVIEW_CMD" \
@@ -616,8 +601,8 @@ while true; do
       ;;
   esac
 
-  if [ -n "$ticket" ] && [ -z "$winid" ]; then
-    zsh ~/bin/worktree-ticket.sh -n "$ticket"
+  if [ -n "$ticket8" ] && [ -z "$winid" ]; then
+    "$TASK_SRC" start "$ticket8"
     exit 0
   fi
 

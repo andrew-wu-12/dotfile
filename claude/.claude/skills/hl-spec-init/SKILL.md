@@ -39,7 +39,7 @@ tea issues <N> --comments -o json -r "$FORGEJO_HOMELAB_REPO"
 ```
 
 Read the title, body, and every comment. Derive `<slug>` the same way
-`tmux-forgejo-picker.sh` does: lowercase the title, collapse non-alphanumeric
+`tmux-task-source-forgejo.sh` does: lowercase the title, collapse non-alphanumeric
 runs to a single `-`, trim, cap at 40 chars. This must match exactly — it is
 also the branch name (`feature/<issue>-<slug>`) and worktree dir
 (`feature-<issue>-<slug>`).

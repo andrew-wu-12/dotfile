@@ -31,7 +31,7 @@ canonical="${branch}(${repo})"
 ticket=${root:t}
 
 marker=""; title=""; msg=""; do_popup=0; sound="Glass"
-session=""; window_id=""; term_app=""; client_tty=""
+session=""; window_id=""; term_app=""; client_tty=""; client=""
 case "$event" in
     notification)
         marker="🔴 "; do_popup=1
@@ -79,8 +79,13 @@ if [ -n "${TMUX_PANE:-}" ]; then
 
 # Resolved unconditionally: click-to-focus needs the terminal's bundle id and the client tty exactly when the
 # popup fires, i.e. when the window is NOT active.
-    client_pid=$(tmux list-clients -F '#{client_pid}' -t "$session" 2>/dev/null | head -1)
-    client_tty=$(tmux list-clients -F '#{client_tty}' -t "$session" 2>/dev/null | head -1)
+# The agent's session usually has no client (you're attached to another session), so fall back to the most
+# recently active client; switch-client -c then moves that client across sessions.
+    client=$(tmux list-clients -F '#{client_pid} #{client_tty}' -t "$session" 2>/dev/null | head -1)
+    [ -z "$client" ] && client=$(tmux list-clients -F '#{client_activity} #{client_pid} #{client_tty}' 2>/dev/null \
+        | sort -rn | head -1 | cut -d' ' -f2-)
+    client_pid=${client%% *}
+    client_tty=${client#* }
     term_app=$(app_bundle_for_pid "${client_pid:-0}")
 
 # "Already looking at it" needs window active, session attached, AND the terminal app frontmost: tmux cannot

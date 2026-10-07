@@ -14,7 +14,8 @@ description: >-
 The last step of a spec round. `hl-spec-init` and `hl-spec-sync` keep a
 private, consolidated artifact in `project-note`. This skill publishes it,
 so the Forgejo issue always shows current state — readable from your phone,
-from `prefix i`'s picker, or by future-you without opening the vault.
+from the homelab session's `prefix w` task list, or by future-you without
+opening the vault.
 
 Two write targets, one approval:
 

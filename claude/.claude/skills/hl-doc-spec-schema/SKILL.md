@@ -22,7 +22,7 @@ of restating it.
   the homelab code repo itself.
 - Note: `Homelab/2 - Specs/<issue>-<slug>.md`. `<issue>` is the Forgejo
   issue number on `$FORGEJO_HOMELAB_REPO` (set in `~/.zshrc.local`); `<slug>` is derived the same way
-  `tmux-forgejo-picker.sh` derives it (lowercase the title, collapse
+  `tmux-task-source-forgejo.sh` derives it (lowercase the title, collapse
   non-alphanumeric runs to a single `-`, trim, cap at 40 chars). This must
   match byte-for-byte — it is also the branch name (`feature/<issue>-<slug>`)
   and the worktree dir name (`feature-<issue>-<slug>`), so issue, spec,

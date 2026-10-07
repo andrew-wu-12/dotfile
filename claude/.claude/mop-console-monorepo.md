@@ -9,7 +9,7 @@ Applies only when working in `mop-console-monorepo` or one of its worktrees. Ign
 - No code comments.
 
 ## Tests (Jest)
-- Use `it()` / `it.each()`. If an existing file uses `test` throughout, ask.
+- Use `test()` / `test.each()`. If an existing file uses `it` throughout, ask.
 - Description format: `with <condition> | expect: <result>`.
 - Parameterized cases are row tables, each row holding every input and the expected value.
 - Name the `describe` after the function under test.

@@ -1,7 +1,7 @@
 #!/bin/zsh
 # Ticket dev-status report for mwt worktrees: spec path, a per-ticket block (PR, Jira, preview, Jenkins) for the
-# feature/hotfix ticket and, when one exists, its epic, then a Deploy block (deploy plan, one-uat/one-dev Jenkins
-# status). Print-and-exit: tmux-window-picker.sh's fzf --preview re-invokes it for each highlighted card.
+# feature/hotfix ticket and, when one exists, its epic, then a Deploy block (deploy plan). Print-and-exit:
+# tmux-window-picker.sh's fzf --preview re-invokes it for each highlighted card.
 #
 # Usage:
 #   tmux-ticket-status.sh [DIR]           print the report (DIR default $PWD)
@@ -253,19 +253,20 @@ fi
 CACHE_HIT=false
 if [[ -f "$CACHE_FILE" ]]; then
     # \x1f, not a tab: a tab in IFS is whitespace, so read squeezes runs of it and drops empty fields, shifting
-    # every later field (several, e.g. uat_deploy_detail, are legitimately empty and not last). \x1f isn't
+    # every later field (several, e.g. epic_build_detail, are legitimately empty and not last). \x1f isn't
     # whitespace, so empty fields stay positional.
-    CACHE_ROW=$(jq -r '[.fetched_at, .ticket_summary, .has_epic, .epic_error, .parent_ticket_number,
+    CACHE_ROW=$(jq -r 'select(has("feature_build_state"))
+        | [.fetched_at, .ticket_summary, .has_epic, .epic_error, .parent_ticket_number,
         .feature_pr_status, .feature_pr_url, .epic_pr_status, .epic_pr_url,
         .jira_status_state, .jira_status_value, .epic_jira_status_state, .epic_jira_status_value,
-        .dev_deploy_state, .dev_deploy_detail, .uat_deploy_state, .uat_deploy_detail,
+        .feature_build_state, .feature_build_detail, .epic_build_state, .epic_build_detail,
         .confluence_state, .confluence_url]
         | map(tostring) | join("")' "$CACHE_FILE" 2>/dev/null)
     if [[ -n "$CACHE_ROW" ]]; then
         IFS=$'\x1f' read -r FETCHED_AT TICKET_SUMMARY HAS_EPIC EPIC_ERROR PARENT_TICKET_NUMBER \
             FEATURE_PR_STATUS FEATURE_PR_URL EPIC_PR_STATUS EPIC_PR_URL \
             JIRA_STATUS_STATE JIRA_STATUS_VALUE EPIC_JIRA_STATUS_STATE EPIC_JIRA_STATUS_VALUE \
-            DEV_DEPLOY_STATE DEV_DEPLOY_DETAIL UAT_DEPLOY_STATE UAT_DEPLOY_DETAIL \
+            FEATURE_BUILD_STATE FEATURE_BUILD_DETAIL EPIC_BUILD_STATE EPIC_BUILD_DETAIL \
             CONFLUENCE_STATE CONFLUENCE_URL <<< "$CACHE_ROW"
         CACHE_HIT=true
     fi
@@ -314,20 +315,20 @@ if ! $CACHE_HIT; then
     # jenkins.morrison.express is VPN-only: skip both live calls when the VPN is down instead of failing slowly
     # one by one. The "no epic to check" case is a structural error independent of VPN.
     if vpn_connected; then
-        IFS=$'\t' read -r DEV_DEPLOY_STATE DEV_DEPLOY_DETAIL <<< "$(jenkins_deploy_check mop_console_monorepo_dev "$BRANCH")"
+        IFS=$'\t' read -r FEATURE_BUILD_STATE FEATURE_BUILD_DETAIL <<< "$(jenkins_deploy_check mop_console_monorepo_feature "$BRANCH")"
         if $IS_HOTFIX; then
-            IFS=$'\t' read -r UAT_DEPLOY_STATE UAT_DEPLOY_DETAIL <<< "$(jenkins_deploy_check mop_console_monorepo_uat "$BRANCH")"
+            IFS=$'\t' read -r EPIC_BUILD_STATE EPIC_BUILD_DETAIL <<< "$(jenkins_deploy_check mop_console_monorepo_epic_or_hotfix "$BRANCH")"
         elif $HAS_EPIC; then
-            IFS=$'\t' read -r UAT_DEPLOY_STATE UAT_DEPLOY_DETAIL <<< "$(jenkins_deploy_check mop_console_monorepo_uat "$UAT_BRANCH")"
+            IFS=$'\t' read -r EPIC_BUILD_STATE EPIC_BUILD_DETAIL <<< "$(jenkins_deploy_check mop_console_monorepo_epic_or_hotfix "$UAT_BRANCH")"
         else
-            UAT_DEPLOY_STATE=error; UAT_DEPLOY_DETAIL="Error"
+            EPIC_BUILD_STATE=error; EPIC_BUILD_DETAIL="Error"
         fi
     else
-        DEV_DEPLOY_STATE=pending; DEV_DEPLOY_DETAIL="VPN required"
+        FEATURE_BUILD_STATE=pending; FEATURE_BUILD_DETAIL="VPN required"
         if $IS_HOTFIX || $HAS_EPIC; then
-            UAT_DEPLOY_STATE=pending; UAT_DEPLOY_DETAIL="VPN required"
+            EPIC_BUILD_STATE=pending; EPIC_BUILD_DETAIL="VPN required"
         else
-            UAT_DEPLOY_STATE=error; UAT_DEPLOY_DETAIL="Error"
+            EPIC_BUILD_STATE=error; EPIC_BUILD_DETAIL="Error"
         fi
     fi
 
@@ -355,10 +356,10 @@ if ! $CACHE_HIT; then
         --arg jira_status_value "$JIRA_STATUS_VALUE" \
         --arg epic_jira_status_state "$EPIC_JIRA_STATUS_STATE" \
         --arg epic_jira_status_value "$EPIC_JIRA_STATUS_VALUE" \
-        --arg dev_deploy_state "$DEV_DEPLOY_STATE" \
-        --arg dev_deploy_detail "$DEV_DEPLOY_DETAIL" \
-        --arg uat_deploy_state "$UAT_DEPLOY_STATE" \
-        --arg uat_deploy_detail "$UAT_DEPLOY_DETAIL" \
+        --arg feature_build_state "$FEATURE_BUILD_STATE" \
+        --arg feature_build_detail "$FEATURE_BUILD_DETAIL" \
+        --arg epic_build_state "$EPIC_BUILD_STATE" \
+        --arg epic_build_detail "$EPIC_BUILD_DETAIL" \
         --arg confluence_state "$CONFLUENCE_STATE" \
         --arg confluence_url "$CONFLUENCE_URL" \
         '{fetched_at: $fetched_at, ticket_summary: $ticket_summary, has_epic: $has_epic,
@@ -367,8 +368,8 @@ if ! $CACHE_HIT; then
           epic_pr_status: $epic_pr_status, epic_pr_url: $epic_pr_url,
           jira_status_state: $jira_status_state, jira_status_value: $jira_status_value,
           epic_jira_status_state: $epic_jira_status_state, epic_jira_status_value: $epic_jira_status_value,
-          dev_deploy_state: $dev_deploy_state, dev_deploy_detail: $dev_deploy_detail,
-          uat_deploy_state: $uat_deploy_state, uat_deploy_detail: $uat_deploy_detail,
+          feature_build_state: $feature_build_state, feature_build_detail: $feature_build_detail,
+          epic_build_state: $epic_build_state, epic_build_detail: $epic_build_detail,
           confluence_state: $confluence_state, confluence_url: $confluence_url}' \
         > "$CACHE_FILE"
 fi
@@ -393,12 +394,11 @@ if $IS_HOTFIX; then FEATURE_ENV="uat"; else FEATURE_ENV="dev"; fi
 info_row "$(pr_symbol_state "$FEATURE_PR_STATUS")" "PR" "$FEATURE_PR_STATUS" "$FEATURE_PR_URL"
 info_row "$JIRA_STATUS_STATE" "Jira" "$JIRA_STATUS_VALUE" "$JIRA_BROWSE/$TICKET_NUMBER"
 info_row done "Preview" "" "$(mop_preview_url "$TICKET_NUMBER" "$FEATURE_ENV")"
-# A hotfix owns both dev+uat builds via the Deploy section but has one ticket block, so show uat here (the
-# meaningful gate).
+# A hotfix has one ticket block and builds through _epic_or_hotfix on its own branch, so show that build here.
 if $IS_HOTFIX; then
-    info_row "$UAT_DEPLOY_STATE" "Jenkins" "$UAT_DEPLOY_DETAIL"
+    info_row "$EPIC_BUILD_STATE" "Jenkins" "$EPIC_BUILD_DETAIL"
 else
-    info_row "$DEV_DEPLOY_STATE" "Jenkins" "$DEV_DEPLOY_DETAIL"
+    info_row "$FEATURE_BUILD_STATE" "Jenkins" "$FEATURE_BUILD_DETAIL"
 fi
 
 if ! $IS_HOTFIX; then
@@ -408,7 +408,7 @@ if ! $IS_HOTFIX; then
         info_row "$(pr_symbol_state "$EPIC_PR_STATUS")" "PR" "$EPIC_PR_STATUS" "$EPIC_PR_URL"
         info_row "$EPIC_JIRA_STATUS_STATE" "Jira" "$EPIC_JIRA_STATUS_VALUE" "$JIRA_BROWSE/$PARENT_TICKET_NUMBER"
         info_row done "Preview" "" "$(mop_preview_url "$PARENT_TICKET_NUMBER" uat)"
-        info_row "$UAT_DEPLOY_STATE" "Jenkins" "$UAT_DEPLOY_DETAIL"
+        info_row "$EPIC_BUILD_STATE" "Jenkins" "$EPIC_BUILD_DETAIL"
     elif $EPIC_ERROR; then
         printf '%sEpic%s\n' "$BOLD" "$RESET"
         info_row error "PR" "Error"
@@ -427,5 +427,3 @@ elif [[ "$CONFLUENCE_STATE" == "error" ]]; then
 else
     info_row "$CONFLUENCE_STATE" "Deploy plan" "" "$CONFLUENCE_URL"
 fi
-info_row "$UAT_DEPLOY_STATE" "one-uat" "$UAT_DEPLOY_DETAIL"
-info_row "$DEV_DEPLOY_STATE" "one-dev" "$DEV_DEPLOY_DETAIL"

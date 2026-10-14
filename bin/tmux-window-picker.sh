@@ -151,8 +151,7 @@ serve_stop_current() {
 
 # ctrl-p: deploy (MOP-only). Gated on a resolved .tmux-build.conf (trace_prepare, as ctrl-g), VPN when
 # BUILD_VPN_CHECK=1, and a MOP feature/hotfix branch. Step 1 picks the branch (ticket's own or uat/<parent>);
-# step 2 picks job(s): dev fires _feature, uat fires _epic_or_hotfix, one fires both _dev and _uat, all
-# against step 1's branch.
+# step 2 picks the job: dev fires _feature, uat fires _epic_or_hotfix, both against step 1's branch.
 deploy_run() {
   local wt="$1" branch parsed ticket is_hotfix uat_branch
   local branch_opts branch_choice job_choice
@@ -187,7 +186,7 @@ deploy_run() {
     $mocha) || return
   [ -z "$branch_choice" ] && return
 
-  job_choice=$(printf 'dev\nuat\none\n' | fzf \
+  job_choice=$(printf 'dev\nuat\n' | fzf \
     --layout=reverse --border=rounded --height=~100% \
     --header="(2/2) Select Target Environment" --prompt='job ❯ ' \
     --pointer='▶' \
@@ -203,12 +202,6 @@ deploy_run() {
     uat)
       deploy_trigger_job mop_console_monorepo_epic_or_hotfix BRANCH "$branch_choice" \
         && specs+=("$(trace_job_spec mop_console_monorepo_epic_or_hotfix "$branch_choice")")
-      ;;
-    one)
-      deploy_trigger_job mop_console_monorepo_dev BRANCH "$branch_choice" \
-        && specs+=("$(trace_job_spec mop_console_monorepo_dev "$branch_choice")")
-      deploy_trigger_job mop_console_monorepo_uat BRANCH "$branch_choice" \
-        && specs+=("$(trace_job_spec mop_console_monorepo_uat "$branch_choice")")
       ;;
     *)
       return

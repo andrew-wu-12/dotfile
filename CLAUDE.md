@@ -107,7 +107,7 @@ All scripts are symlinked to `~/bin/` and have aliases in `.zshrc`. Read a scrip
 - **`trace-build.sh` (`tbs`)** — Polls Jenkins for the current branch's build with a progress bar and macOS notification.
 - **`bi-weekly-report.sh` (`bws`)** — Copies the user's monorepo PRs as JSON to the clipboard.
 
-MOP's 4-job trace config lives in `$WORKTREE_ROOT/mop-console-monorepo/.tmux-build.conf` — in the worktree-namespace folder, not the repo, so it covers every worktree regardless of branch.
+MOP's 2-job trace config (feature + epic/hotfix) lives in `$WORKTREE_ROOT/mop-console-monorepo/.tmux-build.conf` — in the worktree-namespace folder, not the repo, so it covers every worktree regardless of branch.
 
 ## Environment Variables (`.zshrc`)
 

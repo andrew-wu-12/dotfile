@@ -3,7 +3,7 @@
 
 Every deploy plan this skill makes is a frontend-monorepo deploy, so the
 structure is fixed: one pre-publish checklist covering every deploy step
-(one -> one-dev -> one-uat, then testing), then Tickets and Deployments.
+(deploy to one, then testing), then Tickets and Deployments.
 The only things that vary per deploy are the epic ticket and two optional
 steps (backend publish, config-file deploy) — those are flags.
 
@@ -27,8 +27,7 @@ def checklist(be_publish, config_deploy):
         labels.append("BE - Publish")
     if config_deploy:
         labels.append(f"Deploy <code>{CONFIG_REPO}</code> to one")
-    labels += [f"Deploy <code>{MONOREPO}</code> to {env}"
-               for env in ("one", "one-dev", "one-uat")]
+    labels.append(f"Deploy <code>{MONOREPO}</code> to one")
     labels.append(f"Test module in <code>{MONOREPO}</code> ( i.e. Affected APPs )")
     return labels
 

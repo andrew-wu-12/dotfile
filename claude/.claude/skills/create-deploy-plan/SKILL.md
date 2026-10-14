@@ -6,7 +6,7 @@ description: >-
   asks to create/generate a deploy plan, write up a release/deployment plan, make
   a deploy plan page, prepare a deployment doc for a ticket, or "deploy plan for
   MOP-XXXX" — even if they don't say "Confluence" explicitly. Scaffolds the page
-  (pre-publish checklist with the one/one-dev/one-uat deploy steps, Tickets macro,
+  (pre-publish checklist with the deploy-to-one steps, Tickets macro,
   Deployments table) under the dated deploy-YYYYMMDD folder; the operational
   cells are filled by hand in the browser.
 ---
@@ -76,8 +76,8 @@ the returned `id` is used directly as the ancestor when publishing.
 
 ### 3. Ask the two optional-step questions, then build the body
 
-Every deploy plan is a frontend `mop-console-monorepo` deploy to one, one-dev, and
-one-uat, so that scaffold is fixed. Only two independent steps vary — **ask the
+Every deploy plan is a frontend `mop-console-monorepo` deploy to one, so that
+scaffold is fixed. Only two independent steps vary — **ask the
 user both**:
 
 - **Backend publish needed?** → `--be-publish`
@@ -96,8 +96,8 @@ What the generator produces (don't hand-edit the storage XML — change
 - **Pre-publish checklist** — one flat task list, all left **incomplete**, in
   this order: Dry Run Plan with BA/SA · SA - Check Jira Status · `BE - Publish`
   (if `--be-publish`) · Deploy `mop_configuration_files` to one (if
-  `--config-deploy`) · Deploy `mop-console-monorepo` to one · to one-dev · to
-  one-uat · Test module in `mop-console-monorepo` (Affected APPs).
+  `--config-deploy`) · Deploy `mop-console-monorepo` to one · Test module in
+  `mop-console-monorepo` (Affected APPs).
 - **Tickets** — the epic macro only.
 - **Deployments** — header + grey guidance row + a pre-filled `mop-console-monorepo`
   data row (other cells blank, filled at deploy time). With `--config-deploy`, a

@@ -1,9 +1,10 @@
 ---
 name: mop-spec-feature-ready
 description: >-
-  Check that a feature PR is ready for review. The skill checks four things: the spec
-  is posted to Jira, the code agrees with the spec, no code refers to a removed
-  identifier, and the diff has no defects. If the gates pass, the skill flips the
+  Check that a feature PR is ready for review. The skill checks five things: the spec
+  is posted to Jira, the code agrees with the spec, the browser run of the spec's
+  test scenarios has no failure, no code refers to a removed identifier, and the diff
+  has no defects. If the gates pass, the skill flips the
   draft PR to ready. The skill also checks a PR that is already ready; then it only
   reports. Use when a feature is done and you want to mark the PR ready for review,
   "mop-spec-feature-ready", "is this PR ready", or to re-check a PR after pushing fixes. The skill
@@ -33,7 +34,7 @@ Therefore you can run the check at any time. You can run it after the PR is read
 This is necessary. Reviewers find defects after the flip as often as before it. A
 gate that runs only at the flip is a gate that almost never runs.
 
-Run one context step, then four gates. The order puts the cheap and certain gates
+Run one context step, then five gates. The order puts the cheap and certain gates
 first. A `grep` can block the PR, so the expensive review must not run first.
 
 | # | Step | Blocks? | Finds |
@@ -41,6 +42,7 @@ first. A `grep` can block the PR, so the expensive review must not run first.
 | 1b | CI results and comments | no — context | false trust in green checks; repeated findings |
 | 2 | Is the spec posted? | **yes** | reviewers who read an old spec |
 | 3 | Does the code disagree with the spec? | **yes** | code written for an old spec |
+| 3b | Browser run of the test scenarios | **yes**, for a current FAIL | behavior that disagrees with the spec |
 | 4 | Broken identifier references | **yes**, if confirmed | callers that you renamed |
 | 5 | Code defects | no — warns | logic defects |
 
@@ -189,6 +191,40 @@ data relationships with an unstated cardinality. That is step 1b of mop-spec-dri
   this does not block. Add these items to the warnings from step 5.
 - **No spec note exists** — this does not block. Note it and continue.
 
+### 3b. Gate: browser run of the test scenarios (BLOCKING for a current FAIL)
+
+`mop-spec-verify` runs the scenarios of `### 3. 測試案例情境` in a browser. It
+writes one row per scenario to a record. This gate only reads the record. Never
+start the browser run from this skill. The run is slow and needs a running app.
+
+```bash
+RESULT="$WORKTREE_ROOT/mop-console-monorepo/MOP-XXXX.verify.json"
+git rev-parse HEAD
+```
+
+Take the current round from `round:` in the frontmatter of the note. Count the
+scenarios in `### 3. 測試案例情境`. Number them 1, 2, 3, … in order.
+
+A row is **current** if its `sha` equals `HEAD` and its `round` equals the
+current round. Else the row is **stale**.
+
+Verdicts:
+
+- **A current row has the verdict FAIL — block the flip.** Report the scenario
+  number, the expected text, the actual text, and the screenshot path. To correct
+  this, change the code, or confirm the spec again. Then run
+  `/mop-spec-verify MOP-XXXX <n>` and `mop-spec-feature-ready` again.
+- **Each scenario has a current PASS row** — the gate passes.
+- **Else** — this does not block. Add one warning to the list from step 5. Name
+  the scenarios with no row, with a stale row, or with an INCONCLUSIVE row (give
+  its reason). Name the command to correct it:
+  `/mop-spec-verify MOP-XXXX <n> <n>`, or `/mop-spec-verify MOP-XXXX` if no record
+  exists.
+- **No spec note exists, or the note has no scenario** — this does not block.
+  Note it and continue.
+
+A stale FAIL does not block. The code or the spec changed after the run.
+
 ### 4. Gate: search for broken identifier references (BLOCKING if confirmed)
 
 A review that reads only the diff cannot find this defect class. This step is a
@@ -322,7 +358,7 @@ review is billed. Do not run it for them.
 
 ### 6. Flip the PR to ready (FLIP mode only)
 
-Do this only if gates 2, 3, and 4 all passed.
+Do this only if gates 2, 3, 3b, and 4 all passed.
 
 ```bash
 gh pr ready <number>
@@ -347,7 +383,8 @@ Report these items:
   the tests CI did not run for this diff. Give this line even if each check is green.
   A green check with an untested suite is the case that the user must know about.
 - **The warnings**, as one list: the findings from step 5, the ambiguity items from
-  mop-spec-drift, the hits from step 4 that you did not confirm, and each open bot
+  mop-spec-drift, the browser-run warning from step 3b, the hits from step 4 that you
+  did not confirm, and each open bot
   request. An example of a bot request is an absent Confluence link. Write "clean" if
   the list is empty. Mark each item as new, already-raised, or already-fixed.
 
@@ -357,9 +394,11 @@ Then write `HEAD` to `$GATE_FILE`.
 
 - **Never return a ready PR to draft.** RECHECK mode reports. It does not change the
   state of the PR.
-- **Three gates block the flip**: step 2 (the spec is not posted), step 3 (the
-  round-comparison path found drift), and step 4 (a confirmed broken reference). Each
-  one of them blocks the flip alone.
+- **Four gates block the flip**: step 2 (the spec is not posted), step 3 (the
+  round-comparison path found drift), step 3b (a current FAIL row), and step 4 (a
+  confirmed broken reference). Each one of them blocks the flip alone.
+- Step 3b never starts a browser run. A missing, stale, or INCONCLUSIVE row only
+  warns.
 - The hits from step 4 that you did not confirm never block. The single-round output
   of mop-spec-drift never blocks. That output also uses the words "contradiction" and
   "ambiguity", but it is a different check. Do not confuse it with a gate.

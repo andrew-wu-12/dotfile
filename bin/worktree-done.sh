@@ -31,9 +31,10 @@ fi
 
 echo "Tearing down worktree: $ROOT (branch $BRANCH)"
 
-# Sibling .title and ticket-status cache files (mwt only; no-op otherwise), removed once teardown is committed
-# to so neither outlives the worktree.
-rm -f "${ROOT}.title" "${ROOT}.status-cache.json"
+# Sibling .title, ticket-status cache, and mop-spec-verify result files (mwt only; no-op otherwise), removed once
+# teardown is committed to so none outlives the worktree.
+rm -f "${ROOT}.title" "${ROOT}.status-cache.json" "${ROOT}.verify.json"
+rm -rf "${ROOT}.verify"
 
 # Close the window tmux-dev-layout.sh named "<branch>(<repo>)": recompute the name and kill by exact name ->
 # window id (robust to slashes/parens in the name).

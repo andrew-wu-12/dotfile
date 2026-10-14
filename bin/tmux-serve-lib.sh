@@ -38,6 +38,35 @@ serve_ensure_window() {
   printf '%s %s %s\n' "$sess" "$winid" "$pane"
 }
 
+# Stops whatever the serve window runs and starts $2 in worktree $1; sets $SERVE_INFO/$SERVE_WIN/$SERVE_PANE.
+# $3 = window label, $4 = port for serve_compute_status's HTTP check (may be empty).
+serve_start() {
+  local target="$1" serve_cmd="$2" serve_label="$3" serve_port="$4" cmd i
+
+  SERVE_INFO=$(serve_ensure_window "$serve_label")
+  SERVE_WIN=$(printf '%s' "$SERVE_INFO" | cut -d' ' -f2)
+  SERVE_PANE=$(printf '%s' "$SERVE_INFO" | cut -d' ' -f3)
+
+  tmux send-keys -t "$SERVE_PANE" C-c
+  for i in $(seq 1 20); do
+    cmd=$(tmux display-message -p -t "$SERVE_PANE" '#{pane_current_command}' 2>/dev/null)
+    case "$cmd" in zsh|bash|sh) break ;; esac
+    sleep 0.5
+  done
+  cmd=$(tmux display-message -p -t "$SERVE_PANE" '#{pane_current_command}' 2>/dev/null)
+  case "$cmd" in
+    zsh|bash|sh) : ;;
+    *) tmux send-keys -t "$SERVE_PANE" C-c ;;
+  esac
+
+  tmux clear-history -t "$SERVE_PANE"
+  tmux send-keys -t "$SERVE_PANE" -l 'clear' \; send-keys -t "$SERVE_PANE" Enter
+  tmux send-keys -t "$SERVE_PANE" "$(printf 'cd %q' "$target") && $serve_cmd" Enter
+  tmux set-option -w -t "$SERVE_WIN" @serve_target "$target"
+  tmux set-option -w -t "$SERVE_WIN" @serve_port "$serve_port"
+  tmux set-option -w -t "$SERVE_WIN" @serve_cmd "$serve_cmd"
+}
+
 serve_current_target() {
   tmux show-option -w -t "$1" -v @serve_target 2>/dev/null
 }

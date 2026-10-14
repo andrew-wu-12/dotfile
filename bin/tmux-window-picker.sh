@@ -137,33 +137,7 @@ trap 'rm -f "$list_file"' EXIT
 serve_switch_to() {  # $1 = workspace path
   local target="$1"
   workspace_config_load "$target"
-  local serve_cmd="${WORKSPACE_SERVE_CMD:-yarn serve}"
-  local serve_label="${WORKSPACE_SERVE_LABEL:-$(basename "$target")}"
-  local serve_port="${WORKSPACE_SERVE_PORT:-}"
-
-  SERVE_INFO=$(serve_ensure_window "$serve_label")
-  SERVE_WIN=$(printf '%s' "$SERVE_INFO" | cut -d' ' -f2)
-  SERVE_PANE=$(printf '%s' "$SERVE_INFO" | cut -d' ' -f3)
-
-  tmux send-keys -t "$SERVE_PANE" C-c
-  local cmd
-  for _ in $(seq 1 20); do
-    cmd=$(tmux display-message -p -t "$SERVE_PANE" '#{pane_current_command}' 2>/dev/null)
-    case "$cmd" in zsh|bash|sh) break ;; esac
-    sleep 0.5
-  done
-  cmd=$(tmux display-message -p -t "$SERVE_PANE" '#{pane_current_command}' 2>/dev/null)
-  case "$cmd" in
-    zsh|bash|sh) : ;;
-    *) tmux send-keys -t "$SERVE_PANE" C-c ;;
-  esac
-
-  tmux clear-history -t "$SERVE_PANE"
-  tmux send-keys -t "$SERVE_PANE" -l 'clear' \; send-keys -t "$SERVE_PANE" Enter
-  tmux send-keys -t "$SERVE_PANE" "$(printf 'cd %q' "$target") && $serve_cmd" Enter
-  tmux set-option -w -t "$SERVE_WIN" @serve_target "$target"
-  tmux set-option -w -t "$SERVE_WIN" @serve_port "$serve_port"
-
+  serve_start "$target" "${WORKSPACE_SERVE_CMD:-yarn serve}" "${WORKSPACE_SERVE_LABEL:-$(basename "$target")}" "${WORKSPACE_SERVE_PORT:-}"
   sleep 1
 }
 
@@ -171,6 +145,7 @@ serve_stop_current() {
   tmux send-keys -t "$SERVE_PANE" C-c
   tmux set-option -w -t "$SERVE_WIN" -u @serve_target
   tmux set-option -w -t "$SERVE_WIN" -u @serve_port
+  tmux set-option -w -t "$SERVE_WIN" -u @serve_cmd
   sleep 1
 }
 

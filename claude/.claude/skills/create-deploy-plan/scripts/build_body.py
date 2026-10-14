@@ -2,10 +2,10 @@
 """Build the storage-format body for a MOP deploy plan page.
 
 Every deploy plan this skill makes is a frontend-monorepo deploy, so the
-structure is fixed: a short pre-publish checklist, then one section per
-environment stage (one-dev -> one-uat -> one), then Tickets and Deployments.
+structure is fixed: one pre-publish checklist covering every deploy step
+(one -> one-dev -> one-uat, then testing), then Tickets and Deployments.
 The only things that vary per deploy are the epic ticket and two optional
-prod-stage steps (backend publish, config-file deploy) — those are flags.
+steps (backend publish, config-file deploy) — those are flags.
 
 Task ids are assigned sequentially here and Confluence reassigns them on save;
 we number them anyway so the created page is valid on the first POST.
@@ -20,16 +20,17 @@ JIRA_SERVER_ID = "b042f398-439a-3c26-bf49-d230a46a4f8f"
 MONOREPO = "mop-console-monorepo"
 CONFIG_REPO = "mop_configuration_files"
 
-# The standard checklist that gates publishing the plan itself.
-PREPUBLISH = ["Dry Run Plan with BA/SA", "SA - Check Jira Status"]
 
-
-def stage_tasks(env):
-    """Deploy + verify the monorepo in one environment."""
-    return [
-        f"Deploy <code>{MONOREPO}</code> to {env}",
-        f"Test module in <code>{MONOREPO}</code> ( i.e. Affected APPs )",
-    ]
+def checklist(be_publish, config_deploy):
+    labels = ["Dry Run Plan with BA/SA", "SA - Check Jira Status"]
+    if be_publish:
+        labels.append("BE - Publish")
+    if config_deploy:
+        labels.append(f"Deploy <code>{CONFIG_REPO}</code> to one")
+    labels += [f"Deploy <code>{MONOREPO}</code> to {env}"
+               for env in ("one", "one-dev", "one-uat")]
+    labels.append(f"Test module in <code>{MONOREPO}</code> ( i.e. Affected APPs )")
+    return labels
 
 
 class Counter:
@@ -54,10 +55,6 @@ def task(label, ctr):
 
 def task_list(labels, ctr):
     return "<ac:task-list>" + "".join(task(l, ctr) for l in labels) + "</ac:task-list>"
-
-
-def section(title, labels, ctr):
-    return f"<h2>{title}</h2>" + task_list(labels, ctr)
 
 
 def grey(text):
@@ -114,21 +111,9 @@ def deployments_table(config_deploy):
 
 def build(epic_key, be_publish, config_deploy):
     ctr = Counter()
-    # Prod-stage optional steps come before the monorepo deploy, matching the
-    # order a release actually runs them (backend + config land first).
-    one_labels = []
-    if be_publish:
-        one_labels.append("BE - Publish")
-    if config_deploy:
-        one_labels.append(f"Deploy <code>{CONFIG_REPO}</code> to one")
-    one_labels += stage_tasks("one")
-
     parts = [
         "<p>You should check the following items before publish this deploy plan.</p>",
-        task_list(PREPUBLISH, ctr),
-        section("one-dev", stage_tasks("one-dev"), ctr),
-        section("one-uat", stage_tasks("one-uat"), ctr),
-        section("one", one_labels, ctr),
+        task_list(checklist(be_publish, config_deploy), ctr),
         "<hr />",
         "<h2>Tickets</h2>",
         f"<p>{grey('The actual feature/issue ticket links.')}</p>",
@@ -144,7 +129,7 @@ def main():
     ap = argparse.ArgumentParser()
     ap.add_argument("epic_key")
     ap.add_argument("--be-publish", action="store_true",
-                    help="include 'BE - Publish' in the one (prod) stage")
+                    help="include the 'BE - Publish' task")
     ap.add_argument("--config-deploy", action="store_true",
                     help="include the mop_configuration_files deploy task + table row")
     a = ap.parse_args()

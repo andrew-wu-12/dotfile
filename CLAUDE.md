@@ -26,6 +26,8 @@ Several `bin/*.sh` scripts (`worktree-ticket.sh`, `combine-branches.sh`, `deploy
 
 All stowing goes through `stow_pkg` in `bin/init-lib.sh`, never `stow` directly. It dry-runs first, and if a real (non-symlink) file already occupies a target it lists the conflicts and asks whether to keep them. Keeping skips that package entirely; declining backs the files up to `<name>.bak.<timestamp>` and links the repo version. `--adopt` is deliberately **not** used anywhere — the repo is always the source of truth and is never written to by an init script.
 
+The `claude` package is the exception for teammates: its `settings.json` and `CLAUDE.md` are the author's personal config, so stowing it on someone else's machine would replace theirs. Install bundle 3 therefore runs the `claude-skills` step (`init-claude-skills.sh`) instead, which bypasses Stow and symlinks each skill dir (one containing `SKILL.md`) into `~/.claude/skills/<name>` individually: a name already taken by the user's own skill is kept and reported, never backed up or replaced; `~/.claude/skills` is created as a real directory so it can never tree-fold into the repo; dangling links pointing into the repo are pruned; and if `~/.claude/skills` already resolves to the repo (the author's fully stowed setup) it is a no-op. The full `claude` step stays in the advanced menu for the author's own machines.
+
 `bin/init-lib.sh` also provides `resolve_repo_root` (scripts must not assume the repo is the parent of their own directory — that breaks when they run via the `~/bin` symlink), `ensure_brew` (a freshly installed Homebrew is not on `PATH` until `brew shellenv` is evaluated), and the package-manager abstraction described in [Platform Support](#platform-support).
 
 ## Initial Setup

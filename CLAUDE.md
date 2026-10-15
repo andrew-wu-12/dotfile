@@ -31,11 +31,12 @@ All stowing goes through `stow_pkg` in `bin/init-lib.sh`, never `stow` directly.
 ## Initial Setup
 
 ```bash
-cd ~/dotfile/bin
-chmod +x *.sh
-./init.sh          # interactive; walks through required + optional tools
-source ~/.zshrc
+bash -c "$(curl -fsSL https://raw.githubusercontent.com/andrew-wu-12/dotfile/main/install.sh)"
 ```
+
+`install.sh` (repo root, not stowed) is the bootstrap: it ensures git (Xcode CLT on macOS — `/usr/bin/git` is a stub that exists without it, so it checks `xcode-select -p`; pacman on Arch), clones over HTTPS to `${DOTFILE_ROOT:-~/dotfile}` with the push URL set to SSH (no keys exist yet on a fresh machine; the `ssh` step creates them), or `pull --ff-only`s an existing clone, then `exec`s `bin/init.sh` with stdin reattached to `/dev/tty` so prompts work even under `curl | bash`. On an existing checkout, run `bin/init.sh` directly.
+
+When it finishes, `init.sh` `exec`s `zsh -l` so the new config is live without a manual `source ~/.zshrc` (a child process cannot source into its parent shell). This is guarded by `[ -t 1 ]` — only when stdout is a terminal — so piped, redirected, or programmatic runs (CI, Raycast, an agent's Bash tool) exit normally instead of hanging on a shell nobody is attached to.
 
 `init.sh` orchestrates a sequence of `init-*.sh` sub-scripts. Optional tools (Starship, Nvim, Tmux, WezTerm, recommended CLI tools) are each prompted individually — pressing Enter skips.
 

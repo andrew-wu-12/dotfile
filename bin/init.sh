@@ -406,4 +406,5 @@ show_menu_loop
 
 echo ""
 echo "=== 初始化完成 ==="
+[ -t 1 ] && command -v zsh &>/dev/null && exec zsh -l
 echo "請重新啟動 shell，或執行 'source ~/.zshrc' 套用所有變更。"

@@ -408,24 +408,13 @@ wt my-feature-branch        # 或 wt -n my-feature-branch
 
 ### 快速開始
 
-1. **克隆專案**
+1. **一行安裝**（複製到 `~/dotfile` 並執行 `init.sh`；可用 `DOTFILE_ROOT` 指定其他位置）
 
    ```bash
-   git clone <this-repo-url> ~/dotfile
+   bash -c "$(curl -fsSL https://raw.githubusercontent.com/andrew-wu-12/dotfile/main/install.sh)"
    ```
 
-2. **執行初始化**
-
-   ```bash
-   cd ~/dotfile/bin
-   chmod +x *.sh
-   ./init.sh
-   ```
-
-3. **重新載入 Shell**
-   ```bash
-   source ~/.zshrc
-   ```
+   已複製過的話，直接執行 `~/dotfile/bin/init.sh` 即可。
 
 ### 手動設定憑證
 

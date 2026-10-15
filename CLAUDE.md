@@ -22,7 +22,7 @@ Each top-level directory is a Stow package. Running `stow <pkg>` from the repo r
 | `vscode-stow/` | `$HOME` | `Library/Application Support/Code/User/settings.json` |
 | `raycast/` | not stowed | `snippets.json`, imported manually via Raycast's own UI |
 
-Several `bin/*.sh` scripts (`worktree-ticket.sh`, `deploy-one.sh`, `combine-branches.sh`, `deploy-i18n.sh`, `trace-build.sh`) carry `# @raycast.*` header comments, so the same script is both a `~/bin` CLI command and a Raycast Script Command (Raycast points its script-directory setting at `~/bin` and reads these headers to build its UI) — don't remove those comments as dead code.
+Several `bin/*.sh` scripts (`worktree-ticket.sh`, `combine-branches.sh`, `deploy-i18n.sh`, `trace-build.sh`) carry `# @raycast.*` header comments, so the same script is both a `~/bin` CLI command and a Raycast Script Command (Raycast points its script-directory setting at `~/bin` and reads these headers to build its UI) — don't remove those comments as dead code.
 
 All stowing goes through `stow_pkg` in `bin/init-lib.sh`, never `stow` directly. It dry-runs first, and if a real (non-symlink) file already occupies a target it lists the conflicts and asks whether to keep them. Keeping skips that package entirely; declining backs the files up to `<name>.bak.<timestamp>` and links the repo version. `--adopt` is deliberately **not** used anywhere — the repo is always the source of truth and is never written to by an init script.
 
@@ -102,8 +102,7 @@ All scripts are symlinked to `~/bin/` and have aliases in `.zshrc`. Read a scrip
 - **`tmux-build-trace-lib.sh`** — Backend-agnostic trace engine used by the picker's `ctrl-g` (popup) and `ctrl-p` (inline post-deploy trace). Popups are opened via delayed `tmux run-shell -b` because tmux shows one popup at a time and the picker is already in one. Build discovery retries ~16s since a just-triggered build sits in the CI queue first.
 - **`tmux-build-trace.sh`** — The `ctrl-g` trace popup; not run directly. Waits for a keypress when done, then reopens the picker.
 - **`tmux-build-backend-<name>.sh`** — Backends dispatched by `BUILD_BACKEND` (`jenkins`, `forgejo`), each defining `<name>_find_build`/`<name>_poll_build` with the same JSON shape. Forgejo traces one combined commit status per ref (the job field is unused) and branch names with `/` must be percent-encoded or its router 404s.
-- **`tmux-deploy-lib.sh`** — `deploy_trigger_job`, sourced by both `deploy-one.sh` (zsh) and the picker (bash), so it must stay in syntax both shells understand (no arrays / indirect expansion).
-- **`deploy-one.sh` (`dpo`)** — Triggers `mop_console_monorepo_dev` and `_uat` Jenkins jobs for the same branch.
+- **`tmux-deploy-lib.sh`** — `deploy_trigger_job`, sourced by both `deploy-i18n.sh` (zsh) and the picker (bash), so it must stay in syntax both shells understand (no arrays / indirect expansion).
 - **`trace-build.sh` (`tbs`)** — Polls Jenkins for the current branch's build with a progress bar and macOS notification.
 - **`bi-weekly-report.sh` (`bws`)** — Copies the user's monorepo PRs as JSON to the clipboard.
 

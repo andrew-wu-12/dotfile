@@ -79,7 +79,7 @@ mop_preview_url() {
     printf 'https://mop-%s.%s.morrison.express/' "${parts[2]}" "$env"
 }
 
-# jenkins.morrison.express is only reachable over VPN (same check as deploy-one.sh).
+# jenkins.morrison.express is only reachable over VPN.
 vpn_connected() {
     scutil --nc list 2>/dev/null | grep -q "Connected"
 }

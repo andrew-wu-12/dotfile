@@ -42,8 +42,7 @@ Options:
 3. On **conflict**: the script aborts cleanly and names the culprit branch and
    files. Report those to the user — do not attempt an automatic resolution
    unless asked. The user resolves, then re-runs.
-4. On **success**: report the combined branch SHA. If the user wants it
-   deployed, use [deploy-one](../deploy-one/SKILL.md) on the integration branch.
+4. On **success**: report the combined branch SHA.
 
 ## Notes
 

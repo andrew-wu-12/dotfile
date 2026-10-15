@@ -3,9 +3,10 @@
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 # shellcheck source=/dev/null
 source "$SCRIPT_DIR/init-lib.sh"
+REPO_ROOT="$(resolve_repo_root "$SCRIPT_DIR")" || exit 1
 
 # Ordered step table as three index-aligned parallel arrays (no associative arrays: macOS stock Bash 3.2).
-STEP_KEYS=(brew required omz base recommend-cli starship nvim tmux wezterm vscode claude check-paths workspace credentials ssh gh clone)
+STEP_KEYS=(brew required omz base recommend-cli starship nvim tmux wezterm vscode claude claude-skills check-paths workspace credentials ssh gh clone)
 STEP_LABELS=(
     "Homebrew"
     "必要套件（jq、gh、curl、git、stow、nvm）"
@@ -18,6 +19,7 @@ STEP_LABELS=(
     "WezTerm"
     "VS Code"
     "Claude Code"
+    "Claude Code skills（只連結 skills，不動個人設定）"
     "專案路徑設定"
     "Workspace 設定（.workspace.conf）"
     "憑證（Keychain）"
@@ -37,6 +39,7 @@ STEP_SCRIPTS=(
     "init-wezterm.sh"
     "init-vscode.sh"
     "init-claude.sh"
+    "init-claude-skills.sh"
     "init-check-paths.sh"
     "init-workspace.sh"
     "init-credentials.sh"
@@ -50,7 +53,7 @@ FOUNDATION_KEYS=(brew required omz base)
 BUNDLE_LABELS=(
     "最小環境設定（VS Code）"
     "個人環境設定（推薦工具 + 終端機）"
-    "最小專案初始化（路徑、金鑰、憑證、複製儲存庫）"
+    "最小專案初始化（路徑、金鑰、憑證、複製儲存庫、Claude Code skills）"
     "個人工作區初始化（工作區設定、SSH、GitHub 驗證）"
 )
 
@@ -177,6 +180,14 @@ function detect_status() {
         claude)
             command -v claude &>/dev/null && [ -L "$HOME/.claude/settings.json" ] || return 1
             ;;
+        claude-skills)
+            command -v claude &>/dev/null || return 1
+            local skill_dir
+            for skill_dir in "$REPO_ROOT"/claude/.claude/skills/*/; do
+                [ -f "${skill_dir}SKILL.md" ] || continue
+                [ -e "$HOME/.claude/skills/$(basename "$skill_dir")" ] || return 1
+            done
+            ;;
         check-paths)
             local var
             for var in MOP_CONFIGURATION_PATH MOP_CONSOLE_PATH MOP_MONOREPO_PATH MOP_EPOD_PATH; do
@@ -233,7 +244,7 @@ function bundle_installed() {
             done
             ;;
         3)
-            for key in check-paths ssh credentials gh clone; do
+            for key in check-paths ssh credentials gh clone claude-skills; do
                 detect_status "$key" || return 1
             done
             ;;
@@ -310,7 +321,7 @@ function run_bundle_3() {
     echo "=== 最小專案初始化 ==="
     run_bundle_foundation
     local key
-    for key in check-paths ssh credentials gh clone; do
+    for key in check-paths ssh credentials gh clone claude-skills; do
         run_step_by_key "$key"
     done
 }

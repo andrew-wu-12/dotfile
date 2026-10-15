@@ -36,5 +36,7 @@ function stow_claude_config() {
     echo "✓ Claude 設定連結完成"
 }
 
-install_claude
-stow_claude_config
+if [[ "${BASH_SOURCE[0]}" == "${0}" ]]; then
+    install_claude
+    stow_claude_config
+fi

@@ -111,4 +111,4 @@ fi
 
 restore
 
-echo "Done. Deploy with: deploy-one.sh $INT_NAME"
+echo "Done."

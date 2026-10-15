@@ -69,28 +69,7 @@ Opens the `[DEV]` config PR (`feature/MOP-XXXXX → dev`) for `mop_configuration
 
 ---
 
-### 3. `deploy-one.sh`
-
-Deploys the MOP Console Monorepo to both dev and UAT environments simultaneously.
-
-**Usage:**
-
-```bash
-./deploy-one.sh feature/MOP-12345
-```
-
-**What it does:**
-
-1. Triggers parallel deployments to:
-   - `mop_console_monorepo_dev`
-   - `mop_console_monorepo_uat`
-2. Passes the branch name to both Jenkins jobs
-
-**Use Case:** Quick deployment when you want to update both environments at once.
-
----
-
-### 4. `deploy-i18n.sh`
+### 3. `deploy-i18n.sh`
 
 Deploys internationalization (i18n) updates to a specific environment.
 
@@ -179,7 +158,6 @@ vim config/app.config.js
 Several scripts include Raycast metadata for quick execution:
 
 - `deploy-i18n.sh` - Environment selection dropdown
-- `deploy-one.sh` - Quick monorepo deployment
 
 To use with Raycast, ensure scripts are executable and in your PATH.
 

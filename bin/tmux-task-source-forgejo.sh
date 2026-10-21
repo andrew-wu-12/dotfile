@@ -9,10 +9,10 @@
 set -u
 
 WORKTREE_ROOT="${WORKTREE_ROOT:-$HOME/project/worktrees}"
-FORGEJO_REPO_NAME="homelab"
 TAB=$(printf '\t')
 # .zshrc keeps these non-exported, so a tmux-launched script reads them from the credential store.
 FORGEJO_OWNER_REPO="${HOMELAB_REPO:-$(~/bin/cred-read.sh homelab-repo)}"
+FORGEJO_REPO_NAME="${FORGEJO_OWNER_REPO##*/}"
 HOMELAB_HOST="${HOMELAB_HOST:-$(~/bin/cred-read.sh homelab-host)}"
 FORGEJO_BASE="https://$HOMELAB_HOST"
 

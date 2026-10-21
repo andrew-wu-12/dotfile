@@ -34,7 +34,7 @@ credentials='{
         {
             "service_name": "homelab-repo",
             "variable_name": "HOMELAB_REPO",
-            "description": "Homelab repo（格式：<owner>/homelab，沒有 homelab 可留空跳過）"
+            "description": "Homelab repo（格式：<owner>/<homelab-repo-name>，沒有 homelab 可留空跳過）"
         }
     ]
 }'

@@ -21,6 +21,42 @@ vault.
   `tool-ticket-get`. Give it the ticket ID and the note's last Round History
   date. Require its report to list new comments verbatim and the file paths
   of new attachments, not descriptions of them.
+- Init extras: note every Figma/prototype URL in the description or
+  comments; the first goes in frontmatter `prototype`.
+
+## Grounding
+
+- Repos: `$MOP_MONOREPO_PATH`, `$MOP_CONFIGURATION_PATH`.
+- Run: **delegated**, a fresh subagent in the foreground.
+- Checks:
+  1. **Similar feature already built?** Search `$MOP_MONOREPO_PATH/apps` and
+     `/libs` for related pages, components, routes. If one exists, the spec
+     reuses it or aligns with it. Flag any divergence.
+  2. **Missing details?** Error handling, validation rules,
+     empty/loading/permission states, and field-level behavior the ticket
+     leaves unstated.
+  3. **i18n keys already exist?** Extract the candidate UI strings, then
+     check them all in one call:
+     ```bash
+     ~/bin/check-i18n.sh --batch <<< $'Submit\nConsol No.'          # all modules
+     ~/bin/check-i18n.sh --batch tms <<< $'Submit\nConsol No.'      # one module + commons
+     ```
+     Reuse exact/similar matches (output per string: `EXACT_KEY_MATCH` /
+     `EXACT_VALUE_MATCH` / `SIMILAR_MATCHES` / `NO_MATCH`, each with the full
+     `<module>.<key>` path).
+  4. **Violates existing functionality?** Existing behavior the new spec
+     would change or break.
+  5. **New privilege needed?** The config repo has one branch per
+     environment, and a node often exists in `dev` but not yet in `uat` or
+     `master`. Check all three:
+     ```bash
+     git -C "$MOP_CONFIGURATION_PATH" fetch -q origin
+     for b in dev uat master; do
+       echo -n "$b: "; git -C "$MOP_CONFIGURATION_PATH" show origin/$b:privileges.json | grep -c '<privilege-id>'
+     done
+     ```
+     Report the **promotion state** (e.g. "in dev, missing in uat/master →
+     promote"), not a flat "missing". `mop-check-privilege` resolves it.
 
 ## Note language
 

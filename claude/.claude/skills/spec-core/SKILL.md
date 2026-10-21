@@ -34,4 +34,5 @@ templates. The step files never name a domain. When a step file says
 | `schema.md` | note location, frontmatter, sections, row formats |
 | `body.md` | what the spec body may and may not say |
 | `interview.md` | the ask-until-owned loop for gaps and change reasons |
+| `init.md` | the init procedure (`spec-init`) |
 | `sync.md` | the sync procedure (`spec-sync`) |

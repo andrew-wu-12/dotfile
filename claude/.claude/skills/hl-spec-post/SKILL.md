@@ -6,12 +6,12 @@ description: >-
   round-scoped change record as a comment with a curated subset of the
   private Open Questions. Use when a spec round is ready to publish,
   confirming the spec on the issue, or "hl-spec-post #N". Requires the note
-  from hl-spec-init/spec-sync.
+  from spec-init/spec-sync.
 ---
 
 # HL Spec Post → publish the spec, record what changed
 
-The last step of a spec round. `hl-spec-init` and `spec-sync` keep a
+The last step of a spec round. `spec-init` and `spec-sync` keep a
 private, consolidated artifact in `project-note`. This skill publishes it,
 so the Forgejo issue always shows current state — readable from your phone,
 from the homelab session's `prefix w` task list, or by future-you without
@@ -36,7 +36,7 @@ Nothing goes out without an explicit approval in the same session.
 ## Prerequisites
 
 - `Homelab/2 - Specs/<issue>-<slug>.md` exists in `project-note`. If not,
-  stop — run `hl-spec-init` first.
+  stop — run `spec-init` first.
 - `tea` authenticated (`tea login list` shows a login for
   `<forgejo-host>`).
 

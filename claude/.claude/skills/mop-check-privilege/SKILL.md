@@ -6,7 +6,7 @@ description: >-
   everywhere) derive a new one from monorepo usage, then hand off to
   checkout-config.sh for the [DEV] PR. Use when a spec/ticket needs a privilege, a
   feature is hidden/403 because its permissionId isn't in the config repo, or
-  "mop-check-privilege MOP-XXXX". Pairs with the mop-spec-init privilege gap check.
+  "mop-check-privilege MOP-XXXX". Pairs with the spec-init privilege gap check.
 ---
 
 # Privilege Node → mop-configuration (env-aware)

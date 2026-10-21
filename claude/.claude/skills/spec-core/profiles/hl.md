@@ -27,6 +27,25 @@ main Obsidian vault — not in the homelab code repo.
   tea issues <N> --comments -o json -r "$FORGEJO_HOMELAB_REPO"
   ```
   An image in a comment is rare (e.g. an error screenshot); read it directly.
+- Init extras: derive `<slug>` from the issue title (see Identity and paths).
+
+## Grounding
+
+- Repos: `~/homelab` (or a worktree of it), `~/personal/project-note`.
+- Run: **inline** — the repo is small.
+- Checks:
+  1. **Similar service/pattern already in repo?** Search each
+     `compose.yaml` and service directory for something to reuse or align
+     with (a Caddy block shape, a restart policy, an `.env.example`
+     pattern). Flag any divergence.
+  2. **Missing details?** Error handling, restart policy, resource limits
+     the issue leaves unstated.
+  3. **Breaks existing functionality?** Port collisions, Tailscale-node name
+     collisions, shared network/volume conflicts.
+  4. **New exposure surface?** A new Tailscale node, or ACL thought needed
+     (see `caddy/compose.yaml` for the per-service node pattern).
+  5. **Secrets handling?** New env vars — do they need a `.env.example`
+     entry, and does the repo's `**/.env` gitignore rule cover them?
 
 ## Note language
 

@@ -6,12 +6,12 @@ description: >-
   record as a comment with a curated subset of the private Open Questions. Use
   when a spec round is ready for the PM, confirming the spec with the PM,
   publishing/pushing the spec or its questions to Jira, or "mop-spec-post MOP-XXXX".
-  Requires the note from mop-spec-init/spec-sync.
+  Requires the note from spec-init/spec-sync.
 ---
 
 # Spec Post → publish the spec, record what changed
 
-The last step of a spec round. `/mop-spec-init` and `spec-sync` keep a private,
+The last step of a spec round. `spec-init` and `spec-sync` keep a private,
 consolidated artifact. This skill publishes it, so the PM confirms the *whole*
 understanding and answers the open questions **in round 1 instead of across
 five separate rounds**. Chat is ephemeral. A ticket is not.
@@ -34,7 +34,7 @@ Nothing goes out without an explicit approval in the same session.
 
 ## Prerequisites
 
-- `specs/MOP-XXXX.md` exists. If not, stop — run `mop-spec-init` first.
+- `specs/MOP-XXXX.md` exists. If not, stop — run `spec-init` first.
 - **Jira token** in the credential store (scripts read it via `~/bin/cred-read.sh`). The fetch surfaces a clean error if the token is wrong.
 - Scripts: `~/bin/md2jira.sh`, `~/bin/jira-comment.sh`, `~/bin/jira-description.sh`.
 

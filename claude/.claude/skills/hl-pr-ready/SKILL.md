@@ -148,7 +148,7 @@ Verdicts:
   — the gate passes.
 - **No spec note exists** — this does not block. Note it and continue (not
   every homelab PR needs the full flow — a one-line fix doesn't need
-  `hl-spec-init`).
+  `spec-init`).
 
 RECHECK mode cannot block a flip that already happened — this gate blocks
 the verdict of the report instead.

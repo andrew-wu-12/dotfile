@@ -17,6 +17,17 @@ main Obsidian vault — not in the homelab code repo.
   write, commit the note (and any new snapshot) in `~/personal/project-note`
   with `spec: <step> #<N> <slug>, round N`.
 
+## Tracker
+
+- Channels: the Forgejo issue, and chat/verbal discussion.
+- Access: `tea` authenticated (`tea login list` shows a login for
+  `<forgejo-host>`).
+- Fetch: **inline**.
+  ```bash
+  tea issues <N> --comments -o json -r "$FORGEJO_HOMELAB_REPO"
+  ```
+  An image in a comment is rare (e.g. an error screenshot); read it directly.
+
 ## Note language
 
 English, for the note and the reports.
@@ -32,6 +43,8 @@ English, for the note and the reports.
 - Waiting bucket: `waiting on external` (upstream docs, a vendor, a
   hardware test — something outside your control).
 - Change reasons: `[spec change]`, `[misread]`, `[prior decision wrong]`,
+  `[new info]`.
+- Recommended reason by source: `issue` → `[spec change]`; `chat` →
   `[new info]`.
 - Replaces suffix: `, replaces YYYY-MM-DD "…"`.
 - Round History reason count, e.g. `(2 spec change, 1 new info)`.

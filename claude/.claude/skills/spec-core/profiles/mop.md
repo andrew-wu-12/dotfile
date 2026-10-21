@@ -11,6 +11,17 @@ vault.
 - Vault commits: none. Obsidian Git auto-commits the vault every ~65s, so
   never `git commit` a spec note.
 
+## Tracker
+
+- Channels: the Jira ticket, chat/verbal discussion with the PM, and the
+  prototype (Jira image attachments).
+- Access: Jira token in the credential store (scripts read it via
+  `~/bin/cred-read.sh`).
+- Fetch: **delegated**. Run a fresh subagent in the foreground using
+  `tool-ticket-get`. Give it the ticket ID and the note's last Round History
+  date. Require its report to list new comments verbatim and the file paths
+  of new attachments, not descriptions of them.
+
 ## Note language
 
 - Note language: Traditional Chinese (spec body, Decision Log text, Round
@@ -29,6 +40,8 @@ vault.
 - Waiting buckets: `待 PM 回覆`, `待後端回覆`.
 - Change reasons: `〔PM 規格變動〕`, `〔Dev 理解錯誤〕`, `〔先前決議錯誤〕`,
   `〔新資訊〕`.
+- Recommended reason by source: `jira`/`pm` → `PM 規格變動`; `chat` from a
+  dev → `新資訊`.
 - Replaces suffix: `，取代 YYYY-MM-DD「…」`.
 - Round History reason count, e.g. `（2 項 PM 規格變動、1 項新資訊）`.
 

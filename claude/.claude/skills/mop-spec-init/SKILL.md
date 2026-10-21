@@ -4,7 +4,7 @@ description: >-
   Create a persistent, codebase-grounded spec artifact for a Jira ticket in the
   Obsidian vault, plus a private Open-Questions list. Use when starting a new
   ticket, initializing a spec, opening the spec for MOP-XXXX, or "mop-spec-init
-  MOP-XXXX". Replaces the one-shot /spec for real ticket work; use mop-spec-sync for
+  MOP-XXXX". Replaces the one-shot /spec for real ticket work; use spec-sync for
   later rounds.
 ---
 
@@ -27,7 +27,7 @@ structure.
 - **Jira token** in the credential store (scripts read it via `~/bin/cred-read.sh`). The fetch returns a clean error if the token is wrong.
 - Repos on disk: `$MOP_MONOREPO_PATH`, `$MOP_CONFIGURATION_PATH`.
 - If `specs/MOP-XXXX.md` **already exists**, stop — this is a later round. Tell the
-  user to run `mop-spec-sync` instead.
+  user to run `spec-sync` instead.
 
 ## Workflow
 
@@ -84,7 +84,7 @@ does not state something, record it as unstated. Never infer it.
 
 ### 3. Interview the user on gaps
 
-Take step 2's "missing details" findings. Run `mop-doc-spec-interview`'s loop on
+Take step 2's "missing details" findings. Run `spec-core/interview.md` (with profiles/mop.md)'s loop on
 them before you write anything, including the follow-ups the answers raise.
 An answered gap becomes a Decision Log row (`Source = dev`), not an Open
 Question. A gap waiting on the PM or backend goes to Open Questions with its
@@ -100,7 +100,7 @@ Use only concrete details from the ticket, the prototype, the codebase, and
 step 3's interview. **Do not invent** fields, APIs, or behaviors.
 
 If drafting surfaces a new gap, do not guess and do not file it straight to
-Open Questions. Collect them, re-enter `mop-doc-spec-interview`'s loop, and
+Open Questions. Collect them, re-enter `spec-core/interview.md` (with profiles/mop.md)'s loop, and
 update the draft with the answers. Repeat until drafting surfaces nothing new.
 
 ### 5. Assemble Open Questions (private)

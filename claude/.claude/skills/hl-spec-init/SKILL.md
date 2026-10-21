@@ -4,7 +4,7 @@ description: >-
   Create a persistent, codebase-grounded spec artifact for a homelab Forgejo
   issue, plus a private Open Questions list. Use when starting a new homelab
   issue, initializing a spec, opening the spec for issue #N, or "hl-spec-init
-  #N". Use hl-spec-sync for later rounds.
+  #N". Use spec-sync for later rounds.
 ---
 
 # HL Spec Init → durable spec artifact
@@ -28,7 +28,7 @@ section structure.
   disk.
 - If `Homelab/2 - Specs/<issue>-<slug>.md` **already exists** in
   `project-note`, stop — this is a later round. Tell the user to run
-  `hl-spec-sync` instead.
+  `spec-sync` instead.
 
 ## Workflow
 

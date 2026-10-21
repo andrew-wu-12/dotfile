@@ -79,6 +79,6 @@ Report back:
 
 `mop-spec-post` runs this before its existing guards. On `READY`, proceed
 silently — a clean run gets no extra noise. On `REVISE`, show the findings
-once and ask: fix now (back to `mop-spec-sync` or a manual edit), or post
+once and ask: fix now (back to `spec-sync` or a manual edit), or post
 anyway. This step **warns, it does not block** — same posture as
 `mop-spec-post`'s other four guards.

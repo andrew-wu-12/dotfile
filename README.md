@@ -41,7 +41,7 @@ Skills 放在 `claude/.claude/skills/`，安裝選項 3 會安裝 Claude Code，
 ### 主流程（Jira 票券）
 
 ```
-mop-spec-init ──► mop-spec-sync ──► mop-spec-post ──► 實作
+mop-spec-init ──► spec-sync ──► mop-spec-post ──► 實作
    建立規格          PM 討論後更新       推回 Jira          │
                      （可重複多輪）                          ▼
 mop-spec-ready-prod ◄── mop-spec-feature-ready ◄── mop-spec-drift ◄── mop-spec-verify
@@ -51,7 +51,7 @@ mop-spec-ready-prod ◄── mop-spec-feature-ready ◄── mop-spec-drift �
 | 階段 | Skill | 做什麼 | 產出 |
 |---|---|---|---|
 | 開票 | `mop-spec-init MOP-XXXX` | 讀 Jira 票券與 monorepo 程式碼，逐一追問缺漏後寫出規格 | `Specs/MOP-XXXX.md` 規格筆記 + 私人待釐清清單 |
-| 討論 | `mop-spec-sync MOP-XXXX` | 貼上與 PM 的對話紀錄，抓出矛盾、合併新決定 | 更新後的規格 + 新一輪快照 |
+| 討論 | `spec-sync MOP-XXXX` | 貼上與 PM 的對話紀錄，抓出矛盾、合併新決定 | 更新後的規格 + 新一輪快照 |
 | 發布 | `mop-spec-post MOP-XXXX` | 先自我挑戰規格漏洞，再覆寫 Jira 描述並留下本輪變更 | Jira 描述 + 變更留言 |
 | 驗證 | `mop-spec-verify MOP-XXXX` | 在本機 `yarn serve` 上用瀏覽器逐條跑測試情境 | 每條情境 PASS / FAIL / INCONCLUSIVE |
 | 對齊 | `mop-spec-drift MOP-XXXX` | 比對規格最近兩輪差異，找出已過時的程式碼 | 漂移清單（附信心程度） |

@@ -201,7 +201,7 @@ Verdicts:
 
 - **Drift or a confirmed contradiction found — block the flip.** Report
   each, `path:line`, old spec value vs. new. To correct: change the code,
-  or re-confirm the spec via `hl-spec-sync`. Then run `hl-pr-ready` again.
+  or re-confirm the spec via `spec-sync`. Then run `hl-pr-ready` again.
 - **None found** — the gate passes.
 
 ### 4. Gate: search for broken infra references (BLOCKING if confirmed)

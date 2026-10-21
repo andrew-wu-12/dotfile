@@ -5,7 +5,7 @@ description: >-
   snapshots and, for each CHANGED item, grep the feature branch for code that now
   contradicts the new spec. With only one round, falls back to scanning the PR
   diff for unstated data-relationship cardinality (e.g. code assumes 1:1 where
-  the spec never says). Use before flipping a PR to ready, after a mop-spec-sync
+  the spec never says). Use before flipping a PR to ready, after a spec-sync
   round, when checking whether already-written code still matches the spec, or
   "mop-spec-drift MOP-XXXX". Feeds /mop-spec-feature-ready.
 ---
@@ -32,7 +32,7 @@ instead.
   that branch, check it out or ask the user.
 - At least **one round** exists for the ticket (`specs/.rounds/MOP-XXXX/`).
   With zero rounds, there is nothing to check against. Tell the user to run
-  `mop-spec-sync` first.
+  `spec-sync` first.
 
 ## Workflow
 

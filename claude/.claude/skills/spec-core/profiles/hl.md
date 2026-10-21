@@ -22,9 +22,9 @@ the homelab code repo.
 ## Tracker
 
 - Channels: the Forgejo issue, chat.
-- Access: `tea login list` shows a login for `<forgejo-host>`.
-  `$FORGEJO_HOMELAB_REPO` is set in `~/.zshrc.local`. If it is not set,
-  stop and tell the user.
+- Access: `$FORGEJO_HOST` and `$FORGEJO_HOMELAB_REPO` are set in
+  `~/.zshrc.local`. `tea login list` shows a login for `$FORGEJO_HOST`. If
+  a variable is not set, stop and tell the user.
 - You: the repo owner, `${FORGEJO_HOMELAB_REPO%%/*}`. A comment is yours
   when its `author` is that name.
 - Fetch: **inline**.
@@ -268,7 +268,7 @@ posted: []
 ---
 # [#<N>] <title>
 
-> Forgejo: https://<forgejo-host>/<$FORGEJO_HOMELAB_REPO>/issues/<N>
+> Forgejo: https://<$FORGEJO_HOST>/<$FORGEJO_HOMELAB_REPO>/issues/<N>
 
 ## Spec
 

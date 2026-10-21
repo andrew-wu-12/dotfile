@@ -6,7 +6,8 @@
 # (pr-gate.yml); a second would need per-workflow filtering (actions/tasks API by workflow_id + head_sha).
 
 forgejo_ensure_auth() {
-  FORGEJO_TOKEN=$(cred_find "${BUILD_CRED_NAME:-<forgejo-host>}")
+  local host="${BUILD_FORGEJO_URL#*://}"
+  FORGEJO_TOKEN=$(cred_find "${BUILD_CRED_NAME:-${host%%/*}}")
   [ -n "$FORGEJO_TOKEN" ]
 }
 

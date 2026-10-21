@@ -10,14 +10,15 @@ set -u
 
 WORKTREE_ROOT="${WORKTREE_ROOT:-$HOME/project/worktrees}"
 FORGEJO_REPO_NAME="homelab"
-FORGEJO_BASE="https://<forgejo-host>"
 TAB=$(printf '\t')
-# <owner>/homelab, from the untracked ~/.zshrc.local. Read from the file too,
-# since a tmux server started before it existed won't have it in its env.
+# <owner>/homelab and the Forgejo host, from the untracked ~/.zshrc.local. Read from the file too,
+# since a tmux server started before it existed won't have them in its env.
 FORGEJO_OWNER_REPO="${FORGEJO_HOMELAB_REPO:-$(zsh -c 'source ~/.zshrc.local 2>/dev/null; print -r -- "$FORGEJO_HOMELAB_REPO"')}"
+FORGEJO_HOST="${FORGEJO_HOST:-$(zsh -c 'source ~/.zshrc.local 2>/dev/null; print -r -- "$FORGEJO_HOST"')}"
+FORGEJO_BASE="https://$FORGEJO_HOST"
 
 get_forgejo_token() {
-  security find-generic-password -a "$USER" -s "<forgejo-host>" -w 2>/dev/null
+  security find-generic-password -a "$USER" -s "$FORGEJO_HOST" -w 2>/dev/null
 }
 
 # Deterministic branch-safe slug from an issue title (lowercase, non-alnum runs -> "-", trimmed, 40 chars).
@@ -52,8 +53,8 @@ task_start() {
   exec zsh ~/bin/worktree-generic.sh -n "feature/$1-$(slugify "$title")"
 }
 
-if [ -z "$FORGEJO_OWNER_REPO" ]; then
-  echo "Set FORGEJO_HOMELAB_REPO=<owner>/homelab in ~/.zshrc.local" >&2; exit 1
+if [ -z "$FORGEJO_OWNER_REPO" ] || [ -z "$FORGEJO_HOST" ]; then
+  echo "Set FORGEJO_HOMELAB_REPO=<owner>/homelab and FORGEJO_HOST=<forgejo-host> in ~/.zshrc.local" >&2; exit 1
 fi
 
 case "${1:-}" in

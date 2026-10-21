@@ -105,7 +105,8 @@ export NX_CACHE_DIRECTORY="$HOME/.cache/nx-mop"
 export PATH="$HOME/.local/bin:$PATH"
 
 # Untracked, per-person values kept out of this public repo (e.g.
-# FORGEJO_HOMELAB_REPO=<owner>/homelab for tmux-task-source-forgejo.sh / hl-* skills).
+# FORGEJO_HOMELAB_REPO=<owner>/homelab and FORGEJO_HOST=<forgejo-host> for
+# tmux-task-source-forgejo.sh / spec-* skills).
 [ -f ~/.zshrc.local ] && source ~/.zshrc.local
 
 # Guarded so a machine that hasn't run init-recommend-cli-tools.sh starts without them instead of erroring.

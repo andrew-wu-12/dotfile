@@ -88,8 +88,8 @@ _read_cred() {
 unset JENKINS_TOKEN; JENKINS_TOKEN=$(_read_cred "jenkins.morrison.express")
 unset JIRA_TOKEN; JIRA_TOKEN=$(_read_cred "morrisonexpress.atlassian.net")
 unset GETDATATOKEN; GETDATATOKEN=$(_read_cred "getdata.morrison.express")
-unset FORGEJO_HOST; FORGEJO_HOST=$(_read_cred "forgejo-homelab-host")
-unset FORGEJO_HOMELAB_REPO; FORGEJO_HOMELAB_REPO=$(_read_cred "forgejo-homelab-repo")
+unset HOMELAB_HOST; HOMELAB_HOST=$(_read_cred "homelab-host")
+unset HOMELAB_REPO; HOMELAB_REPO=$(_read_cred "homelab-repo")
 # Only codex needs it; its MCP command reads it itself. Unset here so a stale
 # export from an older shell or tmux server doesn't keep leaking it.
 unset OPENAI_API_KEY

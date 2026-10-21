@@ -25,15 +25,15 @@ the homelab code repo.
 - Access: the host and the repo are credentials. Start each Bash command
   that uses them with:
   ```bash
-  FORGEJO_HOST=$(~/bin/cred-read.sh forgejo-homelab-host); FORGEJO_HOMELAB_REPO=$(~/bin/cred-read.sh forgejo-homelab-repo)
+  HOMELAB_HOST=$(~/bin/cred-read.sh homelab-host); HOMELAB_REPO=$(~/bin/cred-read.sh homelab-repo)
   ```
   If a value is empty, stop and tell the user to run `init-credentials.sh`.
-  `tea login list` shows a login for `$FORGEJO_HOST`.
-- You: the repo owner, `${FORGEJO_HOMELAB_REPO%%/*}`. A comment is yours
+  `tea login list` shows a login for `$HOMELAB_HOST`.
+- You: the repo owner, `${HOMELAB_REPO%%/*}`. A comment is yours
   when its `author` is that name.
 - Fetch: **inline**.
   ```bash
-  tea issues <N> --comments -o json -r "$FORGEJO_HOMELAB_REPO"
+  tea issues <N> --comments -o json -r "$HOMELAB_REPO"
   ```
   Read each image in a comment.
 - Init extras: make `<slug>` from the issue title. For the init check, use
@@ -120,7 +120,7 @@ Write each subsection. If a subsection has no content, write `- none`.
 - Fetch and guards: **inline**. Save the issue first. Its `body` is the raw
   description (markdown):
   ```bash
-  tea issues <N> --comments -o json -r "$FORGEJO_HOMELAB_REPO" > "$DRAFTS/issue.json"
+  tea issues <N> --comments -o json -r "$HOMELAB_REPO" > "$DRAFTS/issue.json"
   jq -r '.body' "$DRAFTS/issue.json" > "$DRAFTS/description.live"
   ```
 - Own-author comments: yours (Tracker "You"). Comment header:
@@ -130,7 +130,7 @@ Write each subsection. If a subsection has no content, write `- none`.
   ```bash
   { echo "**Original description (archived before spec-post overwrite, $(date +%F))**"; echo
     sed 's/^/> /' "$DRAFTS/description.live"; } > "$DRAFTS/archive.md"
-  tea comments add <N> -r "$FORGEJO_HOMELAB_REPO" "$(cat "$DRAFTS/archive.md")"
+  tea comments add <N> -r "$HOMELAB_REPO" "$(cat "$DRAFTS/archive.md")"
   ```
 - Postable rule: post each unchecked item.
 - Stamp phrases: ``synced by `spec-post` ``, ``synced by `hl-spec-post` ``.
@@ -153,8 +153,8 @@ Write each subsection. If a subsection has no content, write `- none`.
 - Mention: none.
 - Write commands:
   ```bash
-  tea issues edit <N> -r "$FORGEJO_HOMELAB_REPO" --description "$(cat "$DRAFTS/description.md")"
-  tea comments add <N> -r "$FORGEJO_HOMELAB_REPO" "$(cat "$DRAFTS/comment.md")"
+  tea issues edit <N> -r "$HOMELAB_REPO" --description "$(cat "$DRAFTS/description.md")"
+  tea comments add <N> -r "$HOMELAB_REPO" "$(cat "$DRAFTS/comment.md")"
   ```
 
 ## Drift
@@ -188,14 +188,14 @@ Write each subsection. If a subsection has no content, write `- none`.
 - PR lookup: find the PR by its head branch. The PR number is not the issue
   number. Do not make the branch name from the note slug.
   ```bash
-  tea pulls list --state all -f index,head,state,title,url -o json -r "$FORGEJO_HOMELAB_REPO" \
+  tea pulls list --state all -f index,head,state,title,url -o json -r "$HOMELAB_REPO" \
     | jq '[.[] | select(.head | startswith("feature/<N>-"))] | first'
   ```
   `<PR>` is its `index`. No match → no PR.
-- PR view: `tea pulls <PR> -o json -r "$FORGEJO_HOMELAB_REPO"`. Draft
+- PR view: `tea pulls <PR> -o json -r "$HOMELAB_REPO"`. Draft
   signal: the title starts with `WIP:` or `[WIP]`. Do not add the prefix
   again.
-- CI: `tea pulls <PR> -f ci -o json -r "$FORGEJO_HOMELAB_REPO"`.
+- CI: `tea pulls <PR> -f ci -o json -r "$HOMELAB_REPO"`.
 - What CI does not run: the only workflow is
   `.forgejo/workflows/pr-gate.yml`. It runs `tsc` for `bookmark-webhook`
   and `download-service`, and `docker compose config` for each service.
@@ -243,7 +243,7 @@ Write each subsection. If a subsection has no content, write `- none`.
 ### Flip
 
 ```bash
-tea pulls edit <PR> -r "$FORGEJO_HOMELAB_REPO" --ready
+tea pulls edit <PR> -r "$HOMELAB_REPO" --ready
 ```
 
 Merge rule: do not merge. The user merges by hand. There is no CODEOWNERS.
@@ -272,7 +272,7 @@ posted: []
 ---
 # [#<N>] <title>
 
-> Forgejo: https://<$FORGEJO_HOST>/<$FORGEJO_HOMELAB_REPO>/issues/<N>
+> Forgejo: https://<$HOMELAB_HOST>/<$HOMELAB_REPO>/issues/<N>
 
 ## Spec
 

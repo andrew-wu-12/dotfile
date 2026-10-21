@@ -221,6 +221,133 @@ Heading: `## 規格 (Consolidated Spec)`.
 - One-round Contradiction blocks the flip: **no** — report it, the user
   decides.
 
+## Ready
+
+- PR CLI: `gh` (authenticated). VPN and the Jira token give the spec gates
+  their data.
+- PR view: `gh pr view --json number,isDraft,title,url,headRefName,body`.
+  Draft signal: `isDraft`.
+- CI and comments:
+  ```bash
+  gh pr checks <number>
+  gh pr view <number> --json comments,reviews
+  ```
+- What CI does not run (last confirmed): PR CI runs unit tests
+  (`nx affected -t test`, `continuous_integration.yml`) and builds
+  (`nx affected -t build`, `knip_pr_build.yml`). **No Cypress e2e** — no
+  workflow under `.github/` refers to Cypress. The e2e job is
+  `.jenkins/e2e_testing/jenkinsfile`, checks out `branch: 'main'`, and is
+  gated by `E2E_TESTING_TAG`. A diff can break an e2e test with every check
+  green.
+- Reviewers: **yes** — build the review-comment index.
+- Bot requests: the shared-component doc check needs a Confluence link in
+  the References block of the PR description for each `libs/**` change. Its
+  GitHub check reports `pass` while its comment reports the link absent. If
+  absent, warn and name `/doc-common-component-changelog`.
+
+### Extra gate 3b: browser run of the test scenarios (BLOCKING for a current FAIL)
+
+`mop-spec-verify` runs the scenarios of `### 3. 測試案例情境` in a browser
+and writes one row per scenario to a record. This gate only reads the
+record. **Never start the browser run from here** — it is slow and needs a
+running app.
+
+```bash
+RESULT="$WORKTREE_ROOT/mop-console-monorepo/MOP-XXXX.verify.json"
+git rev-parse HEAD
+```
+
+Number the scenarios in `### 3. 測試案例情境` 1, 2, 3, … in order. A row is
+**current** if its `sha` equals `HEAD` and its `round` equals the note's
+`round`; otherwise **stale**.
+
+- **A current row is FAIL — block.** Report the scenario number, expected
+  text, actual text, and screenshot path. Fix the code or re-confirm the
+  spec, then `/mop-spec-verify MOP-XXXX <n>` and `spec-ready` again.
+- **Every scenario has a current PASS row** — passes.
+- **Otherwise** — one warning naming the scenarios with no row, a stale row,
+  or an INCONCLUSIVE row (with its reason), and the command to fix it:
+  `/mop-spec-verify MOP-XXXX <n> <n>`, or `/mop-spec-verify MOP-XXXX` with no
+  record.
+- **No spec note, or no scenario** — does not block.
+
+A stale FAIL does not block: the code or the spec changed after the run.
+
+### Gate 4: identifiers
+
+- Pattern:
+  ```bash
+  git diff origin/main...HEAD | grep '^-' | grep -oE "(id|name|data-testid)='[^']+'|#[a-zA-Z_][a-zA-Z0-9_.-]*"
+  ```
+- By hand: exported symbols, i18n keys, API field names, CSS tokens,
+  `classNamePrefix` tokens, `localStorage` keys, privilege ids.
+- Search: **delegated** to a fresh subagent — a repo-wide grep for a field
+  name hits every unrelated module (one real run: 10 hits, 2 defects). Give
+  it the identifier list, the old → new mapping for each rename, each newly
+  added selector token, and both checks; it returns one verdict per
+  identifier/selector, `path:line` only:
+  1. **Removed/renamed identifiers.** For each:
+     ```bash
+     ~/bin/identifier-scope-check.sh '<identifier>' "$MOP_MONOREPO_PATH"
+     ```
+     It buckets every hit into out-of-scope (auto-dismissed) and in-scope
+     (with context). An app-local diff is bucketed by directory prefix (plus
+     the matching `-e2e` dir); a `libs/` change traces which files import
+     the lib's resolved alias, since shared libs have cross-app callers.
+     Judge only the in-scope hits; trust its out-of-scope bucketing. The
+     same name in a different feature is a different field. Never change a
+     hit before tracing it to the renamed identifier.
+  2. **Selectors that now match two elements.** No removal needed — an
+     added element is enough. For each new selector token (a shared
+     `classNamePrefix`, a CSS class, a `data-testid` pattern), count matches
+     before and after. If 1 becomes 2+, check each call site: a bare
+     `.click()`, `.type()`, or `.should('have.value')` expects one element;
+     `.first()`, `.eq()`, and `within()` set a scope. An unscoped call site
+     is now broken — **Confirmed**.
+
+### Step 5: review
+
+- Run: **delegated** to a fresh subagent with the scoped diff.
+- Checklist:
+  - **Effect re-invocation.** React StrictMode runs mount → cleanup → mount
+    in development. For each new or changed `useEffect`: does setup
+    re-initialize every value cleanup removed (refs, flags)? Can a value
+    keep first-cleanup state into the second mount?
+  - **Components running at the same time.** Does the diff change a
+    component that runs alongside another that shares state? (A modal opens
+    while a loop or listener in a second component keeps running below it.)
+    Read one level past the changed files if needed.
+  - **The value that arrives, not the type.** For each new or changed
+    validator, schema, or type guard:
+    1. Find the value the field holds at run time; do not trust the type.
+    2. Follow it from the API to the form through every layer that changes
+       it.
+    3. `convertNullToString` (`libs/shared/util/buildable-utils`) turns every
+       API `null` into `''`, at every depth — so `''` is the empty value,
+       not `null` or `undefined`.
+    4. A non-string schema is therefore wrong unless it first transforms
+       `''`: `Yup.number()`, `Yup.date()`, `Yup.array()`. `.nullable()` does
+       not fix it; `Yup.number()` casts `''` to `NaN` and fails the type
+       check.
+    5. List three cases for the field: empty, `null`, absent.
+    6. If the submit button depends on the schema, the form stays invalid
+       with no way forward — worse than one field message.
+    7. Grep two signals: nearby code already testing `=== ''` on this field
+       (someone hit this before), and the English yup type error showing
+       instead of the i18n message (the cast failed, not your rule).
+  - **New defects inside a correction.** If the diff fixes an earlier
+    finding, does the fix leave something without a purpose? Read what the
+    correction changed; do not only confirm the first defect is gone.
+
+### Flip
+
+```bash
+gh pr ready <number>
+```
+
+Merge rule: CODEOWNERS requests the owners of owned paths; the user assigns
+any other reviewers and merges.
+
 ## Template
 
 ```markdown

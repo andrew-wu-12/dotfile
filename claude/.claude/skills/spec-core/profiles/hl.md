@@ -170,6 +170,66 @@ omitted heading reads as "forgot to check", not "checked, N/A".
     concern.
 - One-round Contradiction blocks the flip: **yes**.
 
+## Ready
+
+- PR CLI: `tea`.
+- PR view: `tea pulls <N> -o json -r "$FORGEJO_HOMELAB_REPO"`. Draft
+  signal: a `WIP:` or `[WIP]` title prefix (Forgejo has no draft boolean).
+  Never re-add the prefix.
+- CI: `tea pulls <N> -f ci -o json -r "$FORGEJO_HOMELAB_REPO"`.
+- What CI does not run (last confirmed): the only workflow is
+  `.forgejo/workflows/pr-gate.yml` — `tsc` for `bookmark-webhook` and
+  `download-service`, and `docker compose config` for every service. **No
+  test suite exists and nothing runs at runtime**: green means "type-checks
+  and the compose files parse", not "the service works".
+- Reviewers: **no** — you are the only reviewer. No comment index, no bot
+  requests.
+- Extra gates: none.
+
+### Gate 4: identifiers
+
+- Pattern:
+  ```bash
+  git diff origin/main...HEAD | grep '^-' | grep -oE "[A-Z_][A-Z0-9_]*=|^\s*-?\s*[a-z0-9_-]+:"
+  ```
+- By hand: env var names, compose service/network/volume names, Caddy
+  hostnames/routes, and anything another service or script
+  (`tmux-build-backend-forgejo.sh`, `tmux-task-source-forgejo.sh`,
+  `README.md`) references by name.
+- Search: **inline** — `grep -rn "<identifier>" .` from the repo root.
+
+### Step 5: review
+
+- Run: **inline** — read the diff directly; the repo is small enough.
+- Checklist:
+  - **Compose service basics.** A `restart:` policy consistent with its
+    neighbors? Secrets read from `.env`, not hardcoded? A port published
+    under `ports:` that should stay internal behind Caddy + a Tailscale
+    node? A new volume path under the `**/data/` gitignore pattern, or will
+    it get committed?
+  - **TypeScript services (`bookmark-webhook`, `download-service`).**
+    Unhandled promise rejections on new async calls. Missing error
+    handling/retry around a new external HTTP call (this repo has hit it
+    before — see the "add retry" commits). An env var read with no default
+    and no startup validation, failing at request time instead of boot.
+    - **The value that arrives, not the type.** For a new field written to
+      disk or sent in a request: is it `undefined`, `null`, or `''` when
+      missing, and does downstream code assume another?
+  - **Caddy / Tailscale.** A new node name colliding with an existing one.
+    A route added to `caddy/compose.yaml` without its own Tailscale node,
+    against the one-node-per-service pattern.
+  - **New defects inside a correction.** Does a fix leave a dead variable
+    or an unused import behind?
+
+### Flip
+
+```bash
+tea pulls edit <N> -r "$FORGEJO_HOMELAB_REPO" --ready
+```
+
+Merge rule: **never merge.** You review the final diff and merge by hand —
+that click is the deliberate checkpoint. There is no CODEOWNERS.
+
 ## Template
 
 ```markdown

@@ -3,7 +3,7 @@ name: mop-spec-verify
 description: >-
   Run the spec's test scenarios (測試案例情境) against the feature in a real browser
   (ego-browser) on a local `yarn serve` of the current worktree, and record one
-  PASS / FAIL / INCONCLUSIVE row per scenario. mop-spec-feature-ready reads the
+  PASS / FAIL / INCONCLUSIVE row per scenario. spec-ready reads the
   record. Use when a feature is testable and you want to check it against the spec,
   "mop-spec-verify MOP-XXXX", "test the scenarios", "verify in the browser", or
   "mop-spec-verify MOP-XXXX 2 5" to rerun only some scenarios.
@@ -32,7 +32,7 @@ Each word below has one meaning in this file.
 The other spec skills compare text: spec with spec, spec with code. None of them
 runs the feature. This skill clicks through each scenario the way a tester does.
 
-The result goes to a record file. `mop-spec-feature-ready` reads the record. It
+The result goes to a record file. `spec-ready` reads the record. It
 never starts the browser run, because the run is slow and needs a running app.
 
 Only a current **clean FAIL** blocks the flip. A browser run fails for many

@@ -348,6 +348,34 @@ gh pr ready <number>
 Merge rule: CODEOWNERS requests the owners of owned paths; the user assigns
 any other reviewers and merges.
 
+## Flow
+
+- Branch: the worktree from `mwt` for the ticket
+  (`$WORKTREE_ROOT/mop-console-monorepo/MOP-XXXX`), or `$MOP_MONOREPO_PATH`
+  on `feature/MOP-XXXX`.
+- `<base>`: the PR's base (`gh pr view --json baseRefName`, as
+  `origin/<baseRefName>`). With no PR, `origin/main`.
+- PR lookup: `gh pr view --json number,isDraft,state` on the feature branch.
+  No PR → none; `OPEN` + `isDraft` → draft; `OPEN` → ready; `MERGED` →
+  merged; `CLOSED` → closed.
+- Pre-ready steps (row 10): `mop-spec-verify MOP-XXXX`, only when the verify
+  record (`$WORKTREE_ROOT/mop-console-monorepo/MOP-XXXX.verify.json`) lacks a
+  current PASS row (`sha` == `HEAD`, `round` == note round) for some
+  scenario. It drives the single global `yarn serve`; it restores the
+  previous serve target itself.
+- Shipped check:
+  ```bash
+  git -C "$MOP_MONOREPO_PATH" fetch -q origin
+  git -C "$MOP_MONOREPO_PATH" log origin/main --merges -E -1 \
+    --grep='from [^ ]+/(feature|hotfix)/MOP-XXXX($|[^0-9])' --pretty='%h %s'
+  ```
+  Any output → shipped.
+- Shipped action: ask whether to run `mop-spec-document MOP-XXXX` (it may
+  have run already — nothing records that). Then the ticket is done.
+- Out of scope: `mop-spec-ready-prod` (a release-level check across many
+  tickets) and `mop-check-privilege` (run it when `spec-init` reports a
+  privilege gap).
+
 ## Template
 
 ```markdown

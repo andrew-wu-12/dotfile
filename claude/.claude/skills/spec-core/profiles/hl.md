@@ -173,10 +173,17 @@ omitted heading reads as "forgot to check", not "checked, N/A".
 ## Ready
 
 - PR CLI: `tea`.
-- PR view: `tea pulls <N> -o json -r "$FORGEJO_HOMELAB_REPO"`. Draft
+- PR lookup: PR numbers are separate from issue numbers, so find the PR by
+  its head branch — never use the issue number `<N>`:
+  ```bash
+  tea pulls list --state all -f index,head,state,title,url -o json -r "$FORGEJO_HOMELAB_REPO" \
+    | jq '[.[] | select(.head == "feature/<N>-<slug>")] | first'
+  ```
+  `<PR>` = its `index`. No match → no PR.
+- PR view: `tea pulls <PR> -o json -r "$FORGEJO_HOMELAB_REPO"`. Draft
   signal: a `WIP:` or `[WIP]` title prefix (Forgejo has no draft boolean).
   Never re-add the prefix.
-- CI: `tea pulls <N> -f ci -o json -r "$FORGEJO_HOMELAB_REPO"`.
+- CI: `tea pulls <PR> -f ci -o json -r "$FORGEJO_HOMELAB_REPO"`.
 - What CI does not run (last confirmed): the only workflow is
   `.forgejo/workflows/pr-gate.yml` — `tsc` for `bookmark-webhook` and
   `download-service`, and `docker compose config` for every service. **No
@@ -224,11 +231,22 @@ omitted heading reads as "forgot to check", not "checked, N/A".
 ### Flip
 
 ```bash
-tea pulls edit <N> -r "$FORGEJO_HOMELAB_REPO" --ready
+tea pulls edit <PR> -r "$FORGEJO_HOMELAB_REPO" --ready
 ```
 
 Merge rule: **never merge.** You review the final diff and merge by hand —
 that click is the deliberate checkpoint. There is no CODEOWNERS.
+
+## Flow
+
+- Branch: the worktree from `wt` (`feature/<N>-<slug>`).
+- `<base>`: `origin/main`.
+- PR lookup: the Ready section's lookup. No match → none; `state` `open`
+  plus a `WIP:` title → draft; `open` → ready; `merged` → merged; `closed` →
+  closed.
+- Pre-ready steps (row 10): none.
+- Shipped check: the PR `state` is `merged`.
+- Shipped action: none — there is no docs step. Report the issue as done.
 
 ## Template
 

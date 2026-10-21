@@ -40,3 +40,4 @@ templates. The step files never name a domain. When a step file says
 | `post.md` | the post procedure (`spec-post`) |
 | `drift.md` | the spec-vs-code drift check (`spec-drift`) |
 | `ready.md` | the PR readiness check and flip (`spec-ready`) |
+| `flow.md` | the orchestrator: detect the stage, run steps, stop at gates (`spec-flow`) |

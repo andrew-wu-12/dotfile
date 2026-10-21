@@ -40,6 +40,8 @@ Skills 放在 `claude/.claude/skills/`，安裝選項 3 會安裝 Claude Code，
 
 ### 主流程（Jira 票券）
 
+不想逐一記步驟的話，直接跑 `spec-flow`（可省略票號，會從目前分支判斷）：它讀規格筆記、輪次、Jira 動態、分支 commit 與 PR 狀態，自動跑完現在能跑的步驟，停在下一個需要人的關卡並說明在等什麼。之後再跑一次就會接續。對 Jira／PR 的寫入仍各自需要你確認。下面的 skill 也都能單獨執行；同一套 `spec-*` skill 也適用於 homelab 的 Forgejo issue（`#N`）。
+
 ```
 spec-init ──► spec-sync ──► spec-post ──► 實作
    建立規格          PM 討論後更新       推回 Jira          │

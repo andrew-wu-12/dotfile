@@ -1,80 +1,75 @@
 # Profile: mop
 
-MOP frontend tickets on Jira. Spec notes live in the `office-note` Obsidian
-vault.
+MOP frontend tickets on Jira. Spec notes are in the `office-note` vault.
 
 ## Identity and paths
 
-- ID: Jira key, `MOP-XXXX`. `<id>` == the key.
+- ID: the Jira key, `MOP-XXXX`. `<id>` is the key.
 - Branch: `feature/MOP-XXXX`.
 - `SPECS` = `$HOME/personal/office-note/Specs`.
-- Vault commits: none. Obsidian Git auto-commits the vault every ~65s, so
-  never `git commit` a spec note.
+- Vault-commit rule: do not commit. The vault commits itself.
 
 ## Tracker
 
-- Channels: the Jira ticket, chat/verbal discussion with the PM, and the
-  prototype (Jira image attachments).
-- Access: Jira token in the credential store (scripts read it via
-  `~/bin/cred-read.sh`).
-- You: your Jira account. A comment is yours when its author matches your
+- Channels: the Jira ticket, chat with the PM, the prototype images (Jira
+  attachments).
+- Access: the Jira token in the credential store, through
+  `~/bin/cred-read.sh`.
+- You: your Jira account. A comment is yours when its author is your
   `displayName`:
   ```bash
   curl -s -u "$(~/bin/cred-read.sh morrisonexpress.atlassian.net)" \
     https://morrisonexpress.atlassian.net/rest/api/2/myself | jq '{displayName, accountId}'
   ```
-- Fetch: **delegated**. Run a fresh subagent in the foreground using
-  `tool-ticket-get`. Give it the ticket ID and the note's last Round History
-  date. Require its report to list new comments verbatim and the file paths
-  of new attachments, not descriptions of them.
-- Init extras: note every Figma/prototype URL in the description or
-  comments; the first goes in frontmatter `prototype`.
+- Fetch: **delegated**. Start a fresh subagent in the foreground. It uses
+  `tool-ticket-get`. Give it the ticket ID and the last Round History date.
+  It returns each new comment word for word and the file path of each new
+  attachment. It does not describe the attachments.
+- Init extras: record each Figma or prototype URL. Put the first one in
+  frontmatter `prototype`.
 
 ## Grounding
 
 - Repos: `$MOP_MONOREPO_PATH`, `$MOP_CONFIGURATION_PATH`.
 - Run: **delegated**, a fresh subagent in the foreground.
 - Checks:
-  1. **Similar feature already built?** Search `$MOP_MONOREPO_PATH/apps` and
-     `/libs` for related pages, components, routes. If one exists, the spec
-     reuses it or aligns with it. Flag any divergence.
-  2. **Missing details?** Error handling, validation rules,
-     empty/loading/permission states, and field-level behavior the ticket
-     leaves unstated.
-  3. **i18n keys already exist?** Extract the candidate UI strings, then
-     check them all in one call:
+  1. **Similar feature?** Search `$MOP_MONOREPO_PATH/apps` and `/libs` for
+     related pages, components, and routes. If one exists, align the spec
+     with it. Report each difference.
+  2. **Missing details?** Find what the ticket does not state: error
+     handling, validation rules, empty, loading, and permission states,
+     field behavior.
+  3. **i18n keys?** Collect the UI strings. Check all of them in one call:
      ```bash
      ~/bin/check-i18n.sh --batch <<< $'Submit\nConsol No.'          # all modules
      ~/bin/check-i18n.sh --batch tms <<< $'Submit\nConsol No.'      # one module + commons
      ```
-     Reuse exact/similar matches (output per string: `EXACT_KEY_MATCH` /
-     `EXACT_VALUE_MATCH` / `SIMILAR_MATCHES` / `NO_MATCH`, each with the full
-     `<module>.<key>` path).
-  4. **Violates existing functionality?** Existing behavior the new spec
-     would change or break.
-  5. **New privilege needed?** The config repo has one branch per
-     environment, and a node often exists in `dev` but not yet in `uat` or
-     `master`. Check all three:
+     The output for each string is `EXACT_KEY_MATCH`, `EXACT_VALUE_MATCH`,
+     `SIMILAR_MATCHES`, or `NO_MATCH`, with the full `<module>.<key>` path.
+     Use the existing keys that match.
+  4. **Breaks existing behavior?** Find existing behavior that the spec
+     changes or breaks.
+  5. **New privilege?** Check the three environment branches:
      ```bash
      git -C "$MOP_CONFIGURATION_PATH" fetch -q origin
      for b in dev uat master; do
        echo -n "$b: "; git -C "$MOP_CONFIGURATION_PATH" show origin/$b:privileges.json | grep -c '<privilege-id>'
      done
      ```
-     Report the **promotion state** (e.g. "in dev, missing in uat/master →
-     promote"), not a flat "missing". `mop-check-privilege` resolves it.
+     Report the state per branch, for example "in dev, not in uat/master →
+     promote". `mop-check-privilege` does the promotion.
 
 ## Note language
 
-- Note language: Traditional Chinese (spec body, Decision Log text, Round
-  History summaries, Open Questions).
+- Note: Traditional Chinese (spec body, Decision Log text, Round History
+  summaries, Open Questions).
 - Reports to the user: English.
 
-## Frontmatter (in addition to schema.md's)
+## Frontmatter (in addition to schema.md)
 
-- `tags` — always includes `📥/🟧` and `spec`.
+- `tags` — includes `📥/🟧` and `spec`.
 - `ticket` — the Jira key.
-- `prototype` — Figma/prototype URL, or empty.
+- `prototype` — the Figma or prototype URL, or empty.
 
 ## Decision Log and Open Questions
 
@@ -82,10 +77,10 @@ vault.
 - Waiting buckets: `待 PM 回覆`, `待後端回覆`.
 - Change reasons: `〔PM 規格變動〕`, `〔Dev 理解錯誤〕`, `〔先前決議錯誤〕`,
   `〔新資訊〕`.
-- Recommended reason by source: `jira`/`pm` → `PM 規格變動`; `chat` from a
-  dev → `新資訊`.
+- Recommended reason: source `jira` or `pm` → `PM 規格變動`. Source `chat`
+  from a developer → `新資訊`.
 - Replaces suffix: `，取代 YYYY-MM-DD「…」`.
-- Round History reason count, e.g. `（2 項 PM 規格變動、1 項新資訊）`.
+- Round History reason count: `（2 項 PM 規格變動、1 項新資訊）`.
 
 ## Spec body
 
@@ -93,11 +88,10 @@ Heading: `## 規格 (Consolidated Spec)`.
 
 ### Formats
 
-- **Frontend fields** — `doc-field-table-spec`'s table format.
-- **API payloads** — a Request/Response JSON example per endpoint, not a
-  description.
-- **Test scenarios** — one Precondition/Action/Expected-Result block per
-  scenario: the main flow plus its edge and negative cases.
+- **Frontend fields** — the table format of `doc-field-table-spec`.
+- **API payloads** — one Request/Response JSON example for each endpoint.
+- **Test scenarios** — one Precondition/Action/Expected-Result block for
+  each scenario. Include the main flow, the edge cases, and the error cases.
 
 ### Terms
 
@@ -108,21 +102,18 @@ Heading: `## 規格 (Consolidated Spec)`.
 
 ### Prose style — 使用者操作 / 視圖邏輯
 
-- **One state per top-level bullet, parallel across the whole doc.** When
-  behavior branches on a state (e.g. record/dispatch status), give each
-  state its own top-level bullet, phrased the same way every time it recurs
-  (across 使用者操作, 視圖邏輯, and 測試案例情境). Do not bury a state
-  condition inside a clause of another bullet.
-- **Only new or changed behavior gets a bullet.** Omit restatements of
-  unchanged behavior, e.g. `此功能沿用現有 X privilege，不變` or
-  `Y 沿用現有流程，本張 ticket 不新增規格`.
-- Asides like `(現有行為)`, `(不新增文案)`, `(沿用現有 XXX 流程)` are
-  justification asides — drop them (`body.md`).
+- Give each state its own top-level bullet, for example each record status.
+  Use the same words for that state in 使用者操作, 視圖邏輯, and
+  測試案例情境. Do not put a state condition inside a clause of a different
+  bullet.
+- Write bullets only for new or changed behavior. Do not write
+  `此功能沿用現有 X privilege，不變` or `Y 沿用現有流程，本張 ticket 不新增規格`.
+- Remove asides such as `(現有行為)`, `(不新增文案)`, `(沿用現有 XXX 流程)`.
 
 ### Challenge cross-references
 
-- A field named in an API request/response example but missing from the
-  field table, or the reverse.
+- A field in an API request or response example that is not in the field
+  table, or the reverse.
 
 ## Post
 
@@ -130,33 +121,30 @@ Heading: `## 規格 (Consolidated Spec)`.
 - Scripts: `~/bin/md2jira.sh`, `~/bin/jira-comment.sh`,
   `~/bin/jira-description.sh`.
 - Fetch and guards: **delegated**. A fresh subagent in the foreground uses
-  `tool-ticket-get` (note the temp dir it creates as `$OUT`), then fetches
-  the raw description:
+  `tool-ticket-get`. It records the temp dir of that fetch as `$OUT`. Then
+  it gets the raw description:
   ```bash
   ~/bin/jira-description.sh get MOP-XXXX > "$OUT/description.live"
   ```
-  The manifest's description is HTML-stripped plain text, fine for reading
-  comments but too lossy to archive or ownership-check. `description.live` is
-  raw wiki markup. Jira round-trips wiki markup through ADF, so formatting
-  shifts on every write — match the stamp token, never the panel shape.
-- Own-author comments: yours (Tracker "You"). Header to match:
-  `Round N` + `規格確認`. The posted source has escaped brackets
-  (`\[Round 5\]`); the manifest holds the rendered text.
-- Archive foreign description (main thread, after approval):
+  Use `description.live`, not the manifest description, for guard 1 and
+  the archive. Jira changes the markup format on each write, so match the
+  stamp phrase only.
+- Own-author comments: yours (Tracker "You"). Comment header: `Round N`
+  and `規格確認`. The source has escaped brackets (`\[Round 5\]`). The
+  manifest has the rendered text.
+- Archive command (in the main session, after approval):
   ```bash
   { echo "h3. 原 description 備份（spec-post 覆寫前，$(date +%F)）"; echo "{quote}";
     cat "$OUT/description.live"; echo "{quote}"; } > "$OUT/archive.wiki"
   ~/bin/jira-comment.sh MOP-XXXX "$OUT/archive.wiki"
   ```
-- Postable questions: unchecked items marked `⏳ 待 PM 回覆` only.
-  `⏳ 待後端回覆` items stay private — the backend is asked directly, not
-  through the PM's comment. An unchecked item with no `⏳` was never asked:
-  list those separately, suggest `spec-sync` first, and do not post them.
-- Stamp phrase (guard 1): `本規格由 spec-post 自動同步`.
-- Description: Jira wiki markup in `$DRAFTS/description.wiki`. **Do not
-  demote headings** — the panel acts as the header, so `## 規格` maps to
-  `h2.`. The panel is already wiki markup; do not run it through
-  `md2jira.sh`:
+- Postable rule: post only unchecked items with `⏳ 待 PM 回覆`. Keep
+  `⏳ 待後端回覆` items private. An unchecked item with no `⏳` was never
+  asked: list it separately, tell the user to run `spec-sync`, and do not
+  post it.
+- Stamp phrase: `本規格由 spec-post 自動同步`.
+- Description: Jira wiki markup in `$DRAFTS/description.wiki`. Do not
+  demote headings. Do not send the panel through `md2jira.sh`:
   ```bash
   cat > "$DRAFTS/description.wiki" <<EOF
   {panel:title=Round N · 最後更新 $(date +%F)}
@@ -167,22 +155,21 @@ Heading: `## 規格 (Consolidated Spec)`.
   EOF
   ~/bin/md2jira.sh < "$DRAFTS/spec.md" >> "$DRAFTS/description.wiki"
   ```
-  Warn above ~30,000 characters (`wc -m`): Jira's limit is 32,767, and
-  `jira-description.sh set` refuses anything past it.
-- Comment: write `$DRAFTS/comment.md`, then
+  Warn when `wc -m` is more than 30,000. The Jira limit is 32,767.
+- Comment template: write `$DRAFTS/comment.md`, then
   `~/bin/md2jira.sh < "$DRAFTS/comment.md" > "$DRAFTS/comment.wiki"`:
-  1. `[~accountid:<id>]` (omit the line if no mention)
+  1. `[~accountid:<id>]` (no line when there is no mention)
   2. `## [Round N] 規格確認`
-  3. `### 需要確認` — the curated questions, numbered
-- Mention: **always ask, never auto-resolve.** Offer the real candidates by
-  display name: the ticket reporter, the parent ticket's reporter (often the
-  PM when the user filed the sub-ticket), recent commenters, or no mention.
+  3. `### 需要確認` — the selected questions, numbered
+- Mention: always ask the user. Show the candidates by display name: the
+  ticket reporter, the parent ticket reporter, recent commenters, or no
+  mention.
   ```bash
   curl -s -u "$(~/bin/cred-read.sh morrisonexpress.atlassian.net)" -H "Content-Type: application/json" \
     "https://morrisonexpress.atlassian.net/rest/api/2/issue/MOP-XXXX?fields=reporter,parent" \
     | jq '{reporter: .fields.reporter | {displayName, accountId}, parent: .fields.parent.key}'
   ```
-- Writes:
+- Write commands:
   ```bash
   ~/bin/jira-description.sh set MOP-XXXX "$DRAFTS/description.wiki"   # prints browse URL
   ~/bin/jira-comment.sh      MOP-XXXX "$DRAFTS/comment.wiki"          # prints comment URL
@@ -193,48 +180,42 @@ Heading: `## 規格 (Consolidated Spec)`.
 - Code repo: `$MOP_MONOREPO_PATH`, on `feature/MOP-XXXX`.
 - Round-diff path (steps 2–4): **delegated** to a fresh subagent.
 - Change kinds:
-  - field **id / name** changed or renamed (e.g. `console_number_list` → `consol_number_list`)
-  - field **type** changed (e.g. text → multi-select)
-  - optional ↔ **required** flip, or a validation rule added/changed
-  - **API endpoint** path / method / payload key changed
-  - **i18n key** changed
-  - result **column** added / removed / renamed
-  - **privilege** id changed
-- Search command (scope to the ticket's app/module):
+  - field id or name changed (for example `console_number_list` → `consol_number_list`)
+  - field type changed (for example text → multi-select)
+  - optional ↔ required, or a validation rule added or changed
+  - API endpoint path, method, or payload key changed
+  - i18n key changed
+  - result column added, removed, or renamed
+  - privilege id changed
+- Search command (limit it to the app or module of the ticket):
   ```bash
   grep -rnIF -f "$VALUES" "$MOP_MONOREPO_PATH/apps/<app>" \
     --include='*.ts' --include='*.tsx' --include='*.vue'
   ```
-- One-round scan: **cardinality ambiguity**. It hunts code that silently
-  assumes a 1:1 relationship the spec never confirmed — or that the spec
-  states is 1:N.
+- One-round scan: **cardinality**. Find code that expects one record where
+  the spec does not say one.
   ```bash
   git -C "$MOP_MONOREPO_PATH" diff <base>...HEAD -- 'apps/<app>/**/*.ts' 'apps/<app>/**/*.tsx'
   ```
-  `<base>` is the Flow section's `<base>` — a feature branch off
-  `uat/<parent>` must not be diffed against `main`, or every other ticket in
-  the epic lands in the diff.
-  1. In the diff, find single-record lookups: `.find(...)` on an array, or a
-     function typed to return `T | undefined` / a bare `T` (not `T[]`),
-     where the lookup key is identifier-shaped (`*_id`, `*_no`, `*_number`,
-     `*Id`, `*Number`, …) and the result is a multi-field domain object (skip
-     type-guard/enum lookups).
-  2. For each, name the **key field** and the **target entity**.
-  3. Grep the current spec round for both concepts together:
-     - spec confirms 1:1 (`唯一`, `unique`, `一個…對應一個`) → aligned, do
-       not report;
-     - spec states or implies 1:N (`多筆`, `多個`, `list`, `multiple`) and
-       the code does a singular lookup → **Contradiction**;
-     - spec silent on cardinality → **Soft finding** (ambiguity): "worth
-       confirming: can `<key>` map to more than one `<target>`?" Most
-       unstated cardinality is fine; this is a nudge, not an accusation.
-- One-round Contradiction blocks the flip: **no** — report it, the user
-  decides.
+  `<base>` is the `<base>` of the Flow section. Do not use `main`.
+  1. In the diff, find lookups that return one record: `.find(...)` on an
+     array, or a function that returns `T | undefined` or `T` (not `T[]`).
+     The key is an identifier (`*_id`, `*_no`, `*_number`, `*Id`,
+     `*Number`). The result is an object with many fields. Ignore lookups
+     of enums and type guards.
+  2. For each lookup, write the key field and the target entity.
+  3. Search the current spec round for the two names together:
+     - The spec says one-to-one (`唯一`, `unique`, `一個…對應一個`): aligned.
+       Do not report it.
+     - The spec says one-to-many (`多筆`, `多個`, `list`, `multiple`):
+       **Contradiction**.
+     - The spec says nothing: **Soft finding**. Write "Confirm: can `<key>`
+       map to more than one `<target>`?"
+- One-round Contradiction blocks the flip: **no**. Report it.
 
 ## Ready
 
-- PR CLI: `gh` (authenticated). VPN and the Jira token give the spec gates
-  their data.
+- PR CLI: `gh`. The spec gates need the VPN and the Jira token.
 - PR view: `gh pr view --json number,isDraft,title,url,headRefName,body`.
   Draft signal: `isDraft`.
 - CI and comments:
@@ -242,46 +223,44 @@ Heading: `## 規格 (Consolidated Spec)`.
   gh pr checks <number>
   gh pr view <number> --json comments,reviews
   ```
-- What CI does not run (last confirmed): PR CI runs unit tests
-  (`nx affected -t test`, `continuous_integration.yml`) and builds
-  (`nx affected -t build`, `knip_pr_build.yml`). **No Cypress e2e** — no
-  workflow under `.github/` refers to Cypress. The e2e job is
-  `.jenkins/e2e_testing/jenkinsfile`, checks out `branch: 'main'`, and is
-  gated by `E2E_TESTING_TAG`. A diff can break an e2e test with every check
-  green.
-- Reviewers: **yes** — build the review-comment index.
-- Bot requests: the shared-component doc check needs a Confluence link in
-  the References block of the PR description for each `libs/**` change. Its
-  GitHub check reports `pass` while its comment reports the link absent. If
-  absent, warn and name `/doc-common-component-changelog`.
+- What CI does not run: PR CI runs unit tests (`nx affected -t test`,
+  `continuous_integration.yml`) and builds (`nx affected -t build`,
+  `knip_pr_build.yml`). PR CI does not run Cypress e2e. The e2e job is
+  `.jenkins/e2e_testing/jenkinsfile`. It uses `branch: 'main'` and runs only
+  with `E2E_TESTING_TAG`. A diff can break e2e while all checks pass.
+- Reviewers: **yes**. Make the review-comment index.
+- Bot requests: for each `libs/**` change, the PR description needs a
+  Confluence link in its References block. The bot check shows `pass` when
+  the link is missing. Read the bot comment. If the link is missing, warn
+  and name `/doc-common-component-changelog`.
 
-### Extra gate 3b: browser run of the test scenarios (BLOCKING for a current FAIL)
+### Extra gate 3b: browser test results (BLOCKING for a current FAIL)
 
-`mop-spec-verify` runs the scenarios of `### 3. 測試案例情境` in a browser
-and writes one row per scenario to a record. This gate only reads the
-record. **Never start the browser run from here** — it is slow and needs a
-running app.
+`mop-spec-verify` runs the scenarios of `### 3. 測試案例情境` in a browser.
+It writes one row for each scenario. This gate reads the rows only. Do not
+start a browser run from this gate.
 
 ```bash
 RESULT="$WORKTREE_ROOT/mop-console-monorepo/MOP-XXXX.verify.json"
 git rev-parse HEAD
 ```
 
-Number the scenarios in `### 3. 測試案例情境` 1, 2, 3, … in order. A row is
-**current** if its `sha` equals `HEAD` and its `round` equals the note's
-`round`; otherwise **stale**.
+Number the scenarios 1, 2, 3, … in order. A row is **current** when its
+`sha` is `HEAD` and its `round` is the note `round`. Other rows are
+**stale**.
 
-- **A current row is FAIL — block.** Report the scenario number, expected
-  text, actual text, and screenshot path. Fix the code or re-confirm the
-  spec, then `/mop-spec-verify MOP-XXXX <n>` and `spec-ready` again.
-- **Every scenario has a current PASS row** — passes.
-- **Otherwise** — one warning naming the scenarios with no row, a stale row,
-  or an INCONCLUSIVE row (with its reason), and the command to fix it:
-  `/mop-spec-verify MOP-XXXX <n> <n>`, or `/mop-spec-verify MOP-XXXX` with no
-  record.
-- **No spec note, or no scenario** — does not block.
+- A current row is FAIL: **block**. Report the scenario number, the
+  expected text, the actual text, and the screenshot path. Tell the user to
+  fix the code or the spec, then run `/mop-spec-verify MOP-XXXX <n>` and
+  `spec-ready`.
+- Each scenario has a current PASS row: pass.
+- Other cases: one warning. Name each scenario with no row, a stale row, or
+  an INCONCLUSIVE row (with its reason). Give the command:
+  `/mop-spec-verify MOP-XXXX <n> <n>`, or `/mop-spec-verify MOP-XXXX` when
+  there is no record.
+- No spec note, or no scenario: does not block.
 
-A stale FAIL does not block: the code or the spec changed after the run.
+A stale FAIL does not block.
 
 ### Gate 4: identifiers
 
@@ -289,69 +268,59 @@ A stale FAIL does not block: the code or the spec changed after the run.
   ```bash
   git diff origin/main...HEAD | grep '^-' | grep -oE "(id|name|data-testid)='[^']+'|#[a-zA-Z_][a-zA-Z0-9_.-]*"
   ```
-- By hand: exported symbols, i18n keys, API field names, CSS tokens,
+- Add by hand: exported symbols, i18n keys, API field names, CSS tokens,
   `classNamePrefix` tokens, `localStorage` keys, privilege ids.
-- Search: **delegated** to a fresh subagent — a repo-wide grep for a field
-  name hits every unrelated module (one real run: 10 hits, 2 defects). Give
-  it the identifier list, the old → new mapping for each rename, each newly
-  added selector token, and both checks; it returns one verdict per
-  identifier/selector, `path:line` only:
-  1. **Removed/renamed identifiers.** For each:
+- Search: **delegated** to a fresh subagent. Give it the identifier list,
+  the old → new name of each rename, each new selector token, and the two
+  checks below. It returns one verdict for each item, with `path:line`
+  only.
+  1. **Removed or renamed identifiers.** For each one:
      ```bash
      ~/bin/identifier-scope-check.sh '<identifier>' "$MOP_MONOREPO_PATH"
      ```
-     Pass only the bare identifier (`foo`, not `id='foo'`), and only if it
-     matches `^[A-Za-z0-9_.:#/-]+$`. Anything else never goes on the command
-     line: search it with `grep -rnIF -f <file>` and bucket the hits by
-     hand.
-     It buckets every hit into out-of-scope (auto-dismissed) and in-scope
-     (with context). An app-local diff is bucketed by directory prefix (plus
-     the matching `-e2e` dir); a `libs/` change traces which files import
-     the lib's resolved alias, since shared libs have cross-app callers.
-     Judge only the in-scope hits; trust its out-of-scope bucketing. The
-     same name in a different feature is a different field. Never change a
-     hit before tracing it to the renamed identifier.
-  2. **Selectors that now match two elements.** No removal needed — an
-     added element is enough. For each new selector token (a shared
-     `classNamePrefix`, a CSS class, a `data-testid` pattern), count matches
-     before and after. If 1 becomes 2+, check each call site: a bare
-     `.click()`, `.type()`, or `.should('have.value')` expects one element;
-     `.first()`, `.eq()`, and `within()` set a scope. An unscoped call site
-     is now broken — **Confirmed**.
+     Give the bare identifier only (`foo`, not `id='foo'`). Give it only
+     when it matches `^[A-Za-z0-9_.:#/-]+$`. For other identifiers, use
+     `grep -rnIF -f <file>` and sort the hits yourself.
+     The script sorts the hits into out-of-scope and in-scope. Judge the
+     in-scope hits only. The same name in a different feature is a
+     different field. Trace each hit to the renamed identifier before you
+     change it.
+  2. **Selectors that now match two elements.** For each new selector
+     token (a shared `classNamePrefix`, a CSS class, a `data-testid`
+     pattern), count the matches before and after the change. If the count
+     goes from 1 to 2 or more, check each call site. `.click()`, `.type()`,
+     and `.should('have.value')` without a scope expect one element.
+     `.first()`, `.eq()`, and `within()` set a scope. A call site without a
+     scope is **Confirmed**.
 
 ### Step 5: review
 
-- Run: **delegated** to a fresh subagent with the scoped diff.
+- Run: **delegated** to a fresh subagent, with the scoped diff.
 - Checklist:
-  - **Effect re-invocation.** React StrictMode runs mount → cleanup → mount
-    in development. For each new or changed `useEffect`: does setup
-    re-initialize every value cleanup removed (refs, flags)? Can a value
-    keep first-cleanup state into the second mount?
-  - **Components running at the same time.** Does the diff change a
-    component that runs alongside another that shares state? (A modal opens
-    while a loop or listener in a second component keeps running below it.)
-    Read one level past the changed files if needed.
+  - **Effect re-run.** In development, React StrictMode runs mount, then
+    cleanup, then mount. For each new or changed `useEffect`, check that
+    setup sets again each value that cleanup removed (refs, flags).
+  - **Components that run together.** Check components that run at the
+    same time and use the same state. Example: a modal opens, and a
+    listener in a different component continues below it. Read one level
+    past the changed files if necessary.
   - **The value that arrives, not the type.** For each new or changed
     validator, schema, or type guard:
-    1. Find the value the field holds at run time; do not trust the type.
-    2. Follow it from the API to the form through every layer that changes
-       it.
-    3. `convertNullToString` (`libs/shared/util/buildable-utils`) turns every
-       API `null` into `''`, at every depth — so `''` is the empty value,
-       not `null` or `undefined`.
-    4. A non-string schema is therefore wrong unless it first transforms
-       `''`: `Yup.number()`, `Yup.date()`, `Yup.array()`. `.nullable()` does
-       not fix it; `Yup.number()` casts `''` to `NaN` and fails the type
-       check.
-    5. List three cases for the field: empty, `null`, absent.
-    6. If the submit button depends on the schema, the form stays invalid
-       with no way forward — worse than one field message.
-    7. Grep two signals: nearby code already testing `=== ''` on this field
-       (someone hit this before), and the English yup type error showing
-       instead of the i18n message (the cast failed, not your rule).
-  - **New defects inside a correction.** If the diff fixes an earlier
-    finding, does the fix leave something without a purpose? Read what the
-    correction changed; do not only confirm the first defect is gone.
+    1. Find the value that the field holds at run time.
+    2. Follow the value from the API to the form, through each layer that
+       changes it.
+    3. `convertNullToString` (`libs/shared/util/buildable-utils`) changes
+       each API `null` to `''`, at all levels. The empty value is `''`.
+    4. `Yup.number()`, `Yup.date()`, and `Yup.array()` fail on `''` unless
+       the schema transforms `''` first. `.nullable()` does not fix this.
+       `Yup.number()` changes `''` to `NaN`.
+    5. Write three cases for the field: empty, `null`, absent.
+    6. If the submit button uses the schema, the form stays invalid and the
+       user cannot continue.
+    7. Search for two signals: code near the field that tests `=== ''`, and
+       an English yup type error instead of the i18n message.
+  - **Defects in a fix.** If the diff fixes an earlier finding, check that
+    each changed item still has a purpose.
 
 ### Flip
 
@@ -359,41 +328,38 @@ A stale FAIL does not block: the code or the spec changed after the run.
 gh pr ready <number>
 ```
 
-Merge rule: CODEOWNERS requests the owners of owned paths; the user assigns
-any other reviewers and merges.
+Merge rule: CODEOWNERS requests the code owners. The user adds other
+reviewers and merges.
 
 ## Flow
 
-- Branch: the worktree from `mwt` for the ticket
-  (`$WORKTREE_ROOT/mop-console-monorepo/MOP-XXXX`), or `$MOP_MONOREPO_PATH`
-  on `feature/MOP-XXXX`.
-- `<base>`: the PR's base (`gh pr view --json baseRefName`, as
-  `origin/<baseRefName>`). With no PR, `origin/main`.
-- Commit count: `mwt` seeds every branch with an empty
-  `Initial draft for branch …` commit, which is not implementation. Skip it:
+- Branch: the `mwt` worktree (`$WORKTREE_ROOT/mop-console-monorepo/MOP-XXXX`),
+  or `$MOP_MONOREPO_PATH` on `feature/MOP-XXXX`.
+- `<base>`: the PR base, `origin/<baseRefName>` from
+  `gh pr view --json baseRefName`. With no PR, `origin/main`.
+- Commit count: do not count the `Initial draft for branch …` commit that
+  `mwt` makes.
   ```bash
   git rev-list --count --invert-grep --grep='^Initial draft for branch' <base>..HEAD
   ```
-- PR lookup: `gh pr view --json number,isDraft,state` on the feature branch.
-  No PR → none; `OPEN` + `isDraft` → draft; `OPEN` → ready; `MERGED` →
-  merged; `CLOSED` → closed.
-- Pre-ready steps (row 10): `mop-spec-verify MOP-XXXX`, only when the verify
-  record (`$WORKTREE_ROOT/mop-console-monorepo/MOP-XXXX.verify.json`) lacks a
-  current PASS row (`sha` == `HEAD`, `round` == note round) for some
-  scenario. It drives the single global `yarn serve`; it restores the
-  previous serve target itself.
+- PR lookup: `gh pr view --json number,isDraft,state` on the feature
+  branch. No PR → none. `OPEN` with `isDraft` → draft. `OPEN` → ready.
+  `MERGED` → merged. `CLOSED` → closed.
+- Pre-ready steps (row 10): run `mop-spec-verify MOP-XXXX` only when the
+  record (`$WORKTREE_ROOT/mop-console-monorepo/MOP-XXXX.verify.json`) has no
+  current PASS row for a scenario. `mop-spec-verify` uses the one global
+  `yarn serve` and sets the previous serve target again when it stops.
 - Shipped check:
   ```bash
   git -C "$MOP_MONOREPO_PATH" fetch -q origin
   git -C "$MOP_MONOREPO_PATH" log origin/main --merges -E -1 \
     --grep='from [^ ]+/(feature|hotfix)/MOP-XXXX($|[^0-9])' --pretty='%h %s'
   ```
-  Any output → shipped.
-- Shipped action: ask whether to run `mop-spec-document MOP-XXXX` (it may
-  have run already — nothing records that). Then the ticket is done.
-- Out of scope: `mop-spec-ready-prod` (a release-level check across many
-  tickets) and `mop-check-privilege` (run it when `spec-init` reports a
-  privilege gap).
+  Output → shipped.
+- Shipped action: ask the user if `mop-spec-document MOP-XXXX` must run.
+  Then the ticket is done.
+- Not in the flow: `mop-spec-ready-prod` (one release, many tickets) and
+  `mop-check-privilege` (run it when `spec-init` reports a privilege gap).
 
 ## Template
 

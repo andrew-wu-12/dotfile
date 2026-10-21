@@ -1,82 +1,79 @@
 # Profile: hl
 
-Homelab infra issues on Forgejo (`$FORGEJO_HOMELAB_REPO`, set in
-`~/.zshrc.local`). Spec notes live in `project-note`, a git submodule of the
-main Obsidian vault — not in the homelab code repo.
+Homelab infra issues on Forgejo. Spec notes are in `project-note`, not in
+the homelab code repo.
 
 ## Identity and paths
 
-- ID: Forgejo issue number `<N>`. From a branch, `<N>` is the number in
+- ID: the Forgejo issue number `<N>`. On a branch, `<N>` is the number in
   `feature/<N>-…`.
-- `<id>` is the note's file name without `.md`, `<N>-<slug>`. **Find it by
-  issue number**: `ls "$SPECS"/<N>-*.md`. Never rebuild it from the branch
-  name — the note slug and the branch slug can differ (issue 7: note
-  `7-apple-reminders-via-radicale-caldav`, branch `feature/7-radicale-caldav`).
-- Only `spec-init` (no note yet) derives `<slug>`, the same way
-  `tmux-task-source-forgejo.sh` does: lowercase the issue title, collapse
-  non-alphanumeric runs to a single `-`, trim, cap at 40 chars.
-- `SPECS` = `$HOME/personal/project-note/Homelab/2 - Specs` (quote it — it
-  has spaces).
-- Vault commits: `project-note` commits only when told to. After every note
-  write, commit the note (and any new snapshot) in `~/personal/project-note`
-  with `spec: <step> #<N> <slug>, round N`.
+- `<id>`: the note file name without `.md`, `<N>-<slug>`. Find it by issue
+  number: `ls "$SPECS"/<N>-*.md`. Do not make it from the branch name. The
+  note slug and the branch slug can be different.
+- `<slug>` (`spec-init` only): use the rule of `tmux-task-source-forgejo.sh`.
+  Change the issue title to lowercase. Change each run of
+  non-alphanumeric characters to one `-`. Trim. Keep 40 characters maximum.
+- `SPECS` = `$HOME/personal/project-note/Homelab/2 - Specs`. Quote it: it
+  has spaces.
+- Vault-commit rule: after each note write, commit the note and each new
+  snapshot in `~/personal/project-note`. Message:
+  `spec: <step> #<N> <slug>, round N`.
 
 ## Tracker
 
-- Channels: the Forgejo issue, and chat/verbal discussion.
-- Access: `tea` authenticated (`tea login list` shows a login for
-  `<forgejo-host>`), and `$FORGEJO_HOMELAB_REPO` set (in
-  `~/.zshrc.local`). If it is unset, stop and say so.
+- Channels: the Forgejo issue, chat.
+- Access: `tea login list` shows a login for `<forgejo-host>`.
+  `$FORGEJO_HOMELAB_REPO` is set in `~/.zshrc.local`. If it is not set,
+  stop and tell the user.
 - You: the repo owner, `${FORGEJO_HOMELAB_REPO%%/*}`. A comment is yours
-  when its `author` equals that.
+  when its `author` is that name.
 - Fetch: **inline**.
   ```bash
   tea issues <N> --comments -o json -r "$FORGEJO_HOMELAB_REPO"
   ```
-  An image in a comment is rare (e.g. an error screenshot); read it directly.
-- Init extras: derive `<slug>` from the issue title (see Identity and paths).
-  The init existence check is `ls "$SPECS"/<N>-*.md`, not the derived name.
+  Read each image in a comment.
+- Init extras: make `<slug>` from the issue title. For the init check, use
+  `ls "$SPECS"/<N>-*.md`, not the new name.
 
 ## Grounding
 
 - Repos: `~/homelab` (or a worktree of it), `~/personal/project-note`.
-- Run: **inline** — the repo is small.
+- Run: **inline**.
 - Checks:
-  1. **Similar service/pattern already in repo?** Search each
-     `compose.yaml` and service directory for something to reuse or align
-     with (a Caddy block shape, a restart policy, an `.env.example`
-     pattern). Flag any divergence.
-  2. **Missing details?** Error handling, restart policy, resource limits
-     the issue leaves unstated.
-  3. **Breaks existing functionality?** Port collisions, Tailscale-node name
-     collisions, shared network/volume conflicts.
-  4. **New exposure surface?** A new Tailscale node, or ACL thought needed
-     (see `caddy/compose.yaml` for the per-service node pattern).
-  5. **Secrets handling?** New env vars — do they need a `.env.example`
-     entry, and does the repo's `**/.env` gitignore rule cover them?
-- Never open a `.env` file (real secrets live there); read `.env.example`
-  only. Report env var names, never values.
+  1. **Similar service or pattern?** Search each `compose.yaml` and service
+     directory for a pattern to use again: a Caddy block, a restart
+     policy, an `.env.example` entry. Report each difference.
+  2. **Missing details?** Find what the issue does not state: error
+     handling, restart policy, resource limits.
+  3. **Breaks existing behavior?** Find port conflicts, Tailscale node name
+     conflicts, and shared network or volume conflicts.
+  4. **New exposure?** Find each new Tailscale node and each ACL change.
+     `caddy/compose.yaml` shows the node pattern.
+  5. **Secrets?** For each new env var, check for an `.env.example` entry.
+     Check that the `**/.env` gitignore rule covers it.
+- Do not open a `.env` file. Read `.env.example` only. Report env var
+  names, not values.
 
 ## Note language
 
 English, for the note and the reports.
 
-## Frontmatter (in addition to schema.md's)
+## Frontmatter (in addition to schema.md)
 
-- `type` — always `spec`.
+- `type` — `spec`.
 - `issue` — the Forgejo issue number.
 
 ## Decision Log and Open Questions
 
 - Source tags: `issue`, `chat`, `dev`.
 - Waiting bucket: `waiting on external` (upstream docs, a vendor, a
-  hardware test — something outside your control).
+  hardware test).
 - Change reasons: `[spec change]`, `[misread]`, `[prior decision wrong]`,
   `[new info]`.
-- Recommended reason by source: `issue` → `[spec change]`; `chat` →
+- Recommended reason: source `issue` → `[spec change]`. Source `chat` →
   `[new info]`.
 - Replaces suffix: `, replaces YYYY-MM-DD "…"`.
-- Round History reason count, e.g. `(2 spec change, 1 new info)`.
+- Round History reason count: `(2 spec change, 1 new info)`.
 
 ## Spec body
 
@@ -84,58 +81,55 @@ Heading: `## Spec`.
 
 ### Subsections
 
-Write every subsection. If one has nothing to say yet, write `- none` — an
-omitted heading reads as "forgot to check", not "checked, N/A".
+Write each subsection. If a subsection has no content, write `- none`.
 
-- **Goal / Motivation** — one or two sentences: what this unlocks, why now.
-- **Components touched** — compose service(s) added or changed, Caddy
-  routes or Tailscale nodes involved. Real service names from
+- **Goal / Motivation** — one or two sentences: what this gives, and why
+  now.
+- **Components touched** — the compose services that you add or change,
+  and the Caddy routes or Tailscale nodes. Use the service names from
   `compose.yaml`.
-- **Config & secrets** — new or changed env var **names** (and whether
-  each needs a `.env.example` entry), ports, volumes. Never a secret value:
-  this section is published to the Forgejo issue.
-- **Data model / storage** — what gets persisted, where (bind mount vs named
-  volume), and its shape if structured.
-- **Operational concerns** — restart policy, resource limits, whether
-  `restic` backup coverage extends to a new path, health/monitoring.
-- **Verification steps** — concrete and runnable: a curl against a
-  healthcheck, a log line to grep for, a manual click-through. No
+- **Config & secrets** — the names of new or changed env vars (and if each
+  needs an `.env.example` entry), ports, volumes. Do not write secret
+  values.
+- **Data model / storage** — the data that you keep, the location (bind
+  mount or named volume), and its structure.
+- **Operational concerns** — restart policy, resource limits, `restic`
+  backup of new paths, health and monitoring.
+- **Verification steps** — steps that you can run: a curl to a health
+  check, a log line to find, a manual test. Do not use
   Precondition/Action/Expected-Result blocks.
 
 ### Terms
 
-- **Show**: real compose service names, env var names, ports, repo paths.
-  Never env var values.
-- **Avoid**: line-by-line implementation plans and library choices.
+- **Show**: compose service names, env var names, ports, repo paths. Do not
+  show env var values.
+- **Avoid**: line-by-line implementation plans, library choices.
 
 ### Challenge cross-references
 
-- A service, env var, port, or volume named in one subsection but missing
-  from Components touched or Config & secrets.
+- A service, env var, port, or volume in one subsection that is not in
+  Components touched or Config & secrets.
 
 ## Post
 
 - Body heading match (for `awk -v h=`): `## Spec`.
-- Fetch and guards: **inline**. The issue JSON from the Tracker fetch has
-  the comments; its `body` is the raw live description (markdown). Save it
-  before anything else:
+- Fetch and guards: **inline**. Save the issue first. Its `body` is the raw
+  description (markdown):
   ```bash
   tea issues <N> --comments -o json -r "$FORGEJO_HOMELAB_REPO" > "$DRAFTS/issue.json"
   jq -r '.body' "$DRAFTS/issue.json" > "$DRAFTS/description.live"
   ```
-- Own-author comments: yours (Tracker "You"). Header to match:
+- Own-author comments: yours (Tracker "You"). Comment header:
   `[Round N] Spec confirmation`.
-- Archive foreign description (after approval). Check the archive comment
-  posted before you overwrite:
+- Archive command (after approval). Make sure that the archive comment is
+  posted before you overwrite the description:
   ```bash
   { echo "**Original description (archived before spec-post overwrite, $(date +%F))**"; echo
     sed 's/^/> /' "$DRAFTS/description.live"; } > "$DRAFTS/archive.md"
   tea comments add <N> -r "$FORGEJO_HOMELAB_REPO" "$(cat "$DRAFTS/archive.md")"
   ```
-- Postable questions: every unchecked item. The issue is your own record;
-  nothing in it is private from you.
-- Stamp phrases (guard 1): ``synced by `spec-post` `` and, on issues posted
-  before the merge, ``synced by `hl-spec-post` ``.
+- Postable rule: post each unchecked item.
+- Stamp phrases: ``synced by `spec-post` ``, ``synced by `hl-spec-post` ``.
 - Description: markdown in `$DRAFTS/description.md`.
   ```bash
   {
@@ -145,7 +139,7 @@ omitted heading reads as "forgot to check", not "checked, N/A".
     cat "$DRAFTS/spec.md"
   } > "$DRAFTS/description.md"
   ```
-- Comment: `$DRAFTS/comment.md`:
+- Comment template: `$DRAFTS/comment.md`:
   ```markdown
   ## [Round N] Spec confirmation
 
@@ -153,7 +147,7 @@ omitted heading reads as "forgot to check", not "checked, N/A".
   1. <question>
   ```
 - Mention: none.
-- Writes:
+- Write commands:
   ```bash
   tea issues edit <N> -r "$FORGEJO_HOMELAB_REPO" --description "$(cat "$DRAFTS/description.md")"
   tea comments add <N> -r "$FORGEJO_HOMELAB_REPO" "$(cat "$DRAFTS/comment.md")"
@@ -161,53 +155,49 @@ omitted heading reads as "forgot to check", not "checked, N/A".
 
 ## Drift
 
-- Code repo: the homelab worktree on the issue's `feature/<N>-…` branch.
-  Run `git fetch origin main` first — a stale `main` bloats the diff.
+- Code repo: the homelab worktree on the `feature/<N>-…` branch. Run
+  `git fetch origin main` first.
 - Round-diff path (steps 2–4): **inline**.
 - Change kinds: env var renamed, port changed, restart policy changed,
-  volume path changed, compose-service or Caddy-route name changed.
+  volume path changed, compose service or Caddy route renamed.
 - Search command:
   ```bash
   grep -rnIF -f "$VALUES" . --include='*.yaml' --include='*.yml' --include='*.ts' --include='*.env.example'
   ```
-- One-round scan: **spec promises**.
+- One-round scan: **spec statements**.
   ```bash
   git diff origin/main...HEAD -- '*.yaml' '*.yml' '.env.example'
   ```
-  For each concrete, checkable fact the spec's Config & secrets, Data model,
-  Operational concerns, and Verification steps state (an env var, a port, a
-  restart policy, a volume path), check whether the diff delivers it:
-  - the diff **contradicts** an explicit statement (spec says
-    `restart: unless-stopped`, diff sets `restart: no` or omits it) →
-    **Contradiction**;
-  - the diff has not got to it yet (an intentionally partial PR) → **Soft
-    finding** (not delivered yet);
-  - the spec is silent on something the diff does → not this check's
-    concern.
+  For each fact that the spec states in Config & secrets, Data model,
+  Operational concerns, or Verification steps (an env var, a port, a
+  restart policy, a volume path), compare the diff:
+  - The diff is different from the spec (for example, the spec says
+    `restart: unless-stopped` and the diff sets `restart: no` or has no
+    restart policy): **Contradiction**.
+  - The diff does not include it yet: **Soft finding**.
+  - The spec says nothing about it: do not report it.
 - One-round Contradiction blocks the flip: **yes**.
 
 ## Ready
 
 - PR CLI: `tea`.
-- PR lookup: PR numbers are separate from issue numbers, so find the PR by
-  its head branch — never use the issue number `<N>` as the PR number, and
-  never rebuild the branch from the note slug:
+- PR lookup: find the PR by its head branch. The PR number is not the issue
+  number. Do not make the branch name from the note slug.
   ```bash
   tea pulls list --state all -f index,head,state,title,url -o json -r "$FORGEJO_HOMELAB_REPO" \
     | jq '[.[] | select(.head | startswith("feature/<N>-"))] | first'
   ```
-  `<PR>` = its `index`. No match → no PR.
+  `<PR>` is its `index`. No match → no PR.
 - PR view: `tea pulls <PR> -o json -r "$FORGEJO_HOMELAB_REPO"`. Draft
-  signal: a `WIP:` or `[WIP]` title prefix (Forgejo has no draft boolean).
-  Never re-add the prefix.
+  signal: the title starts with `WIP:` or `[WIP]`. Do not add the prefix
+  again.
 - CI: `tea pulls <PR> -f ci -o json -r "$FORGEJO_HOMELAB_REPO"`.
-- What CI does not run (last confirmed): the only workflow is
-  `.forgejo/workflows/pr-gate.yml` — `tsc` for `bookmark-webhook` and
-  `download-service`, and `docker compose config` for every service. **No
-  test suite exists and nothing runs at runtime**: green means "type-checks
-  and the compose files parse", not "the service works".
-- Reviewers: **no** — you are the only reviewer. No comment index, no bot
-  requests.
+- What CI does not run: the only workflow is
+  `.forgejo/workflows/pr-gate.yml`. It runs `tsc` for `bookmark-webhook`
+  and `download-service`, and `docker compose config` for each service.
+  There is no test suite. A pass means that the code compiles and the
+  compose files parse. It does not mean that the service works.
+- Reviewers: **no**. No comment index, no bot requests.
 - Extra gates: none.
 
 ### Gate 4: identifiers
@@ -216,35 +206,35 @@ omitted heading reads as "forgot to check", not "checked, N/A".
   ```bash
   git diff origin/main...HEAD | grep '^-' | grep -oE "[A-Z_][A-Z0-9_]*=|^\s*-?\s*[a-z0-9_-]+:"
   ```
-- By hand: env var names, compose service/network/volume names, Caddy
-  hostnames/routes, and anything another service or script
-  (`tmux-build-backend-forgejo.sh`, `tmux-task-source-forgejo.sh`,
-  `README.md`) references by name.
+- Add by hand: env var names, compose service, network, and volume names,
+  Caddy hostnames and routes, and each name that a different service or
+  script uses (`tmux-build-backend-forgejo.sh`,
+  `tmux-task-source-forgejo.sh`, `README.md`).
 - Search: **inline**, from the repo root, with the identifiers in a file
-  (see `ready.md` step 4): `grep -rnIF -f <file> .`
+  (`ready.md` step 4): `grep -rnIF -f <file> .`
 
 ### Step 5: review
 
-- Run: **inline** — read the diff directly; the repo is small enough.
+- Run: **inline**. Read the diff.
 - Checklist:
-  - **Compose service basics.** A `restart:` policy consistent with its
-    neighbors? Secrets read from `.env`, not hardcoded? A port published
-    under `ports:` that should stay internal behind Caddy + a Tailscale
-    node? A new volume path under the `**/data/` gitignore pattern, or will
-    it get committed?
-  - **TypeScript services (`bookmark-webhook`, `download-service`).**
-    Unhandled promise rejections on new async calls. Missing error
-    handling/retry around a new external HTTP call (this repo has hit it
-    before — see the "add retry" commits). An env var read with no default
-    and no startup validation, failing at request time instead of boot.
-    - **The value that arrives, not the type.** For a new field written to
-      disk or sent in a request: is it `undefined`, `null`, or `''` when
-      missing, and does downstream code assume another?
-  - **Caddy / Tailscale.** A new node name colliding with an existing one.
-    A route added to `caddy/compose.yaml` without its own Tailscale node,
-    against the one-node-per-service pattern.
-  - **New defects inside a correction.** Does a fix leave a dead variable
-    or an unused import behind?
+  - **Compose services.** Check that the `restart:` policy agrees with the
+    other services. Check that secrets come from `.env`. Check each port
+    under `ports:`: it must stay internal behind Caddy and a Tailscale node
+    when possible. Check that a new volume path is in the `**/data/`
+    gitignore pattern.
+  - **TypeScript services (`bookmark-webhook`, `download-service`).** Find
+    promise rejections that nothing handles. Find new external HTTP calls
+    with no error handling or retry. Find env vars that have no default and
+    no check at startup.
+    - **The value that arrives, not the type.** For a new field that the
+      service writes to disk or sends: find its value when it is missing
+      (`undefined`, `null`, or `''`). Check that the code that reads it
+      expects that value.
+  - **Caddy / Tailscale.** Find a new node name that is the same as an
+    existing name. Find a new route in `caddy/compose.yaml` that has no
+    Tailscale node of its own.
+  - **Defects in a fix.** Find variables or imports that the fix left with
+    no purpose.
 
 ### Flip
 
@@ -252,20 +242,19 @@ omitted heading reads as "forgot to check", not "checked, N/A".
 tea pulls edit <PR> -r "$FORGEJO_HOMELAB_REPO" --ready
 ```
 
-Merge rule: **never merge.** You review the final diff and merge by hand —
-that click is the deliberate checkpoint. There is no CODEOWNERS.
+Merge rule: do not merge. The user merges by hand. There is no CODEOWNERS.
 
 ## Flow
 
-- Branch: the worktree from `wt` (`feature/<N>-…`).
+- Branch: the `wt` worktree (`feature/<N>-…`).
 - `<base>`: `origin/main`.
 - Commit count: `git rev-list --count origin/main..HEAD`.
-- PR lookup: the Ready section's lookup. No match → none; `state` `open`
-  plus a `WIP:` title → draft; `open` → ready; `merged` → merged; `closed` →
-  closed.
+- PR lookup: the PR lookup of the Ready section. No match → none. `state`
+  `open` and a `WIP:` title → draft. `open` → ready. `merged` → merged.
+  `closed` → closed.
 - Pre-ready steps (row 10): none.
 - Shipped check: the PR `state` is `merged`.
-- Shipped action: none — there is no docs step. Report the issue as done.
+- Shipped action: none. Report that the issue is done.
 
 ## Template
 

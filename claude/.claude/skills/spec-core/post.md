@@ -31,7 +31,7 @@ Read first: `schema.md`, `challenge.md`, the profile (its Post section).
 
 ```bash
 NOTE="$SPECS/<id>.md"
-DRAFTS="/tmp/spec-post/<id>"; mkdir -p "$DRAFTS"
+DRAFTS="${TMPDIR:-/tmp}/spec-post/<id>"; mkdir -p -m 700 "$DRAFTS"
 ```
 
 Read it. Note `round: N`, the `posted:` entries, the last Round History
@@ -48,9 +48,10 @@ ticket's comments, and the **live description in its raw form** — the
 profile names the command. Then run the four guards. Each warns and asks
 for confirmation; none hard-blocks.
 
-1. **Description ownership.** If the description is empty or contains the
-   literal token `spec-post`, it is ours — overwrite it freely, no prompt.
-   Match the token loosely, not the stamp's exact formatting. If it carries
+1. **Description ownership.** If the description is empty or contains one
+   of the profile's stamp phrases, it is ours — overwrite it freely, no
+   prompt. Match the phrase, not the stamp's formatting. A bare mention of
+   `spec-post` elsewhere in the text does not make it ours. If it carries
    **foreign content**, flag it and keep the content **verbatim, in full**.
    After approval, archive it to a comment with the profile's archive
    command *before* overwriting. A hand-edit made *inside* an owned
@@ -113,8 +114,8 @@ format.
 
 - The stamp uses **today's** date: "last updated" describes the text the
   reader sees now.
-- The stamp is guard 1's ownership sentinel. Keep the token `spec-post` in
-  it verbatim.
+- The stamp is guard 1's ownership sentinel. Keep the profile's stamp
+  phrase in it verbatim.
 
 ### 6. Assemble the comment
 

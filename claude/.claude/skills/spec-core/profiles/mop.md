@@ -152,6 +152,7 @@ Heading: `## 規格 (Consolidated Spec)`.
   `⏳ 待後端回覆` items stay private — the backend is asked directly, not
   through the PM's comment. An unchecked item with no `⏳` was never asked:
   list those separately, suggest `spec-sync` first, and do not post them.
+- Stamp phrase (guard 1): `本規格由 spec-post 自動同步`.
 - Description: Jira wiki markup in `$DRAFTS/description.wiki`. **Do not
   demote headings** — the panel acts as the header, so `## 規格` maps to
   `h2.`. The panel is already wiki markup; do not run it through
@@ -201,7 +202,7 @@ Heading: `## 規格 (Consolidated Spec)`.
   - **privilege** id changed
 - Search command (scope to the ticket's app/module):
   ```bash
-  grep -rnI "<old-value-or-affected-identifier>" "$MOP_MONOREPO_PATH/apps/<app>" \
+  grep -rnIF -f "$VALUES" "$MOP_MONOREPO_PATH/apps/<app>" \
     --include='*.ts' --include='*.tsx' --include='*.vue'
   ```
 - One-round scan: **cardinality ambiguity**. It hunts code that silently
@@ -299,6 +300,10 @@ A stale FAIL does not block: the code or the spec changed after the run.
      ```bash
      ~/bin/identifier-scope-check.sh '<identifier>' "$MOP_MONOREPO_PATH"
      ```
+     Pass only the bare identifier (`foo`, not `id='foo'`), and only if it
+     matches `^[A-Za-z0-9_.:#/-]+$`. Anything else never goes on the command
+     line: search it with `grep -rnIF -f <file>` and bucket the hits by
+     hand.
      It buckets every hit into out-of-scope (auto-dismissed) and in-scope
      (with context). An app-local diff is bucketed by directory prefix (plus
      the matching `-e2e` dir); a `libs/` change traces which files import

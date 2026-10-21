@@ -54,6 +54,8 @@ main Obsidian vault — not in the homelab code repo.
      (see `caddy/compose.yaml` for the per-service node pattern).
   5. **Secrets handling?** New env vars — do they need a `.env.example`
      entry, and does the repo's `**/.env` gitignore rule cover them?
+- Never open a `.env` file (real secrets live there); read `.env.example`
+  only. Report env var names, never values.
 
 ## Note language
 
@@ -89,8 +91,9 @@ omitted heading reads as "forgot to check", not "checked, N/A".
 - **Components touched** — compose service(s) added or changed, Caddy
   routes or Tailscale nodes involved. Real service names from
   `compose.yaml`.
-- **Config & secrets** — new or changed env vars (and whether each needs a
-  `.env.example` entry), ports, volumes.
+- **Config & secrets** — new or changed env var **names** (and whether
+  each needs a `.env.example` entry), ports, volumes. Never a secret value:
+  this section is published to the Forgejo issue.
 - **Data model / storage** — what gets persisted, where (bind mount vs named
   volume), and its shape if structured.
 - **Operational concerns** — restart policy, resource limits, whether
@@ -102,6 +105,7 @@ omitted heading reads as "forgot to check", not "checked, N/A".
 ### Terms
 
 - **Show**: real compose service names, env var names, ports, repo paths.
+  Never env var values.
 - **Avoid**: line-by-line implementation plans and library choices.
 
 ### Challenge cross-references
@@ -130,9 +134,9 @@ omitted heading reads as "forgot to check", not "checked, N/A".
   ```
 - Postable questions: every unchecked item. The issue is your own record;
   nothing in it is private from you.
-- Description: markdown in `$DRAFTS/description.md`. Older issues carry an
-  `hl-spec-post` stamp, which contains the `spec-post` token, so they still
-  read as ours.
+- Stamp phrases (guard 1): ``synced by `spec-post` `` and, on issues posted
+  before the merge, ``synced by `hl-spec-post` ``.
+- Description: markdown in `$DRAFTS/description.md`.
   ```bash
   {
     echo "> **Round N · last updated $(date +%F)** — synced by \`spec-post\`;"
@@ -164,7 +168,7 @@ omitted heading reads as "forgot to check", not "checked, N/A".
   volume path changed, compose-service or Caddy-route name changed.
 - Search command:
   ```bash
-  grep -rnI "<old-value>" . --include='*.yaml' --include='*.yml' --include='*.ts' --include='*.env.example'
+  grep -rnIF -f "$VALUES" . --include='*.yaml' --include='*.yml' --include='*.ts' --include='*.env.example'
   ```
 - One-round scan: **spec promises**.
   ```bash
@@ -216,7 +220,8 @@ omitted heading reads as "forgot to check", not "checked, N/A".
   hostnames/routes, and anything another service or script
   (`tmux-build-backend-forgejo.sh`, `tmux-task-source-forgejo.sh`,
   `README.md`) references by name.
-- Search: **inline** — `grep -rn "<identifier>" .` from the repo root.
+- Search: **inline**, from the repo root, with the identifiers in a file
+  (see `ready.md` step 4): `grep -rnIF -f <file> .`
 
 ### Step 5: review
 

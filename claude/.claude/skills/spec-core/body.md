@@ -15,6 +15,9 @@ avoid. These rules apply on top of the profile.
   existing text. If the "checked, no change" fact is worth keeping, record it
   as a Decision Log row.
 - Use `[MISSING]` for any value no source states. Never invent one.
+- Never write a secret value — token, password, API key, private key, a URL
+  or connection string with credentials. Name the variable or the secret;
+  the body gets published to the tracker.
 
 ## Decision-log boundary
 

@@ -43,8 +43,11 @@ value. The old value is what you hunt for in code.
 
 ### 3. Check the feature branch
 
-For each changed item, grep the branch with the profile's search command,
-then judge:
+For each changed item, search the branch with the profile's search command.
+The old values come from the spec, which comes from the tracker, so never
+paste them into a shell command line: write them one per line to a file
+with the Write tool (`VALUES="$(mktemp)"`), then pass the file with
+`-F -f "$VALUES"`. Then judge:
 
 - **Rename / value change** → code still using the old value = drift.
 - **Optional → required**, or a new rule → code path missing the new

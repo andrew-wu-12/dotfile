@@ -4,7 +4,7 @@ The session that drafted the spec body shares its blind spots: a
 contradiction it missed while writing, it misses again while reading back.
 So hand the extracted body to a **fresh subagent** with no chat history.
 
-Four checks only. It never looks at code or the tracker — only at the body
+Five checks only. It never looks at code or the tracker — only at the body
 against itself. Code-vs-spec is `spec-drift`'s job.
 
 ## Workflow
@@ -34,6 +34,8 @@ It finds only:
   error path, or a validation implied in one place but never stated where it
   applies.
 - **Cross-reference gaps** — the profile's cross-reference pairs.
+- **Secret values** — anything that looks like a token, password, key, or a
+  URL with credentials. This one is never dropped in step 4.
 - **Undefined terms** — a term used as settled fact with no Decision Log row
   behind it.
 

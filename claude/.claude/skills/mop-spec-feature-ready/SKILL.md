@@ -161,7 +161,7 @@ Verdicts:
 
 - **Unposted rounds exist — block the flip.** Report the gap as
   `round: N, last posted: M`. Name each change between round M and round N that a
-  reviewer would read incorrectly. To correct this, run `/mop-spec-post`. Then run
+  reviewer would read incorrectly. To correct this, run `spec-post`. Then run
   `mop-spec-feature-ready` again.
 - **A round removed an item, and the title or the body still promises that item —
   block the flip.** The correction is cheap. Edit the body. Ask the PM to change the

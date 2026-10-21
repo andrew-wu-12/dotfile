@@ -140,7 +140,7 @@ Verdicts:
 
 - **Unposted rounds exist — block the flip.** Report the gap as
   `round: N, last posted: M`. Name each change between M and N. To correct:
-  run `hl-spec-post`, then run `hl-pr-ready` again.
+  run `spec-post`, then run `hl-pr-ready` again.
 - **A round removed an item, and the title/body still promise it — block
   the flip.** Edit the body; correct the title. This prevents the most
   common self-review miss: "did I actually finish this?"

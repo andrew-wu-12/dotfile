@@ -25,7 +25,7 @@ Shared by every profile. The profile adds its own (ID field, tags).
   `{round, date, url?, description}`. `url` is the comment URL when a
   comment was posted. Omit it for a description-only re-sync.
   `description` is `synced` or `resynced`. This is the shape only. The post
-  step decides the baseline round and which value to write.
+  step decides which value to write.
 
 ## Sections (in order)
 

@@ -1,8 +1,6 @@
 #!/usr/bin/env bash
 # Emit the spec delta between two round snapshots so callers reason only about what CHANGED.
 # round-NN.md == end-of-round-N state, so round-(N-1) -> round-N is exactly one round's change.
-# The two-round form exists for spec-post, whose baseline is the last round actually POSTED to the tracker: when
-# rounds 1-2 were never posted and round 3 is, the reader's delta spans 01 -> 03.
 # Usage:
 #   spec-round-diff.sh <SPECS-DIR> <ID>          # latest two rounds
 #   spec-round-diff.sh <SPECS-DIR> <ID> 3        # round-02 -> round-03

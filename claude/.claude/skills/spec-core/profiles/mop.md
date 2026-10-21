@@ -113,6 +113,74 @@ Heading: `## 規格 (Consolidated Spec)`.
 - Asides like `(現有行為)`, `(不新增文案)`, `(沿用現有 XXX 流程)` are
   justification asides — drop them (`body.md`).
 
+### Challenge cross-references
+
+- A field named in an API request/response example but missing from the
+  field table, or the reverse.
+
+## Post
+
+- Body heading match (for `awk -v h=`): `## 規格`.
+- Scripts: `~/bin/md2jira.sh`, `~/bin/jira-comment.sh`,
+  `~/bin/jira-description.sh`.
+- Fetch and guards: **delegated**. A fresh subagent in the foreground uses
+  `tool-ticket-get` (note the temp dir it creates as `$OUT`), then fetches
+  the raw description:
+  ```bash
+  ~/bin/jira-description.sh get MOP-XXXX > "$OUT/description.live"
+  ```
+  The manifest's description is HTML-stripped plain text, fine for reading
+  comments but too lossy to archive or ownership-check. `description.live` is
+  raw wiki markup. Jira round-trips wiki markup through ADF, so formatting
+  shifts on every write — match the stamp token, never the panel shape.
+- Own-author comments: comments by the user. Header to match:
+  `Round N` + `規格確認`. The posted source has escaped brackets
+  (`\[Round 5\]`); the manifest holds the rendered text.
+- Archive foreign description (main thread, after approval):
+  ```bash
+  { echo "h3. 原 description 備份（spec-post 覆寫前，$(date +%F)）"; echo "{quote}";
+    cat "$OUT/description.live"; echo "{quote}"; } > "$OUT/archive.wiki"
+  ~/bin/jira-comment.sh MOP-XXXX "$OUT/archive.wiki"
+  ```
+- Postable questions: unchecked items marked `⏳ 待 PM 回覆` only.
+  `⏳ 待後端回覆` items stay private — the backend is asked directly, not
+  through the PM's comment. An unchecked item with no `⏳` was never asked:
+  list those separately, suggest `spec-sync` first, and do not post them.
+- Description: Jira wiki markup in `$DRAFTS/description.wiki`. **Do not
+  demote headings** — the panel acts as the header, so `## 規格` maps to
+  `h2.`. The panel is already wiki markup; do not run it through
+  `md2jira.sh`:
+  ```bash
+  cat > "$DRAFTS/description.wiki" <<EOF
+  {panel:title=Round N · 最後更新 $(date +%F)}
+  本規格由 spec-post 自動同步，每輪覆寫。
+  變更紀錄請見留言。
+  {panel}
+
+  EOF
+  ~/bin/md2jira.sh < "$DRAFTS/spec.md" >> "$DRAFTS/description.wiki"
+  ```
+  Warn above ~30,000 characters (`wc -m`): Jira's limit is 32,767, and
+  `jira-description.sh set` refuses anything past it.
+- Comment: write `$DRAFTS/comment.md`, then
+  `~/bin/md2jira.sh < "$DRAFTS/comment.md" > "$DRAFTS/comment.wiki"`:
+  1. `[~accountid:<id>]` (omit the line if no mention)
+  2. `## [Round N] 規格確認`
+  3. `### 需要確認` — the curated questions, numbered
+- Mention: **always ask, never auto-resolve.** Offer the real candidates by
+  display name: the ticket reporter, the parent ticket's reporter (often the
+  PM when the user filed the sub-ticket), recent commenters, or no mention.
+  ```bash
+  curl -s -u "$(~/bin/cred-read.sh morrisonexpress.atlassian.net)" -H "Content-Type: application/json" \
+    "https://morrisonexpress.atlassian.net/rest/api/2/issue/MOP-XXXX?fields=reporter,parent" \
+    | jq '{reporter: .fields.reporter | {displayName, accountId}, parent: .fields.parent.key}'
+  ```
+- Writes:
+  ```bash
+  ~/bin/jira-description.sh set MOP-XXXX "$DRAFTS/description.wiki"   # prints browse URL
+  ~/bin/jira-comment.sh      MOP-XXXX "$DRAFTS/comment.wiki"          # prints comment URL
+  ```
+
 ## Template
 
 ```markdown

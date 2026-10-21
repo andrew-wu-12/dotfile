@@ -36,3 +36,5 @@ templates. The step files never name a domain. When a step file says
 | `interview.md` | the ask-until-owned loop for gaps and change reasons |
 | `init.md` | the init procedure (`spec-init`) |
 | `sync.md` | the sync procedure (`spec-sync`) |
+| `challenge.md` | fresh-eyes check of the body against itself |
+| `post.md` | the post procedure (`spec-post`) |

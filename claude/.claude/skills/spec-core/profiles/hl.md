@@ -96,6 +96,53 @@ omitted heading reads as "forgot to check", not "checked, N/A".
 - **Show**: real compose service names, env var names, ports, repo paths.
 - **Avoid**: line-by-line implementation plans and library choices.
 
+### Challenge cross-references
+
+- A service, env var, port, or volume named in one subsection but missing
+  from Components touched or Config & secrets.
+
+## Post
+
+- Body heading match (for `awk -v h=`): `## Spec`.
+- Fetch and guards: **inline**. The issue JSON from the Tracker fetch has
+  the comments; its `body` is the raw live description (markdown).
+- Own-author comments: comments by the repo owner
+  (`${FORGEJO_HOMELAB_REPO%%/*}`). Header to match: `[Round N] Spec
+  confirmation`.
+- Archive foreign description (after approval):
+  ```bash
+  tea comments add <N> -r "$FORGEJO_HOMELAB_REPO" \
+    "**Original description (archived before spec-post overwrite, $(date +%F))**
+
+  > $(cat original.txt)"
+  ```
+- Postable questions: every unchecked item. The issue is your own record;
+  nothing in it is private from you.
+- Description: markdown in `$DRAFTS/description.md`. Older issues carry an
+  `hl-spec-post` stamp, which contains the `spec-post` token, so they still
+  read as ours.
+  ```bash
+  {
+    echo "> **Round N · last updated $(date +%F)** — synced by \`spec-post\`;"
+    echo "> full history in \`project-note/Homelab/2 - Specs/<N>-<slug>.md\`."
+    echo
+    cat "$DRAFTS/spec.md"
+  } > "$DRAFTS/description.md"
+  ```
+- Comment: `$DRAFTS/comment.md`:
+  ```markdown
+  ## [Round N] Spec confirmation
+
+  ### Open
+  1. <question>
+  ```
+- Mention: none.
+- Writes:
+  ```bash
+  tea issues edit <N> -r "$FORGEJO_HOMELAB_REPO" --description "$(cat "$DRAFTS/description.md")"
+  tea comments add <N> -r "$FORGEJO_HOMELAB_REPO" "$(cat "$DRAFTS/comment.md")"
+  ```
+
 ## Template
 
 ```markdown

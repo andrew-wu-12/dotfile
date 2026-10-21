@@ -38,3 +38,4 @@ templates. The step files never name a domain. When a step file says
 | `sync.md` | the sync procedure (`spec-sync`) |
 | `challenge.md` | fresh-eyes check of the body against itself |
 | `post.md` | the post procedure (`spec-post`) |
+| `drift.md` | the spec-vs-code drift check (`spec-drift`) |

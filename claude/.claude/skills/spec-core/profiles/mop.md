@@ -181,6 +181,46 @@ Heading: `## 規格 (Consolidated Spec)`.
   ~/bin/jira-comment.sh      MOP-XXXX "$DRAFTS/comment.wiki"          # prints comment URL
   ```
 
+## Drift
+
+- Code repo: `$MOP_MONOREPO_PATH`, on `feature/MOP-XXXX`.
+- Round-diff path (steps 2–4): **delegated** to a fresh subagent.
+- Change kinds:
+  - field **id / name** changed or renamed (e.g. `console_number_list` → `consol_number_list`)
+  - field **type** changed (e.g. text → multi-select)
+  - optional ↔ **required** flip, or a validation rule added/changed
+  - **API endpoint** path / method / payload key changed
+  - **i18n key** changed
+  - result **column** added / removed / renamed
+  - **privilege** id changed
+- Search command (scope to the ticket's app/module):
+  ```bash
+  grep -rnI "<old-value-or-affected-identifier>" "$MOP_MONOREPO_PATH/apps/<app>" \
+    --include='*.ts' --include='*.tsx' --include='*.vue'
+  ```
+- One-round scan: **cardinality ambiguity**. It hunts code that silently
+  assumes a 1:1 relationship the spec never confirmed — or that the spec
+  states is 1:N.
+  ```bash
+  git -C "$MOP_MONOREPO_PATH" diff main...HEAD -- 'apps/<app>/**/*.ts' 'apps/<app>/**/*.tsx'
+  ```
+  1. In the diff, find single-record lookups: `.find(...)` on an array, or a
+     function typed to return `T | undefined` / a bare `T` (not `T[]`),
+     where the lookup key is identifier-shaped (`*_id`, `*_no`, `*_number`,
+     `*Id`, `*Number`, …) and the result is a multi-field domain object (skip
+     type-guard/enum lookups).
+  2. For each, name the **key field** and the **target entity**.
+  3. Grep the current spec round for both concepts together:
+     - spec confirms 1:1 (`唯一`, `unique`, `一個…對應一個`) → aligned, do
+       not report;
+     - spec states or implies 1:N (`多筆`, `多個`, `list`, `multiple`) and
+       the code does a singular lookup → **Contradiction**;
+     - spec silent on cardinality → **Soft finding** (ambiguity): "worth
+       confirming: can `<key>` map to more than one `<target>`?" Most
+       unstated cardinality is fine; this is a nudge, not an accusation.
+- One-round Contradiction blocks the flip: **no** — report it, the user
+  decides.
+
 ## Template
 
 ```markdown

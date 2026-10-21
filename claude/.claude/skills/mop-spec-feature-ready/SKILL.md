@@ -177,10 +177,10 @@ review.
 
 ### 3. Gate: does the code disagree with the spec? (BLOCKING for drift)
 
-Run the **mop-spec-drift** skill for the ticket. The skill takes one of two paths. With
+Run the **spec-drift** skill for the ticket. The skill takes one of two paths. With
 2 or more spec rounds, it compares the last two rounds. Then it greps the branch for
 code that disagrees. With 1 round, it reads the PR diff instead. Then it looks for
-data relationships with an unstated cardinality. That is step 1b of mop-spec-drift.
+data relationships with an unstated cardinality. That is the one-round scan of spec-drift.
 
 - **The skill found drift** (the round-comparison path) — **block the flip.** Report
   each disagreement. Give `path:line`. Give the old spec value and the new spec
@@ -279,7 +279,7 @@ searches — it must never return raw grep output, only verdicts:
    selector and check whether it expects one element. A bare `.click()`, `.type()`,
    or `.should('have.value')` expects one element; `.first()`, `.eq()`, and
    `within()` set a scope. A call site without a scope is now broken. This is the
-   same defect shape as the cardinality check in mop-spec-drift — there the shape
+   same defect shape as the cardinality check in spec-drift — there the shape
    applies to data relationships, here to selectors.
 
 Require the subagent to return one verdict per identifier/selector, `path:line` only:
@@ -383,7 +383,7 @@ Report these items:
   the tests CI did not run for this diff. Give this line even if each check is green.
   A green check with an untested suite is the case that the user must know about.
 - **The warnings**, as one list: the findings from step 5, the ambiguity items from
-  mop-spec-drift, the browser-run warning from step 3b, the hits from step 4 that you
+  spec-drift, the browser-run warning from step 3b, the hits from step 4 that you
   did not confirm, and each open bot
   request. An example of a bot request is an absent Confluence link. Write "clean" if
   the list is empty. Mark each item as new, already-raised, or already-fixed.
@@ -400,7 +400,7 @@ Then write `HEAD` to `$GATE_FILE`.
 - Step 3b never starts a browser run. A missing, stale, or INCONCLUSIVE row only
   warns.
 - The hits from step 4 that you did not confirm never block. The single-round output
-  of mop-spec-drift never blocks. That output also uses the words "contradiction" and
+  of spec-drift never blocks. That output also uses the words "contradiction" and
   "ambiguity", but it is a different check. Do not confuse it with a gate.
 - The findings from step 5 never block. Report them and continue.
 - **Never limit the grep in step 4 to the app that you edited.** The value of the

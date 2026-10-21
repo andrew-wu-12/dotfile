@@ -44,7 +44,7 @@ Skills 放在 `claude/.claude/skills/`，安裝選項 3 會安裝 Claude Code，
 spec-init ──► spec-sync ──► spec-post ──► 實作
    建立規格          PM 討論後更新       推回 Jira          │
                      （可重複多輪）                          ▼
-mop-spec-ready-prod ◄── mop-spec-feature-ready ◄── mop-spec-drift ◄── mop-spec-verify
+mop-spec-ready-prod ◄── mop-spec-feature-ready ◄── spec-drift ◄── mop-spec-verify
    prod 前檢查            PR 轉 ready                 規格 vs 程式碼       瀏覽器跑測試情境
 ```
 
@@ -54,7 +54,7 @@ mop-spec-ready-prod ◄── mop-spec-feature-ready ◄── mop-spec-drift �
 | 討論 | `spec-sync MOP-XXXX` | 貼上與 PM 的對話紀錄，抓出矛盾、合併新決定 | 更新後的規格 + 新一輪快照 |
 | 發布 | `spec-post MOP-XXXX` | 先自我挑戰規格漏洞，再覆寫 Jira 描述並留下本輪變更 | Jira 描述 + 變更留言 |
 | 驗證 | `mop-spec-verify MOP-XXXX` | 在本機 `yarn serve` 上用瀏覽器逐條跑測試情境 | 每條情境 PASS / FAIL / INCONCLUSIVE |
-| 對齊 | `mop-spec-drift MOP-XXXX` | 比對規格最近兩輪差異，找出已過時的程式碼 | 漂移清單（附信心程度） |
+| 對齊 | `spec-drift MOP-XXXX` | 比對規格最近兩輪差異，找出已過時的程式碼 | 漂移清單（附信心程度） |
 | 送審 | `mop-spec-feature-ready` | 檢查規格已發布、程式碼符合規格、瀏覽器驗證通過、沒有殘留的已移除識別字、diff 無缺陷 | 全部通過則把草稿 PR 轉為 ready |
 | 上線 | `mop-spec-ready-prod MOP-XXXX` | 確認 uat 分支上每張票都是 UAT VERIFIED | 檢查報告（只提醒，不擋） |
 

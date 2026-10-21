@@ -143,6 +143,33 @@ omitted heading reads as "forgot to check", not "checked, N/A".
   tea comments add <N> -r "$FORGEJO_HOMELAB_REPO" "$(cat "$DRAFTS/comment.md")"
   ```
 
+## Drift
+
+- Code repo: the homelab worktree on `feature/<N>-<slug>` (or `~/homelab`).
+  Run `git fetch origin main` first — a stale `main` bloats the diff.
+- Round-diff path (steps 2–4): **inline**.
+- Change kinds: env var renamed, port changed, restart policy changed,
+  volume path changed, compose-service or Caddy-route name changed.
+- Search command:
+  ```bash
+  grep -rnI "<old-value>" . --include='*.yaml' --include='*.yml' --include='*.ts' --include='*.env.example'
+  ```
+- One-round scan: **spec promises**.
+  ```bash
+  git diff origin/main...HEAD -- '*.yaml' '*.yml' '.env.example'
+  ```
+  For each concrete, checkable fact the spec's Config & secrets, Data model,
+  Operational concerns, and Verification steps state (an env var, a port, a
+  restart policy, a volume path), check whether the diff delivers it:
+  - the diff **contradicts** an explicit statement (spec says
+    `restart: unless-stopped`, diff sets `restart: no` or omits it) →
+    **Contradiction**;
+  - the diff has not got to it yet (an intentionally partial PR) → **Soft
+    finding** (not delivered yet);
+  - the spec is silent on something the diff does → not this check's
+    concern.
+- One-round Contradiction blocks the flip: **yes**.
+
 ## Template
 
 ```markdown

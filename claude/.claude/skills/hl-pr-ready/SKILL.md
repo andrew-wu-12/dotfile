@@ -155,53 +155,17 @@ the verdict of the report instead.
 
 ### 3. Gate: does the code disagree with the spec? (BLOCKING for drift)
 
-With **2 or more spec rounds**:
-
-```bash
-~/bin/spec-round-diff.sh "$HOME/personal/project-note/Homelab/2 - Specs" <N>-<slug>
-```
-
-Pull the concrete, code-mappable changes from the delta — env var renamed,
-port changed, restart policy changed, volume path changed, a
-compose-service or Caddy-route name changed. For each, grep the feature
-branch for the **old** value:
-
-```bash
-grep -rnI "<old-value>" ~/homelab --include='*.yaml' --include='*.yml' --include='*.ts' --include='*.env.example'
-```
-
-- Code/config still using the old value → **drift**.
-- A removed field/service/route still referenced → **drift**.
-- An added item with no code yet → informational, not drift.
-- Already matches the new spec → aligned, do not report.
-
-With **exactly 1 round** (no delta to diff), fall back to a *spec-promise
-scan*, scoped to the PR's own diff — not the whole repo:
-
-```bash
-git diff origin/main...HEAD -- '*.yaml' '*.yml' '.env.example'
-```
-
-For each concrete, checkable fact the current spec's Config & secrets /
-Data model / Operational concerns / Verification sections state (an env
-var, a port, a restart policy, a volume path), check whether the diff
-actually delivers it:
-
-- The spec **explicitly** states something the diff **contradicts** (spec
-  says `restart: unless-stopped`, diff sets `restart: no` or omits it
-  entirely) — **block the flip**, this is a confirmed contradiction, not a
-  judgment call.
-- The spec states something the diff simply hasn't gotten to yet (PR is
-  intentionally partial) — informational, not blocking; note it.
-- The spec is silent on something the diff does — not this gate's concern.
+Run `spec-drift` for the issue. It diffs the latest two rounds, or with one
+round scans the PR diff for spec promises the diff contradicts.
 
 **No spec note exists** — this does not block. Note it and continue.
 
 Verdicts:
 
-- **Drift or a confirmed contradiction found — block the flip.** Report
-  each, `path:line`, old spec value vs. new. To correct: change the code,
-  or re-confirm the spec via `spec-sync`. Then run `hl-pr-ready` again.
+- **Drift, or a one-round Contradiction — block the flip.** Report each,
+  `path:line`, old spec value vs. new. To correct: change the code, or
+  re-confirm the spec via `spec-sync`. Then run `hl-pr-ready` again.
+- **Informational or soft findings only** — the gate passes; list them.
 - **None found** — the gate passes.
 
 ### 4. Gate: search for broken infra references (BLOCKING if confirmed)

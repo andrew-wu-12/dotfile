@@ -1,6 +1,5 @@
 {
   "permissions": {
-    "defaultMode": "auto",
     "allow": [
       "Read(~/project/mop-console-monorepo/**)",
       "Read(~/personal/office-note/**)"
@@ -8,7 +7,8 @@
     "ask": [
       "mcp__codex__codex",
       "mcp__codex__codex-reply"
-    ]
+    ],
+    "defaultMode": "auto"
   },
   "model": "opus",
   "hooks": {
@@ -48,7 +48,8 @@
     "typescript-lsp@claude-plugins-official": true,
     "context7@claude-plugins-official": true,
     "mattpocock-skills@claude-plugins-official": true,
-    "pilotfish@pilotfish": true
+    "pilotfish@pilotfish": true,
+    "ponytail@ponytail": true
   },
   "extraKnownMarketplaces": {
     "pilotfish": {
@@ -57,9 +58,20 @@
         "repo": "Nanako0129/pilotfish",
         "ref": "v1.4.1"
       }
+    },
+    "ponytail": {
+      "source": {
+        "source": "github",
+        "repo": "DietrichGebert/ponytail"
+      }
     }
   },
   "effortLevel": "medium",
+  "modelSettings": {
+    "claude-opus-5": {
+      "effortLevel": "high"
+    }
+  },
   "awaySummaryEnabled": false,
   "tui": "fullscreen",
   "theme": "auto",
@@ -79,9 +91,12 @@
       ]
     }
   },
-  "modelSettings": {
-    "claude-opus-5": {
-      "effortLevel": "high"
+  "pluginConfigs": {
+    "ponytail@ponytail": {
+      "options": {
+        "ledger": true,
+        "sendNames": true
+      }
     }
   }
 }

@@ -22,9 +22,13 @@ the homelab code repo.
 ## Tracker
 
 - Channels: the Forgejo issue, chat.
-- Access: `$FORGEJO_HOST` and `$FORGEJO_HOMELAB_REPO` are set in
-  `~/.zshrc.local`. `tea login list` shows a login for `$FORGEJO_HOST`. If
-  a variable is not set, stop and tell the user.
+- Access: the host and the repo are credentials. Start each Bash command
+  that uses them with:
+  ```bash
+  FORGEJO_HOST=$(~/bin/cred-read.sh forgejo-homelab-host); FORGEJO_HOMELAB_REPO=$(~/bin/cred-read.sh forgejo-homelab-repo)
+  ```
+  If a value is empty, stop and tell the user to run `init-credentials.sh`.
+  `tea login list` shows a login for `$FORGEJO_HOST`.
 - You: the repo owner, `${FORGEJO_HOMELAB_REPO%%/*}`. A comment is yours
   when its `author` is that name.
 - Fetch: **inline**.

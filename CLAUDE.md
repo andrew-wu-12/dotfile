@@ -73,7 +73,7 @@ security add-generic-password -a "$USER" -s "<service-name>" -w "<token>" -U
 printf '%s' "<token>" | secret-tool store --label="<service-name>" service "<service-name>" account "$USER"
 ```
 
-Service names: `jenkins.morrison.express`, `morrisonexpress.atlassian.net`, `getdata.morrison.express`, `openai.com`.
+Service names: `jenkins.morrison.express`, `morrisonexpress.atlassian.net`, `getdata.morrison.express`, `openai.com`, and the optional homelab pair `forgejo-homelab-host` / `forgejo-homelab-repo` (not secrets, but kept out of this public repo the same way; `.zshrc` loads them non-exported as `FORGEJO_HOST` / `FORGEJO_HOMELAB_REPO`).
 
 ## Clipboard
 

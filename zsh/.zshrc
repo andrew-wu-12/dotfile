@@ -88,6 +88,8 @@ _read_cred() {
 unset JENKINS_TOKEN; JENKINS_TOKEN=$(_read_cred "jenkins.morrison.express")
 unset JIRA_TOKEN; JIRA_TOKEN=$(_read_cred "morrisonexpress.atlassian.net")
 unset GETDATATOKEN; GETDATATOKEN=$(_read_cred "getdata.morrison.express")
+unset FORGEJO_HOST; FORGEJO_HOST=$(_read_cred "forgejo-homelab-host")
+unset FORGEJO_HOMELAB_REPO; FORGEJO_HOMELAB_REPO=$(_read_cred "forgejo-homelab-repo")
 # Only codex needs it; its MCP command reads it itself. Unset here so a stale
 # export from an older shell or tmux server doesn't keep leaking it.
 unset OPENAI_API_KEY
@@ -104,9 +106,7 @@ export NX_CACHE_DIRECTORY="$HOME/.cache/nx-mop"
 
 export PATH="$HOME/.local/bin:$PATH"
 
-# Untracked, per-person values kept out of this public repo (e.g.
-# FORGEJO_HOMELAB_REPO=<owner>/homelab and FORGEJO_HOST=<forgejo-host> for
-# tmux-task-source-forgejo.sh / spec-* skills).
+# Untracked, per-person values kept out of this public repo.
 [ -f ~/.zshrc.local ] && source ~/.zshrc.local
 
 # Guarded so a machine that hasn't run init-recommend-cli-tools.sh starts without them instead of erroring.

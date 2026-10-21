@@ -1,6 +1,6 @@
 #!/bin/bash
 # Task source for tmux-window-picker.sh (TASK_SOURCE_CMD): open issues on the homelab Forgejo repo
-# ($FORGEJO_HOMELAB_REPO), worked via worktree-generic.sh (plain branch name, no ticket system).
+# (credential forgejo-homelab-repo), worked via worktree-generic.sh (plain branch name, no ticket system).
 #   list        number<TAB>title<TAB>open, skipping issues that already have a worktree
 #   url <n>     browser link for the issue
 #   start <n>   create/open the issue's worktree + window on feature/<n>-<slug> via `wt -n`
@@ -11,10 +11,9 @@ set -u
 WORKTREE_ROOT="${WORKTREE_ROOT:-$HOME/project/worktrees}"
 FORGEJO_REPO_NAME="homelab"
 TAB=$(printf '\t')
-# <owner>/homelab and the Forgejo host, from the untracked ~/.zshrc.local. Read from the file too,
-# since a tmux server started before it existed won't have them in its env.
-FORGEJO_OWNER_REPO="${FORGEJO_HOMELAB_REPO:-$(zsh -c 'source ~/.zshrc.local 2>/dev/null; print -r -- "$FORGEJO_HOMELAB_REPO"')}"
-FORGEJO_HOST="${FORGEJO_HOST:-$(zsh -c 'source ~/.zshrc.local 2>/dev/null; print -r -- "$FORGEJO_HOST"')}"
+# .zshrc keeps these non-exported, so a tmux-launched script reads them from the credential store.
+FORGEJO_OWNER_REPO="${FORGEJO_HOMELAB_REPO:-$(~/bin/cred-read.sh forgejo-homelab-repo)}"
+FORGEJO_HOST="${FORGEJO_HOST:-$(~/bin/cred-read.sh forgejo-homelab-host)}"
 FORGEJO_BASE="https://$FORGEJO_HOST"
 
 get_forgejo_token() {
@@ -54,7 +53,7 @@ task_start() {
 }
 
 if [ -z "$FORGEJO_OWNER_REPO" ] || [ -z "$FORGEJO_HOST" ]; then
-  echo "Set FORGEJO_HOMELAB_REPO=<owner>/homelab and FORGEJO_HOST=<forgejo-host> in ~/.zshrc.local" >&2; exit 1
+  echo "Store forgejo-homelab-host and forgejo-homelab-repo with init-credentials.sh" >&2; exit 1
 fi
 
 case "${1:-}" in

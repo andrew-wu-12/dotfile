@@ -25,6 +25,16 @@ credentials='{
             "service_name": "openai.com",
             "variable_name": "OPENAI_API_KEY",
             "description": "OpenAI API Key，你可以從以下網站取得： \\e]8;;https://platform.openai.com/api-keys\\e\\\\https://platform.openai.com/api-keys\\e]8;;\\e\\\\"
+        },
+        {
+            "service_name": "forgejo-homelab-host",
+            "variable_name": "FORGEJO_HOST",
+            "description": "Homelab Forgejo 主機名稱（不含 https://，沒有 homelab 可留空跳過）"
+        },
+        {
+            "service_name": "forgejo-homelab-repo",
+            "variable_name": "FORGEJO_HOMELAB_REPO",
+            "description": "Homelab Forgejo repo（格式：<owner>/homelab，沒有 homelab 可留空跳過）"
         }
     ]
 }'

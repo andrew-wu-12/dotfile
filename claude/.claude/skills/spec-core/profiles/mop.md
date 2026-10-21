@@ -17,6 +17,12 @@ vault.
   prototype (Jira image attachments).
 - Access: Jira token in the credential store (scripts read it via
   `~/bin/cred-read.sh`).
+- You: your Jira account. A comment is yours when its author matches your
+  `displayName`:
+  ```bash
+  curl -s -u "$(~/bin/cred-read.sh morrisonexpress.atlassian.net)" \
+    https://morrisonexpress.atlassian.net/rest/api/2/myself | jq '{displayName, accountId}'
+  ```
 - Fetch: **delegated**. Run a fresh subagent in the foreground using
   `tool-ticket-get`. Give it the ticket ID and the note's last Round History
   date. Require its report to list new comments verbatim and the file paths
@@ -133,7 +139,7 @@ Heading: `## 規格 (Consolidated Spec)`.
   comments but too lossy to archive or ownership-check. `description.live` is
   raw wiki markup. Jira round-trips wiki markup through ADF, so formatting
   shifts on every write — match the stamp token, never the panel shape.
-- Own-author comments: comments by the user. Header to match:
+- Own-author comments: yours (Tracker "You"). Header to match:
   `Round N` + `規格確認`. The posted source has escaped brackets
   (`\[Round 5\]`); the manifest holds the rendered text.
 - Archive foreign description (main thread, after approval):
@@ -202,8 +208,11 @@ Heading: `## 規格 (Consolidated Spec)`.
   assumes a 1:1 relationship the spec never confirmed — or that the spec
   states is 1:N.
   ```bash
-  git -C "$MOP_MONOREPO_PATH" diff main...HEAD -- 'apps/<app>/**/*.ts' 'apps/<app>/**/*.tsx'
+  git -C "$MOP_MONOREPO_PATH" diff <base>...HEAD -- 'apps/<app>/**/*.ts' 'apps/<app>/**/*.tsx'
   ```
+  `<base>` is the Flow section's `<base>` — a feature branch off
+  `uat/<parent>` must not be diffed against `main`, or every other ticket in
+  the epic lands in the diff.
   1. In the diff, find single-record lookups: `.find(...)` on an array, or a
      function typed to return `T | undefined` / a bare `T` (not `T[]`),
      where the lookup key is identifier-shaped (`*_id`, `*_no`, `*_number`,
@@ -355,6 +364,11 @@ any other reviewers and merges.
   on `feature/MOP-XXXX`.
 - `<base>`: the PR's base (`gh pr view --json baseRefName`, as
   `origin/<baseRefName>`). With no PR, `origin/main`.
+- Commit count: `mwt` seeds every branch with an empty
+  `Initial draft for branch …` commit, which is not implementation. Skip it:
+  ```bash
+  git rev-list --count --invert-grep --grep='^Initial draft for branch' <base>..HEAD
+  ```
 - PR lookup: `gh pr view --json number,isDraft,state` on the feature branch.
   No PR → none; `OPEN` + `isDraft` → draft; `OPEN` → ready; `MERGED` →
   merged; `CLOSED` → closed.

@@ -6,11 +6,15 @@ main Obsidian vault — not in the homelab code repo.
 
 ## Identity and paths
 
-- ID: Forgejo issue number `<N>`. `<id>` == `<N>-<slug>`.
-- `<slug>`: derive it the same way `tmux-task-source-forgejo.sh` does —
-  lowercase the issue title, collapse non-alphanumeric runs to a single `-`,
-  trim, cap at 40 chars. It must match byte-for-byte: it is also the branch
-  name (`feature/<N>-<slug>`) and the worktree dir (`feature-<N>-<slug>`).
+- ID: Forgejo issue number `<N>`. From a branch, `<N>` is the number in
+  `feature/<N>-…`.
+- `<id>` is the note's file name without `.md`, `<N>-<slug>`. **Find it by
+  issue number**: `ls "$SPECS"/<N>-*.md`. Never rebuild it from the branch
+  name — the note slug and the branch slug can differ (issue 7: note
+  `7-apple-reminders-via-radicale-caldav`, branch `feature/7-radicale-caldav`).
+- Only `spec-init` (no note yet) derives `<slug>`, the same way
+  `tmux-task-source-forgejo.sh` does: lowercase the issue title, collapse
+  non-alphanumeric runs to a single `-`, trim, cap at 40 chars.
 - `SPECS` = `$HOME/personal/project-note/Homelab/2 - Specs` (quote it — it
   has spaces).
 - Vault commits: `project-note` commits only when told to. After every note
@@ -21,13 +25,17 @@ main Obsidian vault — not in the homelab code repo.
 
 - Channels: the Forgejo issue, and chat/verbal discussion.
 - Access: `tea` authenticated (`tea login list` shows a login for
-  `<forgejo-host>`).
+  `<forgejo-host>`), and `$FORGEJO_HOMELAB_REPO` set (in
+  `~/.zshrc.local`). If it is unset, stop and say so.
+- You: the repo owner, `${FORGEJO_HOMELAB_REPO%%/*}`. A comment is yours
+  when its `author` equals that.
 - Fetch: **inline**.
   ```bash
   tea issues <N> --comments -o json -r "$FORGEJO_HOMELAB_REPO"
   ```
   An image in a comment is rare (e.g. an error screenshot); read it directly.
 - Init extras: derive `<slug>` from the issue title (see Identity and paths).
+  The init existence check is `ls "$SPECS"/<N>-*.md`, not the derived name.
 
 ## Grounding
 
@@ -105,16 +113,20 @@ omitted heading reads as "forgot to check", not "checked, N/A".
 
 - Body heading match (for `awk -v h=`): `## Spec`.
 - Fetch and guards: **inline**. The issue JSON from the Tracker fetch has
-  the comments; its `body` is the raw live description (markdown).
-- Own-author comments: comments by the repo owner
-  (`${FORGEJO_HOMELAB_REPO%%/*}`). Header to match: `[Round N] Spec
-  confirmation`.
-- Archive foreign description (after approval):
+  the comments; its `body` is the raw live description (markdown). Save it
+  before anything else:
   ```bash
-  tea comments add <N> -r "$FORGEJO_HOMELAB_REPO" \
-    "**Original description (archived before spec-post overwrite, $(date +%F))**
-
-  > $(cat original.txt)"
+  tea issues <N> --comments -o json -r "$FORGEJO_HOMELAB_REPO" > "$DRAFTS/issue.json"
+  jq -r '.body' "$DRAFTS/issue.json" > "$DRAFTS/description.live"
+  ```
+- Own-author comments: yours (Tracker "You"). Header to match:
+  `[Round N] Spec confirmation`.
+- Archive foreign description (after approval). Check the archive comment
+  posted before you overwrite:
+  ```bash
+  { echo "**Original description (archived before spec-post overwrite, $(date +%F))**"; echo
+    sed 's/^/> /' "$DRAFTS/description.live"; } > "$DRAFTS/archive.md"
+  tea comments add <N> -r "$FORGEJO_HOMELAB_REPO" "$(cat "$DRAFTS/archive.md")"
   ```
 - Postable questions: every unchecked item. The issue is your own record;
   nothing in it is private from you.
@@ -124,7 +136,7 @@ omitted heading reads as "forgot to check", not "checked, N/A".
   ```bash
   {
     echo "> **Round N · last updated $(date +%F)** — synced by \`spec-post\`;"
-    echo "> full history in \`project-note/Homelab/2 - Specs/<N>-<slug>.md\`."
+    echo "> full history in \`project-note/Homelab/2 - Specs/<id>.md\`."
     echo
     cat "$DRAFTS/spec.md"
   } > "$DRAFTS/description.md"
@@ -145,7 +157,7 @@ omitted heading reads as "forgot to check", not "checked, N/A".
 
 ## Drift
 
-- Code repo: the homelab worktree on `feature/<N>-<slug>` (or `~/homelab`).
+- Code repo: the homelab worktree on the issue's `feature/<N>-…` branch.
   Run `git fetch origin main` first — a stale `main` bloats the diff.
 - Round-diff path (steps 2–4): **inline**.
 - Change kinds: env var renamed, port changed, restart policy changed,
@@ -174,10 +186,11 @@ omitted heading reads as "forgot to check", not "checked, N/A".
 
 - PR CLI: `tea`.
 - PR lookup: PR numbers are separate from issue numbers, so find the PR by
-  its head branch — never use the issue number `<N>`:
+  its head branch — never use the issue number `<N>` as the PR number, and
+  never rebuild the branch from the note slug:
   ```bash
   tea pulls list --state all -f index,head,state,title,url -o json -r "$FORGEJO_HOMELAB_REPO" \
-    | jq '[.[] | select(.head == "feature/<N>-<slug>")] | first'
+    | jq '[.[] | select(.head | startswith("feature/<N>-"))] | first'
   ```
   `<PR>` = its `index`. No match → no PR.
 - PR view: `tea pulls <PR> -o json -r "$FORGEJO_HOMELAB_REPO"`. Draft
@@ -239,8 +252,9 @@ that click is the deliberate checkpoint. There is no CODEOWNERS.
 
 ## Flow
 
-- Branch: the worktree from `wt` (`feature/<N>-<slug>`).
+- Branch: the worktree from `wt` (`feature/<N>-…`).
 - `<base>`: `origin/main`.
+- Commit count: `git rev-list --count origin/main..HEAD`.
 - PR lookup: the Ready section's lookup. No match → none; `state` `open`
   plus a `WIP:` title → draft; `open` → ready; `merged` → merged; `closed` →
   closed.

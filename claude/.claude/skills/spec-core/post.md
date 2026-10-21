@@ -75,7 +75,10 @@ for confirmation; none hard-blocks.
    create round N+1 for this — a round with no decisions is a lie.
 
 A delegated fetch reports a verdict and evidence per guard, with guard 1's
-full verbatim text only when it triggers. Present all triggered guards
+full verbatim text only when it triggers, and the **absolute path of every
+file it saved** (the live description above all) — the archive in step 9
+runs in this session and reads that file, not the subagent's copy of the
+text. Present all triggered guards
 together, once. Proceed only after the user confirms.
 
 ### 4. Curate the questions

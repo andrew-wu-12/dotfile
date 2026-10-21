@@ -54,6 +54,14 @@ Resolution rule: prefer the **most recent explicit** decision. If two
 sources conflict and neither has clear recency or authority, **do not
 guess** — it goes into step 5's queue.
 
+**Nothing new?** If steps 2–4 found no decision, no contradiction, and no
+new image, and no prior Open Questions item is now answered, this is not a
+round. Do not rewrite, bump `round`, or snapshot. Append one Decision Log row
+dated today — `Checked <sources> through <date>: no spec change.` in the
+profile's note language, Source = the channel checked — apply the
+vault-commit rule, report "no change", and stop. The row marks the activity
+as seen, so `spec-flow` does not send the same comments back here.
+
 ### 5. Interview the user — loop until settled
 
 Run `interview.md`'s loop before the rewrite. Queue:

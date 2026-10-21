@@ -30,9 +30,9 @@ Read all of these before choosing a row. Report each in the final summary.
 | chat log | the skill argument after the ID, or pasted in the user's message |
 | note | `$SPECS/<id>.md` exists |
 | round, posted | frontmatter `round` and the highest `posted[].round` |
-| new activity | tracker comments **not authored by you**, created after the later of the last `posted[].date` and the last Round History date (profile Tracker fetch) |
+| new activity | tracker comments **not yours** (the profile Tracker's "You"), created after the latest of: the last `posted[].date`, the last Round History date, and the last Decision Log row date (profile Tracker fetch) |
 | waiting | unchecked Open Questions items with a `⏳` marker |
-| commits | `git rev-list --count <base>..HEAD` on the feature branch, `<base>` per the profile's Flow section |
+| commits | the profile Flow section's commit count on the feature branch |
 | PR | the profile's PR lookup: none / draft / ready / merged / closed (closed = without merging) |
 | shipped | the profile's Flow "shipped" check |
 

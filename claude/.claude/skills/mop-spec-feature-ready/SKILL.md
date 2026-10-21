@@ -146,7 +146,7 @@ SPECS="$HOME/personal/office-note/Specs"
 NOTE="$SPECS/MOP-XXXX.md"
 ```
 
-See `mop-doc-spec-schema` for this path and the frontmatter fields below. Read the
+See `spec-core` (schema.md + profiles/mop.md) for this path and the frontmatter fields below. Read the
 frontmatter of the note. Compare three things.
 
 1. **The round number and the posted rounds.** Compare frontmatter `round: N` with

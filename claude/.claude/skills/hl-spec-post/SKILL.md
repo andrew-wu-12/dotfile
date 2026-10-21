@@ -188,7 +188,7 @@ re-run the whole flow** to fix it.
 ### 8. Record it in the note
 
 Append to the frontmatter `posted:` list — create the key if it does not
-exist yet, per `hl-doc-spec-schema`'s shape for this field. Write
+exist yet, per `spec-core` (schema.md + profiles/hl.md)'s shape for this field. Write
 `description: synced` for a first sync of the round, `resynced` for a
 re-sync (omit `url:` in that case — no comment went out).
 

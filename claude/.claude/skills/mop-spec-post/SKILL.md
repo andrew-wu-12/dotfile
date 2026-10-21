@@ -264,7 +264,7 @@ nothing gets duplicated. If the comment succeeds and something later fails,
 ### 10. Record it in the note
 
 Append to the frontmatter `posted:` list — create the key if it does not
-exist yet, per `mop-doc-spec-schema`'s shape for this field. Write `description:
+exist yet, per `spec-core` (schema.md + profiles/mop.md)'s shape for this field. Write `description:
 synced` for a first sync of the round, `resynced` for a re-sync (omit `url:`
 in that case — no comment went out). This keeps old entries and the step-1
 baseline lookup parsing correctly.

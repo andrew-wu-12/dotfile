@@ -39,8 +39,8 @@ instead.
 ### 1. Get the spec delta
 
 ```bash
-~/bin/spec-round-diff.sh MOP-XXXX        # latest two rounds
-~/bin/spec-round-diff.sh MOP-XXXX 3      # explicit: round-02 -> round-03
+~/bin/spec-round-diff.sh "$HOME/personal/office-note/Specs" MOP-XXXX        # latest two rounds
+~/bin/spec-round-diff.sh "$HOME/personal/office-note/Specs" MOP-XXXX 3      # explicit: round-02 -> round-03
 ```
 
 Exit code 2 means fewer than two rounds exist. Skip straight to **step 1b**

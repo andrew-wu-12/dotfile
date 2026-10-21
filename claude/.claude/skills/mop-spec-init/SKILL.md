@@ -19,7 +19,7 @@ repositories.
 
 ## Artifact schema
 
-See `mop-doc-spec-schema` for the note's path, frontmatter fields, and section
+See `spec-core` (schema.md + profiles/mop.md) for the note's path, frontmatter fields, and section
 structure.
 
 ## Prerequisites
@@ -92,7 +92,7 @@ Question. A gap waiting on the PM or backend goes to Open Questions with its
 
 ### 4. Generate the consolidated spec
 
-Write the spec body using `mop-doc-spec-body`'s conventions — language, the
+Write the spec body using `spec-core` (body.md + profiles/mop.md)'s conventions — language, the
 field/API/test-scenario formats, business-level terms only, and the
 decision-log boundary.
 
@@ -112,11 +112,11 @@ question specific and quotable.
 
 ### 6. Write the note, then snapshot
 
-Write `specs/MOP-XXXX.md` using `mop-doc-spec-schema`'s template. Write Decision
+Write `specs/MOP-XXXX.md` using `spec-core` (schema.md + profiles/mop.md)'s template. Write Decision
 Log rows and the Round History entry in Traditional Chinese. Then:
 
 ```bash
-~/bin/spec-snapshot.sh MOP-XXXX   # creates round-01
+~/bin/spec-snapshot.sh "$HOME/personal/office-note/Specs" MOP-XXXX   # creates round-01
 ```
 
 Run the snapshot **last**. Run it only after you write the note, so

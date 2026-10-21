@@ -125,7 +125,7 @@ that stops early must not mark the work as checked.
 NOTE="$HOME/personal/project-note/Homelab/2 - Specs/<N>-<slug>.md"
 ```
 
-See `hl-doc-spec-schema` for this path and its frontmatter fields. Read the
+See `spec-core` (schema.md + profiles/hl.md) for this path and its frontmatter fields. Read the
 note's frontmatter. Compare:
 
 1. **The round number and the posted rounds.** Compare frontmatter
@@ -158,7 +158,7 @@ the verdict of the report instead.
 With **2 or more spec rounds**:
 
 ```bash
-~/bin/hl-spec-round-diff.sh <N>-<slug>
+~/bin/spec-round-diff.sh "$HOME/personal/project-note/Homelab/2 - Specs" <N>-<slug>
 ```
 
 Pull the concrete, code-mappable changes from the delta — env var renamed,

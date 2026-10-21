@@ -64,12 +64,12 @@ Free text goes under "Other". Put the reason the source suggests first with
 
 - **Answered** → one Decision Log row, `Source = dev`. Do not also add an
   Open Questions entry for it. If it answers an existing Open Questions item,
-  check that item off with the answer (`mop-doc-spec-schema`'s format).
+  check that item off with the answer (`spec-core` (schema.md + profiles/mop.md)'s format).
 - **Waiting** → an unchecked Open Questions item with a `⏳` marker, dated
   today: `· ⏳ 待 PM 回覆 (YYYY-MM-DD)` or `· ⏳ 待後端回覆 (YYYY-MM-DD)`. A
   re-asked item that is still waiting keeps its original marker and date.
 - **Change reason** → prefix the decision's Decision Log row with the reason
-  in brackets, e.g. `〔PM 規格變動〕…`. See `mop-doc-spec-schema` for the row format.
+  in brackets, e.g. `〔PM 規格變動〕…`. See `spec-core` (schema.md + profiles/mop.md) for the row format.
 
 ## If you cannot ask
 

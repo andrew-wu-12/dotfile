@@ -70,7 +70,7 @@ of silently picking one.
 
 ### 5. Rewrite to current truth
 
-- Rewrite `## Spec` using `hl-doc-spec-body`'s conventions (English,
+- Rewrite `## Spec` using `spec-core` (body.md + profiles/hl.md)'s conventions (English,
   subsection shape, decision-log boundary).
 - If an item was checked this round and came back **unchanged**, leave its
   entry in `## Spec` exactly as it was. Do not narrate that you checked it —
@@ -86,7 +86,7 @@ of silently picking one.
 ### 6. Snapshot the round
 
 ```bash
-~/bin/hl-spec-snapshot.sh <issue>-<slug>   # creates round-NN
+~/bin/spec-snapshot.sh "$HOME/personal/project-note/Homelab/2 - Specs" <issue>-<slug>   # creates round-NN
 cd ~/personal/project-note
 git add "Homelab/2 - Specs/<issue>-<slug>.md" "Homelab/2 - Specs/.rounds/<issue>-<slug>/round-NN.md"
 git commit -m "spec: sync #<issue> <slug>, round N"

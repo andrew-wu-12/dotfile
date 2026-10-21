@@ -85,7 +85,7 @@ stays in) Open Questions with its `⏳` marker.
 
 ### 6. Rewrite to current truth
 
-- Rewrite the `規格` sections using `mop-doc-spec-body`'s conventions (language,
+- Rewrite the `規格` sections using `spec-core` (body.md + profiles/mop.md)'s conventions (language,
   field/API/test-scenario formats, business-level terms only, decision-log
   boundary, bullet formatting).
 - If an item was checked this round and came back **unchanged**, leave its
@@ -99,7 +99,7 @@ stays in) Open Questions with its `⏳` marker.
   nothing new.
 - **Append** to Decision Log (append-only): one dated, source-tagged row per
   decision this round, in Traditional Chinese, prefixed with its change reason
-  (`mop-doc-spec-schema`'s row format).
+  (`spec-core` (schema.md + profiles/mop.md)'s row format).
 - **Append** a Round History entry in Traditional Chinese summarizing what
   changed, ending with the per-reason count (append-only).
 - Update Open Questions: check off answered ones, add newly surfaced ones
@@ -109,7 +109,7 @@ stays in) Open Questions with its `⏳` marker.
 ### 7. Snapshot the round
 
 ```bash
-~/bin/spec-snapshot.sh MOP-XXXX   # creates round-NN
+~/bin/spec-snapshot.sh "$HOME/personal/office-note/Specs" MOP-XXXX   # creates round-NN
 ```
 
 Run this **last**, after the rewrite, so `round-NN.md` matches the

@@ -17,7 +17,7 @@ actual homelab repo — not just the issue text.
 
 ## Artifact schema
 
-See `hl-doc-spec-schema` for the note's path, frontmatter fields, and
+See `spec-core` (schema.md + profiles/hl.md) for the note's path, frontmatter fields, and
 section structure.
 
 ## Prerequisites
@@ -69,7 +69,7 @@ never infer it.
 
 ### 3. Generate the consolidated spec
 
-Write `## Spec` using `hl-doc-spec-body`'s conventions (English, subsection
+Write `## Spec` using `spec-core` (body.md + profiles/hl.md)'s conventions (English, subsection
 shape, decision-log boundary). Use only concrete details from the issue and
 the codebase. **Do not invent** config, ports, or behaviors — an unstated
 value goes to Open Questions instead.
@@ -82,10 +82,10 @@ list stays private until curated in `hl-spec-post`.
 ### 5. Write the note, then snapshot
 
 Write `Homelab/2 - Specs/<issue>-<slug>.md` in `project-note` using
-`hl-doc-spec-schema`'s template, then:
+`spec-core` (schema.md + profiles/hl.md)'s template, then:
 
 ```bash
-~/bin/hl-spec-snapshot.sh <issue>-<slug>   # creates round-01
+~/bin/spec-snapshot.sh "$HOME/personal/project-note/Homelab/2 - Specs" <issue>-<slug>   # creates round-01
 cd ~/personal/project-note
 git add "Homelab/2 - Specs/<issue>-<slug>.md" "Homelab/2 - Specs/.rounds/<issue>-<slug>/round-01.md"
 git commit -m "spec: init #<issue> <slug>, round 1"

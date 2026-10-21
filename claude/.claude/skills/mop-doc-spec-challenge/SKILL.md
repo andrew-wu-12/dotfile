@@ -34,7 +34,7 @@ awk '
 
 ### 2. Delegate to a fresh subagent
 
-Give it `spec-body.md`, `mop-doc-spec-body`'s rules (so it knows what 規格 is
+Give it `spec-body.md`, `spec-core` (body.md + profiles/mop.md)'s rules (so it knows what 規格 is
 allowed to say), and the note's **Decision Log** and **Open Questions**
 sections (so it can suppress gaps that are already known and deferred —
 step 4 below). It gets nothing else: no chat log, no round history, no

@@ -45,7 +45,7 @@ INCONCLUSIVE only warns.
   and `git rev-parse --abbrev-ref HEAD` (`feature/MOP-XXXX` or `hotfix/MOP-XXXX`).
 - The spec note `~/personal/office-note/Specs/MOP-XXXX.md` exists, and its
   `### 3. 測試案例情境` section has at least one scenario. See
-  `mop-doc-spec-schema`. If no scenario exists, stop and tell the user.
+  `spec-core` (schema.md + profiles/mop.md). If no scenario exists, stop and tell the user.
 - `ego-browser` is installed. Read the `ego-browser` skill for its API.
 
 ## Arguments

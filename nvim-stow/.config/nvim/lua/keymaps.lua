@@ -10,8 +10,6 @@ keymap.set('n', 'sv', ':split<Return>', opts)
 
 -- Tabs
 keymap.set('n', 'te', ':tabedit', opts)
-keymap.set('n', '<tab>', ':tabnext<Return>', opts)
-keymap.set('n', '<s-tab>', ':tabprev<Return>', opts)
 keymap.set('n', '<leader><tab>d', ':tabclose<Return>', opts)
 
 -- LSP Rename

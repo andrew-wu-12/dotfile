@@ -19,7 +19,7 @@ return {
       providers = {
         claude = {
           endpoint = 'https://api.anthropic.com',
-          model = 'claude-sonnet-4-5-20250929',
+          model = 'claude-sonnet-5-5',
           timeout = 30000, -- Timeout in milliseconds
         },
       },
@@ -27,6 +27,7 @@ return {
     dependencies = {
       'nvim-lua/plenary.nvim',
       'MunifTanjim/nui.nvim',
+      { 'ColinKennedy/mega.cmdparse', dependencies = { 'ColinKennedy/mega.logging' } },
       --- The below dependencies are optional,
       'nvim-mini/mini.pick', -- for file_selector provider mini.pick
       'nvim-telescope/telescope.nvim', -- for file_selector provider telescope

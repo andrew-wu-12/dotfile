@@ -58,6 +58,15 @@ local telescope_actions = require 'telescope.actions'
 local telescope_action_state = require 'telescope.actions.state'
 local telescope_conf = require('telescope.config').values
 
+local jump_to_item = function(item)
+  vim.cmd "normal! m'"
+  local current = vim.fs.normalize(vim.api.nvim_buf_get_name(0))
+  if vim.fs.normalize(item.filename) ~= current then
+    vim.cmd.edit(vim.fn.fnameescape(item.filename))
+  end
+  vim.api.nvim_win_set_cursor(0, { item.lnum, item.col - 1 })
+end
+
 local open_deduped_locations = function(opts)
   local method = opts.method
   local title = opts.title
@@ -107,9 +116,7 @@ local open_deduped_locations = function(opts)
 
     -- jump straight to the target when there is only one real location
     if opts.jump_single and #entries == 1 then
-      local item = entries[1]
-      vim.cmd.edit(vim.fn.fnameescape(item.filename))
-      vim.api.nvim_win_set_cursor(0, { item.lnum, item.col - 1 })
+      jump_to_item(entries[1])
       return
     end
 
@@ -143,10 +150,7 @@ local open_deduped_locations = function(opts)
             return
           end
 
-          local item = selection.value
-
-          vim.cmd.edit(vim.fn.fnameescape(item.filename))
-          vim.api.nvim_win_set_cursor(0, { item.lnum, item.col - 1 })
+          jump_to_item(selection.value)
         end)
 
         return true
@@ -158,7 +162,7 @@ end
 return {
   {
     'nvim-telescope/telescope.nvim',
-    tag = '0.1.5',
+    version = '*',
     dependencies = {
       'nvim-lua/plenary.nvim',
       'echasnovski/mini.icons',
@@ -332,6 +336,7 @@ return {
           method = 'textDocument/references',
           title = 'References',
           context = { includeDeclaration = false },
+          jump_single = true,
         }
       end, { desc = 'References', nowait = true })
 

@@ -10,6 +10,7 @@ vim.opt.rtp:prepend(vim.env.LAZY or lazypath)
 require('lazy').setup({
   spec = {
     'tpope/vim-sleuth',
+    { import = 'plugins.ai.claudecode' },
     { import = 'plugins.coding.autopairs' },
     { import = 'plugins.coding.cmp' },
     { import = 'plugins.coding.lspconfig' },
@@ -44,6 +45,7 @@ require('lazy').setup({
     { import = 'plugins.test.core' },
     { import = 'plugins.ui.colorscheme' },
     { import = 'plugins.ui.dressing' },
+    { import = 'plugins.ui.render-markdown' },
     { import = 'plugins.ui.treesitter-context' },
     { import = 'plugins.util.mini-hipatterns' },
   },

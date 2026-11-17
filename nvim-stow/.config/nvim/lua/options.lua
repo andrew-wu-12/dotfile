@@ -67,3 +67,14 @@ vim.opt.termguicolors = true
 
 -- Set statusline to be global
 vim.opt.laststatus = 3
+
+vim.opt.autoread = true
+vim.api.nvim_create_autocmd({ 'FocusGained', 'BufEnter', 'CursorHold' }, {
+  desc = 'Reload files changed outside nvim',
+  group = vim.api.nvim_create_augroup('autoread-checktime', { clear = true }),
+  callback = function()
+    if vim.fn.getcmdwintype() == '' then
+      vim.cmd.checktime()
+    end
+  end,
+})

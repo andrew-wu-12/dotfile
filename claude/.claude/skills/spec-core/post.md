@@ -133,6 +133,10 @@ A mention sends a real notification to a named person.
 
 The drafts live at stable paths under `$DRAFTS`; each re-render overwrites
 them in place, so an editor left open refreshes.
+If an IDE is connected (`/ide`), open `$DRAFTS/spec.md` and, when a comment
+is going out, `$DRAFTS/comment.md` with the IDE's open-file tool. If no
+such tool is listed, skip this step. These are the markdown sources of both
+drafts. Re-renders overwrite them, so the open buffers reload.
 
 Show a summary in-session: target ticket, round, both draft paths with
 character counts, whether the description is empty/ours/foreign, who gets

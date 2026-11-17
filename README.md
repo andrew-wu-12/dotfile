@@ -79,7 +79,7 @@ mop-spec-ready-prod ◄── spec-ready ◄── spec-drift ◄── mop-spec
 | `doc-common-component-changelog` | 為 `libs/**` 的共用元件變更產生 Confluence 變更紀錄 |
 | `doc-field-spec` / `format-i18n-key` | 欄位規格與 i18n key 查找、命名 |
 | `mop-frontend-document` | 撰寫或檢查 vault 中的前端功能說明 |
-| `pr-review-markdown-summary` | 把 PR review 留言整理成表格，附修正狀態 |
+| `pr-review-fix` | 逐一驗證 PR review 留言，兩次確認後修正、回覆並 resolve；也可只輸出狀態表 |
 
 
 ---

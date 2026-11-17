@@ -42,6 +42,17 @@
           }
         ]
       }
+    ],
+    "PostToolUse": [
+      {
+        "matcher": "Write|Edit",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "f=$(jq -r \".tool_input.file_path // empty\"); case \"$f\" in */skills/*.md) jq -n --arg f \"$f\" \"{hookSpecificOutput:{hookEventName:\\\"PostToolUse\\\",additionalContext:(\\\"Skill file changed: \\\" + \\$f + \\\". When you finish editing this file, run the asd-ste100 skill on it and apply its rewrite before you report the skill as done.\\\")}}\";; esac"
+          }
+        ]
+      }
     ]
   },
   "enabledPlugins": {

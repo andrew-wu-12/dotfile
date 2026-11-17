@@ -27,3 +27,8 @@ Applies only when working in `mop-console-monorepo` or one of its worktrees. Ign
 - Spec-challenge questions: one clear question, concrete options, a recommendation.
 - Attribute decisions correctly in summaries ("you chose", not "I chose").
 - Tag drift findings with confidence. Don't overstate severity.
+
+## Git & Hooks
+- NEVER use `git commit --no-verify` or otherwise bypass husky hooks. If a hook fails, find and fix the root cause. A common cause is missing or stale node_modules in a worktree, so run `yarn install` first.
+- Never force push without explicitly asking the user first.
+- After resolving rebase conflicts, run `git diff --check` and grep for `<<<<<<<` / `>>>>>>>` before committing.

@@ -113,6 +113,16 @@ The serve command is `yarn serve --<app> --<app> ...`.
 
 ### 4. Start the serve
 
+Take the serve lock first. Other agents verify in parallel, and the lock makes
+them wait for each other:
+
+```bash
+~/bin/tmux-serve.sh lock "$WT" 540    # locked (exit 0) or timeout (exit 2)
+```
+
+On `timeout`, run it again. After 6 timeouts, ask the user if you must keep
+waiting. If the user says no, stop. Do not do step 8.
+
 ```bash
 ~/bin/tmux-serve.sh status    # <target>\t<status>\t<cmd>
 ```
@@ -231,7 +241,11 @@ Do this step after each run, also after a run that stopped early.
 ~/bin/tmux-serve.sh start "$PREV_TARGET" ${PREV_CMD:+"$PREV_CMD"}
 ```
 
-Do not wait for it to be online.
+Do not wait for it to be online. Then release the lock, in all three cases:
+
+```bash
+~/bin/tmux-serve.sh unlock "$WT"
+```
 
 ### 9. Write the record
 
@@ -283,7 +297,8 @@ Report these items:
 - Never create data to meet a precondition. Ask the user for a record id.
 - Never delete data that a write scenario created.
 - Never take over another worktree's serve without a yes from the user.
-- Always do step 8, also after a run that stopped early.
+- Always do step 8, also after a run that stopped early. Step 8 always releases
+  the serve lock.
 - A FAIL goes to the record only after step 7 confirms it.
 - Never write a row before its scenario ran. A run that stopped early records
   only the rows it finished.

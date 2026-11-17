@@ -42,6 +42,11 @@ sys.exit(0 if libc.clonefile(sys.argv[1].encode(), sys.argv[2].encode(), 0) == 0
         rm -rf "$DEST/node_modules"
         cp -c -R "$SRC/node_modules" "$DEST/node_modules"
     fi
+    # The source node_modules may be stale vs this branch's yarn.lock; yarn's integrity check makes this ~instant when it isn't.
+    if [[ -f "$DEST/yarn.lock" ]] && command -v yarn >/dev/null; then
+        echo "Syncing node_modules with yarn.lock…"
+        (cd "$DEST" && yarn install --frozen-lockfile) || echo "⚠️  yarn install failed; run it manually in $DEST"
+    fi
 }
 
 function wt_repo_name() {

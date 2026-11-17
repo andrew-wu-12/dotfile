@@ -116,5 +116,9 @@
         "source ~/.nvm/nvm.sh && nvm use 20.19 >/dev/null && npx -y chrome-devtools-mcp@1.10.1"
       ]
     }
+  },
+  "statusLine": {
+    "type": "command",
+    "command": "~/bin/claude-statusline.sh"
   }
 }

@@ -16,6 +16,9 @@ Implement sections).
   this session. A step's own interview and approval prompts are never
   skipped, batched, or pre-answered. Every external write — tracker post,
   PR flip, config PR — goes through that step's approval, unchanged.
+- Before each step, write `<YYYY-MM-DD HH:MM> · row <#> · running: <step>` to
+  `spec-flow-status`, the same way as in [Report](#report). A display then shows
+  the step that runs now, not the previous stop.
 - After each step, re-read the signals and re-evaluate the table from the
   top. Never run the same step twice in one invocation; if the table points
   back at a step that already ran, stop and report why.

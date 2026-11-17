@@ -25,6 +25,10 @@ MOP frontend tickets on Jira. Spec notes are in the `office-note` vault.
   `tool-ticket-get`. Give it the ticket ID and the last Round History date.
   It returns each new comment word for word and the file path of each new
   attachment. It does not describe the attachments.
+- Sub-task: when the ticket's issue type is `Sub-task`, the fetch subagent
+  also fetches its parent the same way and returns it in a separate,
+  labelled block. The parent is read-only source material. Every write
+  (note, post) stays on the sub-task.
 - Init extras: record each Figma or prototype URL. Put the first one in
   frontmatter `prototype`.
 

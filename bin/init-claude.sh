@@ -36,7 +36,31 @@ function stow_claude_config() {
     echo "✓ Claude 設定連結完成"
 }
 
+function ignore_claude_local_settings() {
+    echo ""
+    echo "=== 全域忽略 .claude/settings.local.json ==="
+    echo ""
+
+    local pattern='**/.claude/settings.local.json'
+    local file
+    file="$(git config --global --type=path core.excludesFile 2>/dev/null)"
+    file="${file:-${XDG_CONFIG_HOME:-$HOME/.config}/git/ignore}"
+
+    if [ -f "$file" ] && grep -qxF "$pattern" "$file"; then
+        echo "✓ 已存在於 ${file}，略過。"
+        return 0
+    fi
+
+    mkdir -p "$(dirname "$file")" || return 1
+    if [ -s "$file" ] && [ -n "$(tail -c 1 "$file")" ]; then
+        echo "" >> "$file"
+    fi
+    echo "$pattern" >> "$file" || return 1
+    echo "✓ 已加入 ${file}"
+}
+
 if [[ "${BASH_SOURCE[0]}" == "${0}" ]]; then
     install_claude
     stow_claude_config
+    ignore_claude_local_settings
 fi

@@ -73,6 +73,14 @@
     }
   },
   "awaySummaryEnabled": false,
+  "pluginConfigs": {
+    "ponytail@ponytail": {
+      "options": {
+        "ledger": true,
+        "sendNames": true
+      }
+    }
+  },
   "tui": "fullscreen",
   "theme": "auto",
   "mcpServers": {
@@ -89,14 +97,6 @@
         "-c",
         "source ~/.nvm/nvm.sh && nvm use 20.19 >/dev/null && npx -y chrome-devtools-mcp@1.10.1"
       ]
-    }
-  },
-  "pluginConfigs": {
-    "ponytail@ponytail": {
-      "options": {
-        "ledger": true,
-        "sendNames": true
-      }
     }
   }
 }

@@ -1,6 +1,8 @@
 #!/bin/bash
 # Vertical window picker (prefix w): fzf popup of the current session's tmux windows as a stack of cards, with a
-# header line counting 🔴/🟢 windows in other sessions (switch sessions with prefix O).
+# header line counting 🔴/🟢 windows in other sessions (switch sessions with prefix O). A window card gets 💬 when
+# its branch's PR has new comments from others (tmux-pr-activity.sh); fzf refetches it in the background on every
+# start into $PR_ACTIVITY_CACHE and reloads the cards (`--rows`) only when the result changed.
 # Modes: active (default; live windows only) / all (adds a card per task from the session's task source with no
 # worktree yet). The task source is TASK_SOURCE_CMD from the current window's @workspace_path .workspace.conf, a
 # script implementing `list` / `url <key>` / `start <key>` (tmux-task-source-*.sh); its `list` output is cached
@@ -63,6 +65,7 @@ header:#f5e0dc,info:#cba6f7,pointer:#f5e0dc,marker:#b4befe,fg+:#cdd6f4,\
 prompt:#cba6f7,hl+:#f38ba8,border:#585b70"
 
 CACHE_TTL=300       # 5 minutes
+PR_ACTIVITY_CACHE="$HOME/.cache/tmux-pr-activity"
 
 CUR_SESSION=$(tmux display-message -p '#{session_name}')
 
@@ -415,7 +418,14 @@ build_window_rows() {
         preview_cmd="${WORKSPACE_PREVIEW_CMD:-}"
         note_path="${NOTE_PATH:-}"
 
-        record="${sess}${TAB}${winid}${TAB}${ws_path}${TAB}${build_wt_path}${TAB}${preview_cmd}${TAB}${note_path}${TAB}${BOLD}${header}${RESET}"
+        pr_icon=""
+        while IFS= read -r pr_key; do
+          [ -n "$pr_key" ] && case "$header" in *"$pr_key") pr_icon=" 💬" ;; esac
+        done <<EOF
+$PR_ACTIVITY
+EOF
+
+        record="${sess}${TAB}${winid}${TAB}${ws_path}${TAB}${build_wt_path}${TAB}${preview_cmd}${TAB}${note_path}${TAB}${BOLD}${header}${RESET}${pr_icon}"
         [ -n "$title" ] && record="${record}
   ${DIM}${title}${RESET}"
 
@@ -434,7 +444,7 @@ build_window_rows() {
         flow_gitdir=$(git -C "$config_path" rev-parse --absolute-git-dir 2>/dev/null)
         if [ -n "$flow_gitdir" ] && [ -s "$flow_gitdir/spec-flow-status" ]; then
           record="${record}
-  ${DIM}📋 $(head -1 "$flow_gitdir/spec-flow-status")${RESET}"
+  ${DIM}📋 $(head -1 "$flow_gitdir/spec-flow-status" | sed 's/^[^·]*· row [^·]*· //')${RESET}"
         fi
 
         if [ -n "$ws_path" ] && [ -n "${WORKSPACE_SERVE_CMD:-}" ]; then
@@ -468,6 +478,7 @@ build_list() {
   serve_compute_status
   CUR_TARGET=$(serve_current_target "$SERVE_WIN")
   CUR_PORT=$([ -n "$SERVE_WIN" ] && tmux show-option -w -t "$SERVE_WIN" -v @serve_port 2>/dev/null || true)
+  PR_ACTIVITY=$(cat "$PR_ACTIVITY_CACHE" 2>/dev/null)
   : > "$list_file"
 
   build_window_rows
@@ -508,6 +519,25 @@ if [ "${1:-}" = "--actions-popup" ]; then
   exit 0
 fi
 
+# --pr-refresh <mode> / --rows <mode>: fzf's start:bg-transform, never invoked by hand. --pr-refresh refetches
+# $PR_ACTIVITY_CACHE and, only when it changed, prints a reload action that rebuilds the cards via --rows.
+if [ "${1:-}" = "--pr-refresh" ]; then
+  mkdir -p "${PR_ACTIVITY_CACHE%/*}"
+  tmp="$PR_ACTIVITY_CACHE.$$"
+  if "$SCRIPT_DIR/tmux-pr-activity.sh" > "$tmp" 2>/dev/null && ! cmp -s "$tmp" "$PR_ACTIVITY_CACHE"; then
+    mv "$tmp" "$PR_ACTIVITY_CACHE"
+    printf 'reload:%s\n' "$(quote_args "$SCRIPT_DIR/tmux-window-picker.sh" --rows "${2:-active}")"
+  fi
+  rm -f "$tmp"
+  exit 0
+fi
+if [ "${1:-}" = "--rows" ]; then
+  MODE="${2:-active}"
+  build_list
+  cat "$list_file"
+  exit 0
+fi
+
 MODE="active"
 while true; do
   build_list
@@ -526,6 +556,7 @@ while true; do
   summary=$(other_sessions_summary)
   [ -n "$summary" ] && HEADER=$(printf '%s\n%s' "${DIM}other sessions: ${summary}${RESET}" "$HEADER")
   EXPECT=ctrl-s,ctrl-r,ctrl-x,ctrl-v,ctrl-g,ctrl-p,ctrl-n,ctrl-a
+  PR_BIND="start:bg-transform:$(quote_args "$SCRIPT_DIR/tmux-window-picker.sh" --pr-refresh "$MODE")"
   [ -n "$TASK_SRC" ] && EXPECT="$EXPECT,tab"
 
   result=$(fzf \
@@ -544,6 +575,7 @@ while true; do
     --expect="$EXPECT" \
     --bind="$RELOAD_BIND" \
     --bind="$CTRL_B_BIND" \
+    --bind="$PR_BIND" \
     --preview="$PREVIEW_CMD" \
     --preview-window=right:60%:wrap \
     $mocha < "$list_file") || exit 0

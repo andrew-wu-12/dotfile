@@ -6,7 +6,7 @@ source "$SCRIPT_DIR/init-lib.sh"
 REPO_ROOT="$(resolve_repo_root "$SCRIPT_DIR")" || exit 1
 
 # Ordered step table as three index-aligned parallel arrays (no associative arrays: macOS stock Bash 3.2).
-STEP_KEYS=(brew required omz base recommend-cli starship nvim tmux wezterm vscode claude claude-skills check-paths workspace credentials ssh gh clone)
+STEP_KEYS=(brew required omz base recommend-cli starship nvim tmux wezterm workmux vscode claude claude-skills check-paths workspace credentials ssh gh clone)
 STEP_LABELS=(
     "Homebrew"
     "必要套件（jq、gh、curl、git、stow、nvm）"
@@ -17,6 +17,7 @@ STEP_LABELS=(
     "Nvim 編輯器"
     "Tmux"
     "WezTerm"
+    "workmux（選用，agent dashboard）"
     "VS Code"
     "Claude Code"
     "Claude Code skills（只連結 skills，不動個人設定）"
@@ -37,6 +38,7 @@ STEP_SCRIPTS=(
     "init-nvim.sh"
     "init-tmux.sh"
     "init-wezterm.sh"
+    "init-workmux.sh"
     "init-vscode.sh"
     "init-claude.sh"
     "init-claude-skills.sh"
@@ -165,6 +167,10 @@ function detect_status() {
                 pacman) pacman -Qi wezterm &>/dev/null || return 1 ;;
             esac
             [ -L "$HOME/.wezterm.lua" ] || return 1
+            ;;
+        workmux)
+            command -v workmux &>/dev/null && [ -f "$HOME/.config/workmux/config.yaml" ] || return 1
+            grep -q '"workmux-status@workmux"' "$HOME/.claude/settings.json" 2>/dev/null || return 1
             ;;
         vscode)
             command -v code &>/dev/null || return 1

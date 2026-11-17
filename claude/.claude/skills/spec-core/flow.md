@@ -97,3 +97,15 @@ In English:
 - Where it stopped and why: the gate, and what unblocks it (who answers,
   what to run, what to push).
 - Open questions still waiting, grouped by bucket, when any exist.
+
+Then write the stop point as one line to the git dir of the worktree. The
+`prefix w` picker reads this line and shows the state of each ticket:
+
+```bash
+printf '%s\n' "<YYYY-MM-DD HH:MM> · row <#> · <gate and what unblocks it>" \
+  > "$(git rev-parse --absolute-git-dir)/spec-flow-status"
+```
+
+Keep the line shorter than 80 characters. Example:
+`2026-11-17 14:02 · row 4 · waiting on PM: 2 items`. Write the line also
+when a step fails or when the user stops a step. Do not commit the file.

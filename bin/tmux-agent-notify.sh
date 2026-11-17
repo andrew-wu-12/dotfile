@@ -30,21 +30,21 @@ repo=${common:h:t}
 canonical="${branch}(${repo})"
 ticket=${root:t}
 
-marker=""; title=""; msg=""; do_popup=0; sound="Glass"
+marker=""; title=""; msg=""; do_popup=0; sound="Glass"; state=""
 session=""; window_id=""; term_app=""; client_tty=""; client=""
 case "$event" in
     notification)
-        marker="🔴 "; do_popup=1
+        marker="🔴 "; do_popup=1; state="waiting"
         title="🔴 $ticket needs you"
         msg=$(printf '%s' "$input" | jq -r '.message // "Waiting for input"' 2>/dev/null)
         ;;
     stop)
-        marker="🟢 "; do_popup=1
+        marker="🟢 "; do_popup=1; state="done"
         title="🟢 $ticket done"
         msg="Agent finished its turn"
         ;;
     clear)
-        marker=""; do_popup=0
+        marker=""; do_popup=0; state="working"
         ;;
     *) exit 0 ;;
 esac
@@ -76,7 +76,8 @@ if [ -n "${TMUX_PANE:-}" ]; then
     session=$(tmux display -p -t "$TMUX_PANE" '#{session_name}' 2>/dev/null)
     window_id=$(tmux display -p -t "$TMUX_PANE" '#{window_id}' 2>/dev/null)
     tmux rename-window -t "$TMUX_PANE" "${marker}${canonical}" >/dev/null 2>&1
-
+    tmux set -w -t "$TMUX_PANE" @agent_state "$state" >/dev/null 2>&1
+    tmux set -w -t "$TMUX_PANE" @agent_since "$(date +%s)" >/dev/null 2>&1
 # Resolved unconditionally: click-to-focus needs the terminal's bundle id and the client tty exactly when the
 # popup fires, i.e. when the window is NOT active.
 # The agent's session usually has no client (you're attached to another session), so fall back to the most

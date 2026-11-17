@@ -387,8 +387,8 @@ build_window_rows() {
   # works around.
   local US=$'\x1f'
   tmux list-windows -t "=$CUR_SESSION" \
-    -F "#{session_name}${US}#{window_id}${US}#{window_name}${US}#{@ticket_title}${US}#{@workspace_path}${US}#{pane_current_path}" \
-    | while IFS="$US" read -r sess winid header title wspath panepath; do
+    -F "#{session_name}${US}#{window_id}${US}#{window_name}${US}#{@ticket_title}${US}#{@workspace_path}${US}#{pane_current_path}${US}#{@agent_state}${US}#{@agent_since}" \
+    | while IFS="$US" read -r sess winid header title wspath panepath agent_state agent_since; do
         case "$header" in
           serve\(*|*" serve("*) continue ;;
         esac
@@ -418,6 +418,24 @@ build_window_rows() {
         record="${sess}${TAB}${winid}${TAB}${ws_path}${TAB}${build_wt_path}${TAB}${preview_cmd}${TAB}${note_path}${TAB}${BOLD}${header}${RESET}"
         [ -n "$title" ] && record="${record}
   ${DIM}${title}${RESET}"
+
+        if [ -n "$agent_state" ] && [ -n "$agent_since" ]; then
+          agent_min=$(( ($(date +%s) - agent_since) / 60 ))
+          if [ "$agent_min" -ge 60 ]; then agent_age="$((agent_min / 60))h$((agent_min % 60))m"; else agent_age="${agent_min}m"; fi
+          case "$agent_state" in
+            working) agent_icon="🤖" ;;
+            waiting) agent_icon="🔴" ;;
+            *)       agent_icon="🟢" ;;
+          esac
+          record="${record}
+  ${DIM}${agent_icon} ${agent_state} ${agent_age}${RESET}"
+        fi
+
+        flow_gitdir=$(git -C "$config_path" rev-parse --absolute-git-dir 2>/dev/null)
+        if [ -n "$flow_gitdir" ] && [ -s "$flow_gitdir/spec-flow-status" ]; then
+          record="${record}
+  ${DIM}📋 $(head -1 "$flow_gitdir/spec-flow-status")${RESET}"
+        fi
 
         if [ -n "$ws_path" ] && [ -n "${WORKSPACE_SERVE_CMD:-}" ]; then
           if [ "$ws_path" = "$CUR_TARGET" ]; then

@@ -4,8 +4,9 @@ description: >-
   Drive one MOP ticket or homelab issue through the spec flow automatically:
   read where it stands (spec note, rounds, posts, tracker activity, branch
   commits, PR state), run every step that can run now (spec-init, spec-sync,
-  spec-post, spec-drift, mop-spec-verify, spec-ready, mop-spec-document),
-  and stop at the next human gate with what unblocks it. Re-run to resume.
+  spec-post, implementation, spec-drift, mop-spec-verify, spec-ready,
+  mop-spec-document), and stop at the next human gate with what unblocks it.
+  Re-run to resume.
   Use for "spec-flow", "next step for MOP-XXXX", "where is this ticket",
   "continue the spec flow", or "spec-flow MOP-XXXX <chat log>" after a
   discussion.

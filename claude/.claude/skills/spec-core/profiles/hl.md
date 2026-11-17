@@ -260,6 +260,12 @@ Merge rule: do not merge. The user merges by hand. There is no CODEOWNERS.
 - Shipped check: the PR `state` is `merged`.
 - Shipped action: none. Report that the issue is done.
 
+## Implement
+
+- Checks: the commands of `.forgejo/workflows/pr-gate.yml` for each
+  service that the diff changes (`tsc` for a TypeScript service,
+  `docker compose config` for a compose file).
+
 ## Template
 
 ```markdown

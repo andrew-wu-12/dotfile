@@ -6,7 +6,8 @@ user re-runs it to resume. There is no state file and no polling: every
 signal below is read fresh from the note, the branch, the PR, and the
 tracker.
 
-Read first: `schema.md`, the profile (its Tracker, Ready, and Flow sections).
+Read first: `schema.md`, the profile (its Tracker, Ready, Flow, and
+Implement sections).
 
 ## Rules
 
@@ -18,7 +19,10 @@ Read first: `schema.md`, the profile (its Tracker, Ready, and Flow sections).
 - After each step, re-read the signals and re-evaluate the table from the
   top. Never run the same step twice in one invocation; if the table points
   back at a step that already ran, stop and report why.
-- Never write code. Implementation is the user's.
+- Write code only in the implement step (row 5).
+- When `spec-ready` runs from this flow, ask the user with `AskUserQuestion`
+  before its flip command: "All gates pass. Flip PR #N to ready?" On no, the
+  PR stays draft. Report it and stop.
 - If the user declines an approval or aborts a step, stop there and report.
 
 ## Signals
@@ -46,8 +50,8 @@ Pick the **first** row that matches.
 | 1 | no note | **`spec-init`** |
 | 2 | `round` > highest posted round | **`spec-post`** |
 | 3 | new activity | **`spec-sync`** — ask for a chat log, or "none" |
-| 4 | waiting items **and** commits == 0 | **STOP** — "waiting on <bucket>: <items>" |
-| 5 | commits == 0 | **STOP** — "spec settled; implement now" |
+| 4 | waiting items **and** commits == 0 | **ASK** — "N items waiting on <bucket>: implement now, or wait?" Implement → row 5's action. Wait → **STOP** — "waiting on <bucket>: <items>" |
+| 5 | commits == 0 | **implement** (below) |
 | 6 | shipped | the profile's shipped action |
 | 7 | PR is none | **STOP** — "open a PR for <branch>" (never create one) |
 | 8 | PR is merged | **STOP** — "merged into <base>; waiting for the release" |
@@ -58,6 +62,27 @@ Row 4 applies only before implementation starts. Once the branch has
 commits, open questions stop blocking: list them in the report and carry on
 to rows 6–10, since the drift and ready checks are where a late answer
 matters.
+
+Row 4 asks with `AskUserQuestion`. List each waiting item with its bucket.
+
+## Implement (row 5)
+
+Work in the profile Flow section's branch.
+
+1. Read the note: the spec body, the Decision Log, and the Open Questions.
+2. Implement only what the spec body states. A value the body marks
+   `[MISSING]`, or a gap that the body does not cover, is not yours to
+   decide: ask the user with `AskUserQuestion`. If the answer changes the
+   spec, stop and tell the user to run `spec-sync` with it first.
+3. Run the profile's Implement checks. On a failure, fix it and run the
+   checks again. After 2 fix attempts that still fail, **STOP**: do not
+   commit, do not push. Report the failing output.
+4. When the checks pass, commit in the style of `git log` on the base
+   branch. Push the branch with plain `git push`. Never force-push. Never
+   create a PR.
+
+Never start, stop, or switch a dev server in this step. Only the profile's
+pre-ready steps use one.
 
 Row 10 runs `spec-drift` before `spec-ready` so its report is visible on
 its own; `spec-ready` runs it again as gate 3 — that rerun is cheap and

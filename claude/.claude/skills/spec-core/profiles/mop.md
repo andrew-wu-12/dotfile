@@ -361,6 +361,14 @@ reviewers and merges.
 - Not in the flow: `mop-spec-ready-prod` (one release, many tickets) and
   `mop-check-privilege` (run it when `spec-init` reports a privilege gap).
 
+## Implement
+
+- Checks, from the worktree root. `<base>` is the Flow section's `<base>`:
+  ```bash
+  yarn nx affected -t lint,test,stylelint --exclude=shared-assets --base=<base>
+  yarn typecheck
+  ```
+
 ## Template
 
 ```markdown

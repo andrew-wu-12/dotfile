@@ -390,8 +390,8 @@ build_window_rows() {
   # works around.
   local US=$'\x1f'
   tmux list-windows -t "=$CUR_SESSION" \
-    -F "#{session_name}${US}#{window_id}${US}#{window_name}${US}#{@ticket_title}${US}#{@workspace_path}${US}#{pane_current_path}${US}#{@agent_state}${US}#{@agent_since}" \
-    | while IFS="$US" read -r sess winid header title wspath panepath agent_state agent_since; do
+    -F "#{session_name}${US}#{window_id}${US}#{window_name}${US}#{@ticket_title}${US}#{@workspace_path}${US}#{pane_current_path}${US}#{@agent_state}" \
+    | while IFS="$US" read -r sess winid header title wspath panepath agent_state; do
         case "$header" in
           serve\(*|*" serve("*) continue ;;
         esac
@@ -429,16 +429,14 @@ EOF
         [ -n "$title" ] && record="${record}
   ${DIM}${title}${RESET}"
 
-        if [ -n "$agent_state" ] && [ -n "$agent_since" ]; then
-          agent_min=$(( ($(date +%s) - agent_since) / 60 ))
-          if [ "$agent_min" -ge 60 ]; then agent_age="$((agent_min / 60))h$((agent_min % 60))m"; else agent_age="${agent_min}m"; fi
+        if [ -n "$agent_state" ]; then
           case "$agent_state" in
             working) agent_icon="🤖" ;;
             waiting) agent_icon="🔴" ;;
             *)       agent_icon="🟢" ;;
           esac
           record="${record}
-  ${DIM}${agent_icon} ${agent_state} ${agent_age}${RESET}"
+  ${DIM}${agent_icon} ${agent_state}${RESET}"
         fi
 
         flow_gitdir=$(git -C "$config_path" rev-parse --absolute-git-dir 2>/dev/null)
